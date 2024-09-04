@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-The aim of this project is to develop a Zig library designed to optimize the training of ML models on embedded systems and edge devices. Embedded systems and edge devices typically have limited computational resources, power constraints, and often operate in real-time environments. This library will address these challenges by providing optimized algorithms, efficient memory management, and low-level hardware interfacing tailored to the needs of AI model training on these constrained devices.
+The aim of this project is to develop a Zig library designed to optimize the training and inference of ML models on embedded systems and edge devices. Embedded systems and edge devices typically have limited computational resources, power constraints, and often operate in real-time environments. This library will address these challenges by providing optimized algorithms, efficient memory management, and low-level hardware interfacing tailored to the needs of AI model training on these constrained devices.
 Key Features
 
     **Lightweight and High-Performance**: The library leverages Zig's low-level programming capabilities to deliver high-performance solutions while maintaining a small footprint, crucial for resource-constrained environments.
