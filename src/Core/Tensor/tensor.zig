@@ -44,7 +44,7 @@ const Tensor = struct {
     }
 
     /// Sets the element at the given flattened index
-    pub fn set(self: *Tensor, idx: usize, value: f64) !f64 {
+    pub fn set(self: *Tensor, idx: usize, value: f64) !void {
         if (idx >= self.data.len) {
             return error.IndexOutOfBounds;
         }
@@ -52,7 +52,7 @@ const Tensor = struct {
     }
 
     /// Flattens multi-dimensional indices into a single index
-    pub fn flatten_index(self: *const Tensor, indices: []usize) !usize {
+    pub fn flatten_index(self: *const Tensor, indices: []const usize) !usize {
         if (indices.len != self.shape.len) {
             return error.InvalidShape;
         }
@@ -60,7 +60,7 @@ const Tensor = struct {
         var flat_index: usize = 0;
         var multiplier: usize = 1;
 
-        for (self.shape.len - 1) |i| {
+        for (0..(self.shape.len - 1)) |i| {
             flat_index += indices[i] * multiplier;
             multiplier *= self.shape[i];
         }
@@ -69,13 +69,13 @@ const Tensor = struct {
     }
 
     /// Get element using multi-dimensional indices
-    pub fn get_at(self: *const Tensor, indices: []usize) !f64 {
+    pub fn get_at(self: *const Tensor, indices: []const usize) !f64 {
         const idx = try self.flatten_index(indices);
         return self.get(idx);
     }
 
     /// Set element using multi-dimensional indices
-    pub fn set_at(self: *Tensor, indices: []usize, value: f64) !void {
+    pub fn set_at(self: *Tensor, indices: []const usize, value: f64) !void {
         const idx = try self.flatten_index(indices);
         return self.set(idx, value);
     }
@@ -91,8 +91,11 @@ pub fn main() !void {
     defer tensor.deinit();
 
     // Set some values
-    try tensor.set_at([_]usize{ 1, 2 }, 42);
-    const val = try tensor.get_at([_]usize{ 1, 2 });
+    var pose: [2]usize = undefined;
+    pose[0] = 1;
+    pose[1] = 2;
+    try tensor.set_at(&pose, 42);
+    const val = try tensor.get_at(&[2]usize{ 1, 2 });
 
     std.debug.print("Tensor element at [1, 2] is {}\n", .{val});
 }
