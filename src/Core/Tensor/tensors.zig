@@ -33,7 +33,7 @@ pub fn Tensor(comptime T: type) type {
         }
 
         /// Returns the number of elements in the Tensor
-        pub fn size(self: *@This()) usize {
+        pub fn getSize(self: *@This()) usize {
             var total_size: usize = 1;
             for (self.shape) |dim| {
                 total_size *= dim;
@@ -59,19 +59,13 @@ pub fn Tensor(comptime T: type) type {
 
         /// Flattens multi-dimensional indices into a single index
         pub fn flatten_index(self: *const @This(), indices: []const usize) !usize {
-            if (indices.len != self.shape.len) {
-                return error.InvalidShape;
+            var idx: usize = 0;
+            var stride: usize = 1;
+            for (self.shape, 0..) |dim, i| {
+                idx += indices[i] * stride;
+                stride *= dim;
             }
-
-            var flat_index: usize = 0;
-            var multiplier: usize = 1;
-
-            for (0..(self.shape.len - 1)) |i| {
-                flat_index += indices[i] * multiplier;
-                multiplier *= self.shape[i];
-            }
-
-            return flat_index;
+            return idx;
         }
 
         /// Get element using multi-dimensional indices
