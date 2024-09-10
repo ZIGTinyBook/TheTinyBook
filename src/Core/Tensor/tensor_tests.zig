@@ -1,5 +1,9 @@
 const std = @import("std");
-const Tensor = @import("./tensors.zig").Tensor;
+const Tensor = @import("./tensor.zig").Tensor;
+
+test "Tensor test description" {
+    std.debug.print("\n--- Running tensor tests\n", .{});
+}
 
 test "Sizetest" {
     const allocator = std.heap.page_allocator;

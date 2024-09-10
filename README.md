@@ -28,3 +28,15 @@ Key Features
 ### Prerequisites
  Zig Compiler: Ensure you have the latest version of the Zig compiler installed. Follow the guide on the official [website](https://ziglang.org/learn/getting-started/).
  Zig knowledge: To better understand the library is necessary a solid knowledge of zig language. We reccomend you a hands-on learning approach, try to solve those excercises... (ziglings/exercises)[https://codeberg.org/ziglings/exercises]
+
+# Test
+ Every time you create a test_file.zig, if not already present remember to add his path  into build.zig/test_list.
+ To run tests run: 
+ '''
+ zig build
+ '''
+ '''
+ zig build test_all --summary all
+ '''
+ (don't worry about stderr)
+
