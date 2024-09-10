@@ -1,0 +1,19 @@
+# Ignore build artifacts
+/build/
+*.o
+*.a
+
+# Ignore temporary files
+*.log
+*.tmp
+*.swp
+
+# Ignore macOS system files
+.DS_Store
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+
+#ignore zig cache
+.zig-cache/
