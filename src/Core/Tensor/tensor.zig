@@ -1,4 +1,6 @@
 const std = @import("std");
+const tMath = @import("./tensor_math.zig");
+const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
 
 pub fn Tensor(comptime T: type) type {
     return struct {
@@ -124,11 +126,23 @@ pub fn main() !void {
         [_]f64{ 1.0, 2.0, 3.0 },
         [_]f64{ 4.0, 5.0, 6.0 },
     };
+    var inputArray2: [2][3]f64 = [_][3]f64{
+        [_]f64{ 6.0, 5.0, 4.0 },
+        [_]f64{ 3.0, 2.0, 1.0 },
+    };
 
     var shape: [2]usize = [_]usize{ 2, 3 };
 
     var tensor = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
+    //tensor.info();
 
-    tensor.info();
+    var tensor2 = try Tensor(f64).fromArray(&allocator, &inputArray2, &shape);
+    defer tensor2.deinit();
+    //tensor2.info();
+
+    //Just a bunch of trials
+    try tMath.sum_tensors(Architectures.CPU, f64, &tensor, &tensor2);
+    try tMath.sum_tensors(Architectures.SP32, f64, &tensor, &tensor2);
+    try tMath.sum_tensors(Architectures.WildTarzan, f64, &tensor, &tensor2);
 }
