@@ -119,27 +119,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     const nDimT2 = t2.shape.len; //number of dimesion of tensor 2
     // -imput shape
     if (nDimT1 != nDimT2) return TensorError.InputTensorDifferentShape;
-    if (t1.shape[nDimT1 - 1] != t1.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t1.shape[nDimT1 - 1]) return TensorError.InputTensorsWrongShape;
-
-    //CREATING output_tensor :
-
-    //get the size of the output
-    var size: usize = 1;
-    for (0..(nDimT1 - 2)) |i| {
-        size = size * t1.shape[i];
-    }
-    size = size * t1.shape[nDimT1 - 1] * t1.shape[nDimT1 - 1];
-
-    const allocator = std.heap.page_allocator;
-    var out_shape = try allocator.alloc(outputType, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
-    //defining the resulting shape
-    for (0..(nDimT1 - 2)) |i| {
-        out_shape[i] = t1.shape[i];
-    }
-    out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
-    out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
-
-    var out_tensor = try Tensor(u8).init(&allocator, &out_shape);
+    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t2.shape[nDimT1 - 1]) return TensorError.InputTensorsWrongShape;
 
     // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
     // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
@@ -165,21 +145,45 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         if (@sizeOf(outputType) <= @sizeOf(inputType)) return TensorError.TooSmallOutputType;
     }
 
+    //CREATING output_tensor :
+
+    //get the size of the output
+    var size: usize = 1;
+    for (0..(nDimT1 - 2)) |i| {
+        size = size * t1.shape[i];
+    }
+    size = size * t1.shape[nDimT1 - 1] * t1.shape[nDimT1 - 1];
+
+    const allocator = std.heap.page_allocator;
+    var out_shape = try allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
+    //defining the resulting shape
+    for (0..(nDimT1 - 2)) |i| {
+        out_shape[i] = t1.shape[i];
+    }
+    out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
+    out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
+
+    var out_tensor = try Tensor(outputType).init(&allocator, out_shape);
+
     //initialize the current location to all 0
-    const location: [nDimT1]usize = [_]usize{0} ** nDimT1;
+    const location = try allocator.alloc(usize, nDimT1);
+    for (location) |*loc| {
+        loc.* = 0;
+    }
+    try out_tensor.set_at(location, 1);
 
     //call mutidim_mat_mul to handle multidimensionality
-    multidim_multiplication(
+    try multidim_multiplication(
         inputType,
         outputType,
-        &t1,
-        &t2,
+        t1,
+        t2,
         &out_tensor,
         0,
         location,
     );
 
-    return *out_tensor;
+    return &out_tensor;
 }
 
 pub fn multidim_multiplication(
@@ -189,29 +193,67 @@ pub fn multidim_multiplication(
     t2: *Tensor(inputType),
     t3: *Tensor(outputType),
     current_depth: usize,
-    location: []const usize,
-) void {
+    location: []usize,
+) !void {
     for (0..t1.shape[current_depth]) |element_at_current_depth| {
+
         //print location:
-        std.debug.print("\n depth: {} location: [", .{element_at_current_depth});
-        for (location) |l| {
-            std.debug.print(" {}", .{l});
-        }
-        std.debug.print("]", .{});
+        std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
 
         if (current_depth == (t1.shape.len - 2)) {
-            //here I can do a classic matrix multiplication in 2D
-            std.debug.print("\n out_tensor : ", .{});
-            t3.set_at(location, 1);
+
+            //declaring sum
+            var sum: outputType = 0;
+
+            //with the first two for loop I iterate over t3
+            for (0..t1.shape[current_depth]) |row| { //for each row of t1
+
+                for (0..t2.shape[current_depth + 1]) |col| { //for each col of t2
+
+                    sum = 0;
+
+                    for (0..t1.shape[current_depth + 1]) |i| {
+
+                        //compose the location on t1
+                        location[t1.shape.len - 1] = i; //location
+                        location[t1.shape.len - 2] = row; //location
+
+                        //getting the correct numbers in t1
+                        const a = try t1.get_at(location);
+
+                        //compose the location on t2
+                        location[t1.shape.len - 1] = col; //location
+                        location[t1.shape.len - 2] = i; //location
+
+                        //getting the correct numbers in t2
+                        const b = try t2.get_at(location);
+
+                        sum += a * b;
+                    }
+
+                    //compose the location on t3
+                    location[t1.shape.len - 1] = col; //col on the out tensor matrix
+                    location[t1.shape.len - 2] = row; //row on the out tensor matrix
+
+                    std.debug.print("\n set at location: [", .{});
+                    for (location) |l| {
+                        std.debug.print(" {}", .{l});
+                    }
+                    std.debug.print("] val: {} ", .{sum});
+                    try t3.set_at(location, sum);
+                }
+            }
         } else {
+            location[current_depth] = element_at_current_depth;
             //otherwise I have to go deeper
-            multidim_multiplication(
+            try multidim_multiplication(
                 inputType,
                 outputType,
                 t1,
                 t2,
                 t3,
                 current_depth + 1,
+                location,
             );
         }
     }

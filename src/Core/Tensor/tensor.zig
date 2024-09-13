@@ -138,17 +138,22 @@ pub fn main() !void {
         [_]u8{ 6.0, 5.0, 4.0 },
         [_]u8{ 3.0, 2.0, 1.0 },
     };
-
     var inputArray3: [2][3]i32 = [_][3]i32{
         [_]i32{ 6.0, 5.0, 4.0 },
         [_]i32{ 3.0, 2.0, 1.0 },
     };
+    var inputArray4: [3][2]u8 = [_][2]u8{
+        [_]u8{ 6.0, 5.0 },
+        [_]u8{ 3.0, 2.0 },
+        [_]u8{ 1.0, 2.0 },
+    };
 
     var shape: [2]usize = [_]usize{ 2, 3 };
+    var shape4: [2]usize = [_]usize{ 3, 2 };
 
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
-    //tensor.info();
+    tensor.print();
 
     var tensor2 = try Tensor(u8).fromArray(&allocator, &inputArray2, &shape);
     defer tensor2.deinit();
@@ -161,6 +166,13 @@ pub fn main() !void {
     //Just a bunch of trials
     try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
 
-    //const tensor4 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor2);
-    //tensor4.info;
+    var tensor4 = try Tensor(u8).fromArray(&allocator, &inputArray4, &shape4);
+    defer tensor4.deinit();
+    tensor4.print();
+
+    const tensor5 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor4);
+    defer tensor5.deinit();
+
+    tensor5.info();
+    tensor5.print();
 }
