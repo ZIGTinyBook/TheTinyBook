@@ -2,12 +2,12 @@ const std = @import("std");
 const Tensor = @import("tensor.zig").Tensor; // Import Tensor type
 const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
 
-const ArchitectureError = error{
+pub const ArchitectureError = error{
     UnknownArchitecture,
     UnderDevelopementArchitecture,
 };
 
-const TensorError = error{
+pub const TensorError = error{
     InputTensorDifferentSize,
     InputTensorDifferentShape,
     InputTensorsWrongShape, //launched in dot_product
@@ -61,10 +61,10 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     // i128 (128 bits)
     // u128 (128 bits)
     // f128 (128 bits)
-    if (@sizeOf(outputType) <= 16) { //quantized
-        if (@sizeOf(outputType) <= (@sizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
+    if (@bitSizeOf(outputType) <= 16) { //quantized
+        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
     } else { //non-quant
-        if (@sizeOf(outputType) <= @sizeOf(inputType)) return TensorError.TooSmallOutputType;
+        if (@bitSizeOf(outputType) < @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
     }
 
     var i: usize = 0;
@@ -139,10 +139,10 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     // i128 (128 bits)
     // u128 (128 bits)
     // f128 (128 bits)
-    if (@sizeOf(outputType) <= 16) { //quantized
-        if (@sizeOf(outputType) <= (@sizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
+    if (@bitSizeOf(outputType) <= 16) { //quantized
+        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
     } else { //non-quant
-        if (@sizeOf(outputType) <= @sizeOf(inputType)) return TensorError.TooSmallOutputType;
+        if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
     }
 
     //CREATING output_tensor :
@@ -195,55 +195,53 @@ pub fn multidim_multiplication(
     current_depth: usize,
     location: []usize,
 ) !void {
-    for (0..t1.shape[current_depth]) |element_at_current_depth| {
+    if (current_depth == (t1.shape.len - 2)) {
 
-        //print location:
-        std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+        //declaring sum
+        var sum: outputType = 0;
 
-        if (current_depth == (t1.shape.len - 2)) {
+        //with the first two for loop I iterate over t3
+        for (0..t1.shape[current_depth]) |row| { //for each row of t1
 
-            //declaring sum
-            var sum: outputType = 0;
+            for (0..t2.shape[current_depth + 1]) |col| { //for each col of t2
 
-            //with the first two for loop I iterate over t3
-            for (0..t1.shape[current_depth]) |row| { //for each row of t1
+                sum = 0;
 
-                for (0..t2.shape[current_depth + 1]) |col| { //for each col of t2
+                for (0..t1.shape[current_depth + 1]) |i| {
 
-                    sum = 0;
+                    //compose the location on t1
+                    location[t1.shape.len - 1] = i; //location
+                    location[t1.shape.len - 2] = row; //location
 
-                    for (0..t1.shape[current_depth + 1]) |i| {
+                    //getting the correct numbers in t1
+                    const a = try t1.get_at(location);
 
-                        //compose the location on t1
-                        location[t1.shape.len - 1] = i; //location
-                        location[t1.shape.len - 2] = row; //location
+                    //compose the location on t2
+                    location[t1.shape.len - 1] = col; //location
+                    location[t1.shape.len - 2] = i; //location
 
-                        //getting the correct numbers in t1
-                        const a = try t1.get_at(location);
+                    //getting the correct numbers in t2
+                    const b = try t2.get_at(location);
 
-                        //compose the location on t2
-                        location[t1.shape.len - 1] = col; //location
-                        location[t1.shape.len - 2] = i; //location
-
-                        //getting the correct numbers in t2
-                        const b = try t2.get_at(location);
-
-                        sum += a * b;
-                    }
-
-                    //compose the location on t3
-                    location[t1.shape.len - 1] = col; //col on the out tensor matrix
-                    location[t1.shape.len - 2] = row; //row on the out tensor matrix
-
-                    std.debug.print("\n set at location: [", .{});
-                    for (location) |l| {
-                        std.debug.print(" {}", .{l});
-                    }
-                    std.debug.print("] val: {} ", .{sum});
-                    try t3.set_at(location, sum);
+                    sum += a * b;
                 }
+
+                //compose the location on t3
+                location[t1.shape.len - 1] = col; //col on the out tensor matrix
+                location[t1.shape.len - 2] = row; //row on the out tensor matrix
+
+                std.debug.print("\n set at location: [", .{});
+                for (location) |l| {
+                    std.debug.print(" {}", .{l});
+                }
+                std.debug.print("] val: {} ", .{sum});
+                try t3.set_at(location, sum);
             }
-        } else {
+        }
+    } else {
+        for (0..t1.shape[current_depth]) |element_at_current_depth| {
+            //print location:
+            std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
             location[current_depth] = element_at_current_depth;
             //otherwise I have to go deeper
             try multidim_multiplication(

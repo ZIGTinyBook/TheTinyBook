@@ -47,7 +47,8 @@ pub fn build(b: *std.Build) void {
 
     //add here your tests
     const test_list: []const []const u8 = &[_][]const u8{
-        "src/Core/Tensor/tensor_tests.zig",
+        "src/Core/Tensor/tests_tensor.zig",
+        "src/Core/Tensor/tests_tensor_math.zig",
         "src/Utils/utils_tests.zig",
     };
 
