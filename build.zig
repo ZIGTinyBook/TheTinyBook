@@ -1,4 +1,6 @@
 const std = @import("std");
+//const Builder = std.build.Builder;
+const Pkg = std.build.Pkg;
 
 pub fn build(b: *std.Build) void {
     // Standard target options allows the person running `zig build` to choose
@@ -41,8 +43,10 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
 
+    // TESTS BUILD --------------------------------------------------------------------------------------------
+    //
     // IMPORTANT! before writing an addTest read this: https://ziglang.org/learn/build-system/#testing
-    //run:
+    //
     const test_step = b.step("test_all", "Run unit tests");
 
     //add here your tests
@@ -51,6 +55,7 @@ pub fn build(b: *std.Build) void {
         "src/Core/Tensor/tests_tensor_math.zig",
         "src/Utils/utils_tests.zig",
         "src/Utils/Dataprocessing/tests_dataLoader.zig",
+        //"src/Model/LossFunction/tests_lossFunction.zig",
     };
 
     for (test_list) |path| {
