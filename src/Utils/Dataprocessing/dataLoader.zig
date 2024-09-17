@@ -64,6 +64,54 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
                 rowIndex += 1;
             }
         }
+        pub fn loadMNISTImages(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+            const file = try std.fs.cwd().openFile(filePath, .{});
+            defer file.close();
+            var reader = file.reader();
+
+            //  magic number (4 byte, big-endian)
+            const magicNumber = try reader.readInt(u32, .big);
+            if (magicNumber != 2051) {
+                return error.InvalidFileFormat;
+            }
+            std.debug.print("Magic number: {d}\n", .{magicNumber});
+
+            // num img (4 byte, big-endian)
+            const numImages = try reader.readInt(u32, .big);
+
+            // rows (4 byte, big-endian)
+            const numRows = try reader.readInt(u32, .big);
+
+            // columns (4 byte, big-endian)
+            const numCols = try reader.readInt(u32, .big);
+
+            // (28x28)
+            if (numRows != 28 or numCols != 28) {
+                return error.InvalidImageDimensions;
+            }
+
+            self.X = try allocator.alloc([]Ftype, numImages);
+
+            const imageSize = numRows * numCols;
+            var i: usize = 0;
+
+            while (i < numImages) {
+                self.X[i] = try allocator.alloc(Ftype, imageSize);
+
+                const pixels = try allocator.alloc(u8, imageSize);
+                defer allocator.free(pixels);
+
+                try reader.readNoEof(pixels);
+
+                var j: usize = 0;
+                while (j < imageSize) {
+                    self.X[i][j] = pixels[j];
+                    j += 1;
+                }
+
+                i += 1;
+            }
+        }
 
         pub fn readCSVLine(reader: *std.fs.File.Reader, lineBuf: []u8) !?[]u8 {
             const line = try reader.readUntilDelimiterOrEof(lineBuf, '\n');
