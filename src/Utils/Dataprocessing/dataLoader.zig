@@ -263,5 +263,54 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
             allocator.free(self.y);
         }
+
+        pub fn normalize_X(self: *@This()) void {
+            const rows = self.X.len;
+            if (rows == 0) return;
+
+            const cols = self.X[0].len;
+            if (cols == 0) return;
+
+            var minValue = self.X[0][0];
+            var maxValue = self.X[0][0];
+
+            for (self.X) |row| {
+                for (row) |value| {
+                    if (value < minValue) minValue = value;
+                    if (value > maxValue) maxValue = value;
+                }
+            }
+
+            const range = maxValue - minValue;
+
+            if (range == 0) return;
+
+            for (self.X) |row| {
+                for (row) |*value| {
+                    value.* = (value.* - minValue) / range;
+                }
+            }
+        }
+
+        pub fn normalize_y(self: *@This()) void {
+            const len = self.y.len;
+            if (len == 0) return;
+
+            var minValue = self.y[0];
+            var maxValue = self.y[0];
+
+            for (self.y) |value| {
+                if (value < minValue) minValue = value;
+                if (value > maxValue) maxValue = value;
+            }
+
+            const range = maxValue - minValue;
+
+            if (range == 0) return;
+
+            for (self.y) |*value| {
+                value.* = (value.* - minValue) / range;
+            }
+        }
     };
 }
