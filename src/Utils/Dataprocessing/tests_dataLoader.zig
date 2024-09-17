@@ -199,3 +199,24 @@ test "fromCSV test with feature and label extraction" {
     // Eliminare il file temporaneo alla fine del test
     //try std.fs.cwd().deleteFile(file_name);
 }
+
+test "loadMNISTImages test" {
+    var allocator = std.testing.allocator;
+    var loader = DataLoader(u8, u8){
+        .X = undefined,
+        .y = undefined,
+    };
+
+    const file_name: []const u8 = "t10k-images-idx3-ubyte";
+
+    try loader.loadMNISTImages(&allocator, file_name);
+
+    try std.testing.expectEqual(loader.X.len, 10000);
+
+    // each image 28x28 pixels
+    for (loader.X[0..10]) |image| {
+        try std.testing.expectEqual(image.len, 28 * 28); // each image 784 pixels
+    }
+
+    loader.deinit(&allocator);
+}
