@@ -220,3 +220,42 @@ test "loadMNISTImages test" {
 
     loader.deinit(&allocator);
 }
+
+test "loadMNISTLabels test" {
+    var allocator = std.testing.allocator;
+    var loader = DataLoader(f64, u8){
+        .X = undefined,
+        .y = undefined,
+    };
+
+    const file_name: []const u8 = "t10k-labels-idx1-ubyte";
+
+    try loader.loadMNISTLabels(&allocator, file_name);
+
+    try std.testing.expectEqual(loader.y.len, 10000);
+
+    try std.testing.expectEqual(loader.y[0], 7);
+    try std.testing.expectEqual(loader.y[1], 2);
+    // try std.testing.expectEqual(loader.y[9999], 9);
+
+    loader.deinit(&allocator);
+}
+
+test "loadMNISTDataParallel test" {
+    var allocator = std.testing.allocator;
+    var loader = DataLoader(u8, u8){
+        .X = undefined,
+        .y = undefined,
+    };
+
+    const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
+    const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
+
+    try loader.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
+
+    try std.testing.expectEqual(loader.X.len, 10000);
+    try std.testing.expectEqual(loader.y.len, 10000);
+
+    // Dealloca la memoria
+    loader.deinit(&allocator);
+}

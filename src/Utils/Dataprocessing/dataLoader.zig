@@ -113,6 +113,47 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             }
         }
 
+        pub fn loadMNISTLabels(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+            const file = try std.fs.cwd().openFile(filePath, .{});
+            defer file.close();
+            var reader = file.reader();
+
+            // Magic number (4 byte, big-endian)
+            const magicNumber = try reader.readInt(u32, .big);
+            if (magicNumber != 2049) {
+                return error.InvalidFileFormat;
+            }
+            std.debug.print("Magic number (labels): {d}\n", .{magicNumber});
+
+            // Number of labels (4 byte, big-endian)
+            const numLabels = try reader.readInt(u32, .big);
+
+            self.y = try allocator.alloc(LabelType, numLabels);
+
+            var i: usize = 0;
+            while (i < numLabels) {
+                const label = try reader.readByte();
+                self.y[i] = label;
+                i += 1;
+            }
+        }
+
+        pub fn loadMNISTDataParallel(self: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
+            const image_thread = try std.Thread.spawn(.{}, loadImages, .{ self, allocator, imageFilePath });
+            defer image_thread.join();
+
+            const label_thread = try std.Thread.spawn(.{}, loadLabels, .{ self, allocator, labelFilePath });
+            defer label_thread.join();
+        }
+
+        fn loadImages(loader: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8) !void {
+            try loader.loadMNISTImages(allocator, imageFilePath);
+        }
+
+        fn loadLabels(loader: *@This(), allocator: *std.mem.Allocator, labelFilePath: []const u8) !void {
+            try loader.loadMNISTLabels(allocator, labelFilePath);
+        }
+
         pub fn readCSVLine(reader: *std.fs.File.Reader, lineBuf: []u8) !?[]u8 {
             const line = try reader.readUntilDelimiterOrEof(lineBuf, '\n');
             if (line) |l| {
