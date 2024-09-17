@@ -19,6 +19,7 @@ test "DataLoader xNext Test" {
         .X = &featureSlices,
         .y = labelSlice,
     };
+    std.debug.print("Fist Dim is {d}\n", .{loader.X.len});
 
     const x1 = loader.xNext() orelse unreachable;
     try std.testing.expectEqual(f64, @TypeOf(x1[0]));
@@ -256,6 +257,52 @@ test "loadMNISTDataParallel test" {
     try std.testing.expectEqual(loader.X.len, 10000);
     try std.testing.expectEqual(loader.y.len, 10000);
 
-    // Dealloca la memoria
     loader.deinit(&allocator);
+}
+test "DataLoader shuffle simple test" {
+    var features = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, 5.0, 6.0 },
+        [_]f64{ 7.0, 8.0, 9.0 },
+        [_]f64{ 10.0, 11.0, 12.0 },
+    };
+
+    var labels = [_]u8{ 1, 0, 1, 0 };
+
+    var featureSlices: [4][]f64 = undefined;
+    featureSlices[0] = &features[0];
+    featureSlices[1] = &features[1];
+    featureSlices[2] = &features[2];
+    featureSlices[3] = &features[3];
+
+    const labelSlice: []u8 = &labels;
+
+    var loader = DataLoader(f64, u8){
+        .X = &featureSlices,
+        .y = labelSlice,
+    };
+
+    var rng = std.rand.DefaultPrng.init(12345);
+
+    const original_feature0 = loader.X[0];
+    const original_label0 = loader.y[0];
+
+    loader.shuffle(&rng);
+
+    const new_feature0 = loader.X[0];
+
+    const are_equal = std.mem.eql(f64, new_feature0, original_feature0);
+    try std.testing.expect(!are_equal);
+
+    var found_index: ?usize = null;
+    for (loader.X, 0..) |feature, idx| {
+        if (std.mem.eql(f64, feature, original_feature0)) {
+            found_index = idx;
+            break;
+        }
+    }
+    try std.testing.expect(found_index != null);
+
+    const corresponding_label = loader.y[found_index.?];
+    try std.testing.expectEqual(original_label0, corresponding_label);
 }
