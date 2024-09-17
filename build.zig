@@ -50,6 +50,7 @@ pub fn build(b: *std.Build) void {
         "src/Core/Tensor/tests_tensor.zig",
         "src/Core/Tensor/tests_tensor_math.zig",
         "src/Utils/utils_tests.zig",
+        "src/Utils/Dataprocessing/tests_dataLoader.zig",
     };
 
     for (test_list) |path| {
