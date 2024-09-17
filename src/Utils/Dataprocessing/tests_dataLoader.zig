@@ -306,3 +306,61 @@ test "DataLoader shuffle simple test" {
     const corresponding_label = loader.y[found_index.?];
     try std.testing.expectEqual(original_label0, corresponding_label);
 }
+
+test "DataLoader normalization test" {
+    var features = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, 5.0, 6.0 },
+        [_]f64{ 7.0, 8.0, 9.0 },
+        [_]f64{ 10.0, 11.0, 12.0 },
+    };
+
+    var labels = [_]f64{ 1.0, 2.0, 3.0, 4.0 };
+
+    var featureSlices: [4][]f64 = undefined;
+    featureSlices[0] = &features[0];
+    featureSlices[1] = &features[1];
+    featureSlices[2] = &features[2];
+    featureSlices[3] = &features[3];
+
+    const labelSlice: []f64 = &labels;
+
+    var loader = DataLoader(f64, f64){
+        .X = &featureSlices,
+        .y = labelSlice,
+    };
+
+    const original_min_feature = loader.X[0][0]; // 1.0
+    const original_max_feature = loader.X[3][2]; // 12.0
+    try std.testing.expect(original_min_feature == 1.0);
+    try std.testing.expect(original_max_feature == 12.0);
+
+    const original_min_label = loader.y[0]; // 1.0
+    const original_max_label = loader.y[3]; // 4.0
+    try std.testing.expect(original_min_label == 1.0);
+    try std.testing.expect(original_max_label == 4.0);
+
+    // Normalizziamo i dati X e y
+    loader.normalize_X();
+    loader.normalize_y();
+
+    for (loader.X) |row| {
+        for (row) |value| {
+            try std.testing.expect(value >= 0 and value <= 1);
+        }
+    }
+
+    for (loader.y) |value| {
+        try std.testing.expect(value >= 0 and value <= 1);
+    }
+
+    const min_normalized_feature = loader.X[0][0];
+    const max_normalized_feature = loader.X[3][2];
+    try std.testing.expectEqual(0.0, min_normalized_feature);
+    try std.testing.expectEqual(1.0, max_normalized_feature);
+
+    const min_normalized_label = loader.y[0];
+    const max_normalized_label = loader.y[3];
+    try std.testing.expectEqual(0.0, min_normalized_label);
+    try std.testing.expectEqual(1.0, max_normalized_label);
+}
