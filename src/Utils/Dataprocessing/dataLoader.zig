@@ -25,6 +25,57 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             return null;
         }
 
+        pub fn reset(self: *@This()) void {
+            self.x_index = 0;
+            self.y_index = 0;
+        }
+        //Maybe do batch size as a "attribute of the struct"
+        pub fn xNextBatch(self: *@This(), batch_size: usize) ?[][]Ftype {
+            const start = self.x_index;
+            const end = @min(start + batch_size, self.X.len);
+
+            if (start >= end) return null;
+
+            const batch = self.X[start..end];
+            self.x_index = end;
+            return batch;
+        }
+
+        pub fn yNextBatch(self: *@This(), batch_size: usize) ?[]LabelType {
+            const start = self.y_index;
+            const end = @min(start + batch_size, self.y.len);
+
+            if (start >= end) return null;
+
+            const batch = self.y[start..end];
+            self.y_index = end;
+            return batch;
+        }
+
+        //We are using Knuth shuffle algorithm with complexity O(n)
+
+        pub fn shuffle(self: *@This(), rng: *std.rand.DefaultPrng) void {
+            const len = self.X.len;
+
+            if (len <= 1) return;
+
+            var i: usize = len - 1;
+            while (true) {
+                const j = rng.random().uintLessThan(usize, i + 1);
+
+                const temp_feature = self.X[i];
+                self.X[i] = self.X[j];
+                self.X[j] = temp_feature;
+
+                const temp_label = self.y[i];
+                self.y[i] = self.y[j];
+                self.y[j] = temp_label;
+
+                if (i == 0) break;
+                i -= 1;
+            }
+        }
+
         pub fn fromCSV(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8, featureCols: []const usize, labelCol: usize) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
@@ -35,9 +86,10 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             var numRows: usize = 0;
             while (true) {
                 const maybeLine = try readCSVLine(&reader, lineBuf);
-                if (maybeLine == null) break; // Fine del file
+                if (maybeLine == null) break;
                 numRows += 1;
             }
+            //I really don't like this, pls refactor this shitt later
 
             try file.seekTo(0);
 
