@@ -85,7 +85,11 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     }
 }
 
-pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !*Tensor(Tout) {
+pub fn compute_dot_product(comptime T: type, input: Tensor(T), weights: Tensor(T)) !*Tensor(T) {
+    return try dot_product_tensor(Architectures.CPU, T, T, input, weights);
+}
+
+pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: Tensor(Tin), t2: Tensor(Tin)) !*Tensor(Tout) {
 
     //We can see tensors as an array of arrays ... of matrixes
     //ex 3D:
@@ -109,7 +113,7 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
     };
 }
 
-pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !*Tensor(outputType) {
+pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: Tensor(inputType), t2: Tensor(inputType)) !*Tensor(outputType) {
 
     //CHECKS :
     // -input size

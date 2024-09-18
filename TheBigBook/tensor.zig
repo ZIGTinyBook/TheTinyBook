@@ -1,30 +1,30 @@
 const std = @import("std");
 const tMath = @import("./tensor_math.zig");
-const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
+const Architectures = @import("./architectures.zig").Architectures;
 
 pub fn Tensor(comptime T: type) type {
     return struct {
         data: []T,
         size: usize,
         shape: []usize,
-        allocator: *const std.mem.Allocator,
+        allocator: *const std.mem.Allocator, // Rimosso 'const'
 
-        pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
+        pub fn fromArray(self: *@This(), allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !*@This() {
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
             }
-
-            const flatArray = try allocator.alloc(T, total_size);
+            var flatArray: []T = undefined;
+            flatArray = try allocator.alloc(T, total_size);
 
             _ = flattenArray(T, inputArray, flatArray, 0);
 
-            return @This(){
-                .data = flatArray,
-                .size = total_size,
-                .shape = shape,
-                .allocator = allocator,
-            };
+            self.data = flatArray;
+            self.size = total_size;
+            self.shape = shape;
+            self.allocator = allocator;
+
+            return self;
         }
 
         pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
@@ -33,7 +33,7 @@ pub fn Tensor(comptime T: type) type {
                 total_size *= dim;
             }
 
-            const data = try allocator.alloc(T, total_size);
+            const data = try allocator.alloc(T, total_size); // Cambiato 'const' in 'var'
 
             return @This(){
                 .data = data,
