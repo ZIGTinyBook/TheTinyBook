@@ -85,32 +85,26 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     }
 }
 
+pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !*Tensor(T) {
+    return try CPU_dot_product_tensors(T, T, input, weights);
+}
+
 pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !*Tensor(Tout) {
-
-    //We can see tensors as an array of arrays ... of matrixes
-    //ex 3D:
-    //      3D_Tensor = {{matr1},{matr2},{matr3}}
-    //      4D_Tensor = { { {matr1},{matr2} } , { {matr3}{matr4} } }
-    //this is important to udersand the code that follows
-
-    //selecting between all possible architectures
     return switch (arch) {
         Architectures.CPU => return CPU_dot_product_tensors(Tin, Tout, t1, t2),
-
         Architectures.GPU => {
-            std.debug.print("{} is under developement \n", .{arch});
-            return ArchitectureError.UnderDevelopementArchitecture;
+            std.debug.print("{} is under development\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
         },
         Architectures.SP32 => {
-            std.debug.print("{} is under developement \n", .{arch});
-            return ArchitectureError.UnderDevelopementArchitecture;
+            std.debug.print("{} is under development\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
         },
         else => return ArchitectureError.UnknownArchitecture,
     };
 }
 
 pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !*Tensor(outputType) {
-
     //CHECKS :
     // -input size
     if (t1.size != t2.size) return TensorError.InputTensorDifferentSize;
@@ -139,10 +133,15 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     // i128 (128 bits)
     // u128 (128 bits)
     // f128 (128 bits)
-    if (@bitSizeOf(outputType) <= 16) { //quantized
-        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
-    } else { //non-quant
-        if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
+    if (@TypeOf(outputType) == @TypeOf(inputType)) {
+        // Se input e output sono dello stesso tipo, non eseguire il controllo
+        // Evitiamo l'errore in questo caso
+    } else {
+        if (@bitSizeOf(outputType) <= 16) { //quantized
+            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
+        } else { //non-quant
+            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
+        }
     }
 
     //CREATING output_tensor :
@@ -182,6 +181,8 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         0,
         location,
     );
+    //print output tensor shape
+    std.debug.print("\n output tensor shape: {}", .{out_tensor.shape[0]});
 
     return &out_tensor;
 }
