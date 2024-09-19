@@ -79,6 +79,7 @@ pub fn DenseLayer(comptime T: type) type {
 
             // Passiamo i puntatori ai tensori
             self.output = try TensMath.compute_dot_product(T, input, self.weights);
+            try TensMath.sum_tensors(Architectures.CPU, T, T, self.output, self.bias, self.output);
 
             // Stampiamo l'output
             std.debug.print("Output tensor: {any}\n", .{self.output});
