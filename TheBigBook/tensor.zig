@@ -29,8 +29,8 @@ pub fn Tensor(comptime T: type) type {
 
         pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
             var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
+            for (0..shape.len) |i| {
+                total_size *= shape[i];
             }
 
             const data = try allocator.alloc(T, total_size);
@@ -94,16 +94,16 @@ pub fn Tensor(comptime T: type) type {
             std.debug.print("\n  data type:{}", .{@TypeOf(self.data[0])});
             std.debug.print("\n  size:{}", .{self.size});
             std.debug.print("\n  shape: [ ", .{});
-            for (self.shape) |val| {
-                std.debug.print("{} ", .{val});
+            for (0..self.shape.len) |i| {
+                std.debug.print("{} ", .{self.shape[i]});
             }
             std.debug.print("] ", .{});
         }
 
         pub fn print(self: *@This()) void {
             std.debug.print("\ntensor data: ", .{});
-            for (self.data) |val| {
-                std.debug.print("{} ", .{val});
+            for (0..self.data.len) |i| {
+                std.debug.print("{} ", .{self.data[i]});
             }
             std.debug.print("\n", .{});
         }
