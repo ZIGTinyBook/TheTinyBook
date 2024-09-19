@@ -8,6 +8,7 @@ pub const ArchitectureError = error{
 };
 
 pub const TensorError = error{
+    MemError,
     InputTensorDifferentSize,
     InputTensorDifferentShape,
     InputTensorsWrongShape, //launched in dot_product
@@ -147,13 +148,6 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
 
     //CREATING output_tensor :
 
-    //get the size of the output
-    var size: usize = 1;
-    for (0..(nDimT1 - 2)) |i| {
-        size = size * t1.shape[i];
-    }
-    size = size * t1.shape[nDimT1 - 1] * t1.shape[nDimT1 - 1];
-
     const allocator = std.heap.page_allocator;
     var out_shape = try allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
     //defining the resulting shape
@@ -170,7 +164,6 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     for (location) |*loc| {
         loc.* = 0;
     }
-    try out_tensor.set_at(location, 1);
 
     //call mutidim_mat_mul to handle multidimensionality
     try multidim_multiplication(
