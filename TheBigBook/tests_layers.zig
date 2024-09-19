@@ -7,7 +7,7 @@ const TensMath = @import("tensor_math.zig");
 const Architectures = @import("architectures.zig");
 
 test "DenseLayer init and forward test" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var rng = std.rand.Random.Xoshiro256.init(12345);
 
@@ -32,23 +32,17 @@ test "DenseLayer init and forward test" {
     var shape: [2]usize = [_]usize{ 2, 2 };
 
     var t1 = try tensor.Tensor(f64).init(&allocator, shape[0..]);
-    _ = try t1.fromArray(&allocator, &inputArray, shape[0..]);
+    _ = try t1.fromArray(&inputArray, shape[0..]);
 
-    // Chiamiamo la funzione forward del DenseLayer
-    _ = try dense_layer.forward(t1);
+    _ = try dense_layer.forward(&t1);
 
-    // Stampiamo l'output dopo il forward pass
-    std.debug.print("Dopo il forward pass, l'output è: {any}\n", .{dense_layer.output});
-
-    // Verifica delle dimensioni dell'output
     try std.testing.expectEqual(dense_layer.output.shape[0], 2);
     try std.testing.expectEqual(dense_layer.output.shape[1], 2);
 
-    // Verifica dei valori di output
     try std.testing.expect(dense_layer.output.data[0] != 0);
     try std.testing.expect(dense_layer.output.data[1] != 0);
 
-    // Pulizia della memoria allocata
-    dense_layer.output.deinit();
+    dense_layer.weights.deinit();
+    dense_layer.bias.deinit();
     t1.deinit();
 }
