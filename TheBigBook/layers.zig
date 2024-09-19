@@ -5,7 +5,6 @@ const Architectures = @import("./architectures.zig").Architectures;
 const TensorError = @import("./tensor_math.zig").TensorError;
 const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
 
-// Genera una matrice con valori casuali normalmente distribuiti (media 0, dev std 1)
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.rand.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
@@ -17,7 +16,6 @@ pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.rand
     return matrix;
 }
 
-// Crea una matrice di zeri
 pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
@@ -31,8 +29,8 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
 
 pub fn DenseLayer(comptime T: type) type {
     return struct {
-        weights: tensor.Tensor(T),
-        bias: tensor.Tensor(T),
+        weights: *tensor.Tensor(T),
+        bias: *tensor.Tensor(T),
         output: *tensor.Tensor(T),
         n_inputs: usize,
         n_neurons: usize,
@@ -50,8 +48,14 @@ pub fn DenseLayer(comptime T: type) type {
             std.debug.print("Weight shape: {d} x {d}\n", .{ weight_shape[0], weight_shape[1] });
             std.debug.print("Bias shape: {d} x {d}\n", .{ bias_shape[0], bias_shape[1] });
 
-            self.weights = try tensor.Tensor(T).init(&std.heap.page_allocator, weight_shape[0..]);
-            self.bias = try tensor.Tensor(T).init(&std.heap.page_allocator, bias_shape[0..]);
+            // Allocazione e inizializzazione di weights
+            self.weights = try std.heap.page_allocator.create(tensor.Tensor(T));
+            self.weights.* = try tensor.Tensor(T).init(&std.heap.page_allocator, weight_shape[0..]);
+
+            // Allocazione e inizializzazione di bias
+            self.bias = try std.heap.page_allocator.create(tensor.Tensor(T));
+            self.bias.* = try tensor.Tensor(T).init(&std.heap.page_allocator, bias_shape[0..]);
+
             std.debug.print("shapes are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
             std.debug.print("Generating random weights...\n", .{});
@@ -61,15 +65,15 @@ pub fn DenseLayer(comptime T: type) type {
             std.debug.print("Initializing weights and bias...\n", .{});
             std.debug.print("shapes after are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
-            _ = try self.weights.fromArray(&std.heap.page_allocator, weight_matrix[0..], weight_shape[0..]);
-            _ = try self.bias.fromArray(&std.heap.page_allocator, bias_matrix[0..], bias_shape[0..]);
+            _ = try self.weights.fromArray(weight_matrix[0..], weight_shape[0..]);
+            _ = try self.bias.fromArray(bias_matrix[0..], bias_shape[0..]);
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
 
             std.debug.print("Weights and bias initialized.\n", .{});
         }
 
-        pub fn forward(self: *@This(), input: tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
             std.debug.print("shapes before forw are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
@@ -105,6 +109,8 @@ pub fn main() !void {
 
     std.debug.print("Pesi e bias inizializzati\n", .{});
 
+    std.debug.print("shapes after init main are {} x {} and {} x {}\n", .{ dense_layer.weights.shape[0], dense_layer.weights.shape[1], dense_layer.bias.shape[0], dense_layer.bias.shape[1] });
+
     var inputArray: [2][2]f64 = [_][2]f64{
         [_]f64{ 1.0, 2.0 },
         [_]f64{ 3.0, 4.0 },
@@ -112,11 +118,11 @@ pub fn main() !void {
     var shape: [2]usize = [_]usize{ 2, 2 };
 
     var input_tensor = try tensor.Tensor(f64).init(&allocator, shape[0..]);
-    _ = try input_tensor.fromArray(&allocator, &inputArray, shape[0..]);
+    _ = try input_tensor.fromArray(&inputArray, shape[0..]);
 
-    const output = try dense_layer.forward(input_tensor);
+    _ = try dense_layer.forward(&input_tensor);
 
-    std.debug.print("Dopo il forward pass, l'output è: {any}\n", .{output});
+    //
 
     dense_layer.output.deinit();
     input_tensor.deinit();
