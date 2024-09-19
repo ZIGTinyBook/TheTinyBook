@@ -9,22 +9,24 @@ pub fn Tensor(comptime T: type) type {
         shape: []usize,
         allocator: *const std.mem.Allocator,
 
-        pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
+        pub fn fromArray(self: *@This(), inputArray: anytype, shape: []usize) !*@This() {
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
             }
 
-            const flatArray = try allocator.alloc(T, total_size);
-
+            // Usare lo stesso allocatore di self
+            const flatArray = try self.allocator.alloc(T, total_size);
             _ = flattenArray(T, inputArray, flatArray, 0);
 
-            return @This(){
-                .data = flatArray,
-                .size = total_size,
-                .shape = shape,
-                .allocator = allocator,
-            };
+            self.data = flatArray;
+            self.size = total_size;
+
+            // Usare lo stesso allocatore di self per la shape
+            self.shape = try self.allocator.alloc(usize, shape.len);
+            @memcpy(self.shape, shape);
+
+            return self;
         }
 
         pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
@@ -34,17 +36,31 @@ pub fn Tensor(comptime T: type) type {
             }
 
             const data = try allocator.alloc(T, total_size);
+            const shape_copy = try allocator.alloc(usize, shape.len);
+            @memcpy(shape_copy, shape);
 
             return @This(){
                 .data = data,
                 .size = total_size,
-                .shape = shape,
+                .shape = shape_copy,
                 .allocator = allocator,
             };
         }
 
         pub fn deinit(self: *@This()) void {
-            self.allocator.free(self.data);
+            // Verifica se `data` è valido e non vuoto prima di liberarlo
+            if (self.data.len > 0) {
+                std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
+                self.allocator.free(self.data);
+                self.data = &[_]T{}; // Resetta lo slice a vuoto
+            }
+
+            // Verifica se `shape` è valido e non vuoto prima di liberarlo
+            if (self.shape.len > 0) {
+                std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
+                self.allocator.free(self.shape);
+                self.shape = &[_]usize{}; // Resetta lo slice a vuoto
+            }
         }
 
         pub fn getSize(self: *@This()) usize {
