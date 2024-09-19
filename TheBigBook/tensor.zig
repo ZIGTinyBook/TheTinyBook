@@ -29,22 +29,28 @@ pub fn Tensor(comptime T: type) type {
             return self;
         }
 
-        pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
+        pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !*@This() {
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
             }
 
-            const data = try allocator.alloc(T, total_size);
-            const shape_copy = try allocator.alloc(usize, shape.len);
-            @memcpy(shape_copy, shape);
+            // Alloca memoria per l'istanza di @This
+            const instance = try allocator.create(@This());
 
-            return @This(){
-                .data = data,
-                .size = total_size,
-                .shape = shape_copy,
-                .allocator = allocator,
-            };
+            // Alloca la memoria per i dati e la shape
+            instance.data = try allocator.alloc(T, total_size);
+            instance.shape = try allocator.alloc(usize, shape.len);
+
+            // Copia la shape nella nuova area di memoria allocata
+            @memcpy(instance.shape, shape);
+
+            // Imposta le altre proprietà dell'istanza
+            instance.size = total_size;
+            instance.allocator = allocator;
+
+            // Restituisce il puntatore all'istanza allocata
+            return instance;
         }
 
         pub fn deinit(self: *@This()) void {
