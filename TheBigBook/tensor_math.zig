@@ -17,11 +17,11 @@ pub const TensorMathError = error{
     InputTensorDimensionMismatch,
 };
 
-pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin), t3: *Tensor(Tout), allocator: *const std.mem.Allocator) !void {
+pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
 
     //selecting between all possible architectures
     return switch (arch) {
-        Architectures.CPU => CPU_sum_tensors(Tin, Tout, t1, t2, t3, allocator),
+        Architectures.CPU => return CPU_sum_tensors(Tin, Tout, t1, t2),
 
         Architectures.GPU => {
             std.debug.print("{} is under developement \n", .{arch});
@@ -36,54 +36,66 @@ pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime
 }
 
 //return the sum of the tensors inside another Tensor and put into t3
-fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), allocator: *const std.mem.Allocator) !void {
-    if (t2.shape.len != 2 or t1.shape.len < 2) {
-        return TensorMathError.InputTensorDimensionMismatch;
+fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
+
+    //CHECKS :
+    // -input size
+    if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
+
+    // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
+    // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
+    //bool (1 bit)
+    // u1 (1 bit)
+    // i8 (8 bits)
+    // u8 (8 bits)
+    // i16 (16 bits)
+    // u16 (16 bits)
+    // f16 (16 bits)
+    // i32 (32 bits)
+    // u32 (32 bits)
+    // f32 (32 bits)
+    // i64 (64 bits)
+    // u64 (64 bits)
+    // f64 (64 bits)
+    // i128 (128 bits)
+    // u128 (128 bits)
+    // f128 (128 bits)
+    if (@bitSizeOf(outputType) <= 16) { //quantized
+        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
+    } else { //non-quant
+        if (@bitSizeOf(outputType) < @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
     }
 
-    t3.deinit();
+    //declaring and initializing of the array of sum
+    var out_sum = try t1.allocator.alloc(outputType, t1.size);
 
-    const n_rows = t1.shape[0]; // Numero di righe di t1
-    const n_neurons = t1.shape[t1.shape.len - 1]; // Numero di colonne (neuroni)
-    const output_shape = [_]usize{ n_rows, n_neurons };
+    var i: usize = 0;
+    const unroll_factor: usize = 4;
 
-    // Inizializza i campi di `t3` senza riassegnare il puntatore
-    t3.shape = try allocator.alloc(usize, output_shape.len);
-    @memcpy(t3.shape, output_shape[0..]);
-    t3.size = n_rows * n_neurons;
-    t3.data = try allocator.alloc(outputType, t3.size);
-
-    // Controlla che t2 sia un vettore riga (1 x numero_colonne_di_t1)
-    if (t2.shape[0] == 1 and t2.shape[1] == t1.shape[t1.shape.len - 1]) {
-        var row: usize = 0;
-        while (row < n_rows) {
-            var col: usize = 0;
-            while (col < n_neurons) {
-                const idx = row * n_neurons + col;
-                if (idx < t1.size and idx < t3.size) {
-                    t3.data[idx] = t1.data[idx] + t2.data[col];
-                }
-                col += 1;
-            }
-            row += 1;
-        }
-    } else if (t1.size == t2.size) {
-        // Somma classica tra tensori con dimensioni uguali
-        var i: usize = 0;
-        while (i < t1.size) {
-            t3.data[i] = t1.data[i] + t2.data[i]; // Somma elemento per elemento
-            i += 1;
-        }
-    } else {
-        return TensorMathError.InputTensorDifferentSize;
+    // loop unrolling
+    while (i + unroll_factor <= t1.size) : (i += 4) {
+        //since the Type of t3 is higher in number of bits the cast shoudl happen autonomously
+        out_sum[i] = t1.data[i] + t2.data[i];
+        out_sum[i + 1] = t1.data[i + 1] + t2.data[i + 1];
+        out_sum[i + 2] = t1.data[i + 2] + t2.data[i + 2];
+        out_sum[i + 3] = t1.data[i + 3] + t2.data[i + 3];
     }
+
+    // Handle any remaining elements
+    while (i < t1.size) : (i += 1) {
+        out_sum[i] = t1.data[i] + t2.data[i];
+    }
+
+    const out_tensor = try Tensor(outputType).fromArray(t1.allocator, out_sum, t1.shape);
+
+    return out_tensor;
 }
 
-pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !*Tensor(T) {
+pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !Tensor(T) {
     return try CPU_dot_product_tensors(T, T, input, weights);
 }
 
-pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !*Tensor(Tout) {
+pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
     return switch (arch) {
         Architectures.CPU => return CPU_dot_product_tensors(Tin, Tout, t1, t2),
         Architectures.GPU => {
@@ -98,7 +110,7 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
     };
 }
 
-pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !*Tensor(outputType) {
+pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
     //CHECKS :
     // -input size
     if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
@@ -149,8 +161,8 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
     out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
 
-    const out_tensor = try Tensor(outputType).init(&allocator, out_shape);
-
+    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
+    try out_tensor.set(0, 0);
     //initialize the current location to all 0
     const location = try allocator.alloc(usize, nDimT1);
     for (location) |*loc| {
@@ -163,7 +175,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         outputType,
         t1,
         t2,
-        out_tensor,
+        &out_tensor,
         0,
         location,
     );
@@ -173,15 +185,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     return out_tensor;
 }
 
-pub fn multidim_multiplication(
-    comptime inputType: anytype,
-    comptime outputType: anytype,
-    t1: *Tensor(inputType),
-    t2: *Tensor(inputType),
-    t3: *Tensor(outputType),
-    current_depth: usize,
-    location: []usize,
-) !void {
+pub fn multidim_multiplication(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), current_depth: usize, location: []usize) !void {
     if (current_depth == (t1.shape.len - 2)) {
 
         //declaring sum

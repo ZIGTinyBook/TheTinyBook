@@ -44,15 +44,28 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
-        //pay attentio, the fill() can also perform a reshape
+        //inizialize and return a all-zero tensor starting from the shape
+        pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+
+            const tensorData = try allocator.alloc(T, total_size);
+            for (tensorData) |*data| {
+                data.* = 0;
+            }
+
+            return @This().fromArray(allocator, tensorData, shape);
+        }
+
+        //pay attention, the fill() can also perform a reshape
         pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
-            std.debug.print("\nfilling tensor with inputArray...", .{});
 
             //deinitialize data e shape
             self.deinit(); //if the Tensor has been just init() this function does nothing
 
             //than, filling with the new values
-            std.debug.print("\n fromArray initialization...", .{});
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
@@ -82,6 +95,15 @@ pub fn Tensor(comptime T: type) type {
                 self.allocator.free(self.shape);
                 self.shape = &[_]usize{}; // Resetta lo slice a vuoto
             }
+        }
+
+        pub fn setShape(self: *@This(), shape: []usize) !void {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            self.shape = shape;
+            self.size = total_size;
         }
 
         pub fn getSize(self: *@This()) usize {
