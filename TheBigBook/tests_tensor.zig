@@ -12,6 +12,18 @@ test "Sizetest" {
     try std.testing.expect(size == 0);
 }
 
+test "initialization fromShape" {
+    const allocator = std.heap.page_allocator;
+    var shape: [2]usize = [_]usize{ 2, 3 };
+    var tensor = try Tensor(f64).fromShape(&allocator, &shape);
+    const size = tensor.getSize();
+    try std.testing.expect(size == 6);
+    for (0..tensor.size) |i| {
+        const val = try tensor.get(i);
+        try std.testing.expect(val == 0);
+    }
+}
+
 test "Get_Set_Test" {
     const allocator = std.heap.page_allocator;
 

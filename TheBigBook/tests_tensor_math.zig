@@ -2,11 +2,11 @@ const std = @import("std");
 const Tensor = @import("./tensor.zig").Tensor;
 const TensMath = @import("./tensor_math.zig");
 const Architectures = @import("./architectures.zig").Architectures;
-const TensorError = @import("./tensor_math.zig").TensorError;
+const TensorMathError = @import("./tensor_math.zig").TensorMathError;
 const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
 
 test "Sum two tensors on CPU architecture" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -16,22 +16,20 @@ test "Sum two tensors on CPU architecture" {
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t1.deinit();
     var t2 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
-    var t3 = try Tensor(f64).init(&allocator, &shape); // Output tensor with larger type
+    defer t2.deinit();
 
-    try TensMath.sum_tensors(Architectures.CPU, f32, f64, &t1, &t2, &t3);
+    var t3 = try TensMath.sum_tensors(Architectures.CPU, f32, f64, &t1, &t2); // Output tensor with larger type
+    defer t3.deinit();
 
     // Check if the values in t3 are as expected
     try std.testing.expect(2.0 == t3.data[0]);
     try std.testing.expect(4.0 == t3.data[1]);
-
-    t1.deinit();
-    t2.deinit();
-    t3.deinit();
 }
 
 test "Error when input tensors have different sizes" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -47,17 +45,15 @@ test "Error when input tensors have different sizes" {
     var shape2 = [_]usize{ 3, 2 }; // 3x2 matrix
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape1);
     var t2 = try Tensor(f32).fromArray(&allocator, &inputArray2, &shape2);
-    var t3 = try Tensor(f64).init(&allocator, &shape1);
 
-    try std.testing.expectError(TensorError.InputTensorDifferentSize, TensMath.sum_tensors(Architectures.CPU, f32, f64, &t1, &t2, &t3));
+    try std.testing.expectError(TensorMathError.InputTensorDifferentSize, TensMath.sum_tensors(Architectures.CPU, f32, f64, &t1, &t2));
 
     t1.deinit();
     t2.deinit();
-    t3.deinit();
 }
 
 test "Dot product 2x2" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
@@ -80,28 +76,28 @@ test "Dot product 2x2" {
 }
 
 test "Error when input tensors have incompatible sizes for dot product" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
     var shape2: [2]usize = [_]usize{ 3, 2 }; // 3x2 matrix
-    var t1 = try Tensor(f32).init(&allocator, &shape1);
-    var t2 = try Tensor(f32).init(&allocator, &shape2);
+    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
+    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
 
-    try std.testing.expectError(TensorError.InputTensorDifferentSize, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
+    try std.testing.expectError(TensorMathError.InputTensorDifferentSize, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
 
     t1.deinit();
     t2.deinit();
 }
 
 test "Error when input tensors have incompatible shapes for dot product" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
     var shape2: [2]usize = [_]usize{ 4, 1 }; // 4x1 matrix
-    var t1 = try Tensor(f32).init(&allocator, &shape1);
-    var t2 = try Tensor(f32).init(&allocator, &shape2);
+    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
+    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
 
-    try std.testing.expectError(TensorError.InputTensorsWrongShape, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
+    try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
 
     t1.deinit();
     t2.deinit();
@@ -111,9 +107,9 @@ test "GPU architecture under development error" {
     const allocator = std.testing.allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
-    var t1 = try Tensor(f32).init(&allocator, &shape);
-    var t2 = try Tensor(f32).init(&allocator, &shape);
-    var t3 = try Tensor(f64).init(&allocator, &shape);
+    var t1 = try Tensor(f32).fromShape(&allocator, &shape);
+    var t2 = try Tensor(f32).fromShape(&allocator, &shape);
+    var t3 = try Tensor(f64).fromShape(&allocator, &shape);
 
     try std.testing.expectError(ArchitectureError.UnderDevelopementArchitecture, TensMath.sum_tensors(Architectures.GPU, f32, f64, &t1, &t2, &t3));
 
