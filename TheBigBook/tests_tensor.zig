@@ -7,7 +7,7 @@ test "Tensor test description" {
 
 test "Sizetest" {
     const allocator = std.heap.page_allocator;
-    var tensor = try Tensor(f64, &allocator).init();
+    var tensor = try Tensor(f64).init(&allocator);
     const size = tensor.getSize();
     try std.testing.expect(size == 0);
 }
@@ -20,7 +20,7 @@ test "Get_Set_Test" {
         [_]u8{ 4, 5, 6 },
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
 
     try tensor.set(5, 33);
@@ -37,7 +37,7 @@ test "Flatten Index Test" {
         [_]u8{ 4, 5, 6 },
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
 
     var indices = [_]usize{ 1, 2 };
@@ -59,7 +59,7 @@ test "Get_at Set_at Test" {
         [_]u8{ 4, 5, 6 },
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
     var indices = [_]usize{ 1, 2 };
     try tensor.set_at(&indices, 1.0);
@@ -69,7 +69,7 @@ test "Get_at Set_at Test" {
 
 test "init than fill " {
     const allocator = std.heap.page_allocator;
-    var tensor = try Tensor(u8, &allocator).init();
+    var tensor = try Tensor(u8).init(&allocator);
     defer tensor.deinit();
 
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -96,7 +96,7 @@ test "fromArray than fill " {
         [_]u8{ 40, 50, 60 },
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
 
     var inputArray2: [3][3]u8 = [_][3]u8{
