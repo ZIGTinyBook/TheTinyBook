@@ -1,6 +1,7 @@
 const std = @import("std");
 const tMath = @import("./tensor_math.zig");
 const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
+const tk = @import("timekeep");
 
 pub fn Tensor(comptime T: type) type {
     return struct {
@@ -125,54 +126,4 @@ fn flattenArray(T: type, arr: anytype, flatArr: []T, startIndex: usize) usize {
         }
     }
     return idx;
-}
-
-pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
-    var inputArray: [2][3]u8 = [_][3]u8{
-        [_]u8{ 1.0, 2.0, 3.0 },
-        [_]u8{ 4.0, 5.0, 6.0 },
-    };
-    var inputArray2: [2][3]u8 = [_][3]u8{
-        [_]u8{ 6.0, 5.0, 4.0 },
-        [_]u8{ 3.0, 2.0, 1.0 },
-    };
-    var inputArray3: [2][3]i32 = [_][3]i32{
-        [_]i32{ 6.0, 5.0, 4.0 },
-        [_]i32{ 3.0, 2.0, 1.0 },
-    };
-    var inputArray4: [3][2]u8 = [_][2]u8{
-        [_]u8{ 6.0, 5.0 },
-        [_]u8{ 3.0, 2.0 },
-        [_]u8{ 1.0, 2.0 },
-    };
-
-    var shape: [2]usize = [_]usize{ 2, 3 };
-    var shape4: [2]usize = [_]usize{ 3, 2 };
-
-    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
-    defer tensor.deinit();
-    tensor.print();
-
-    var tensor2 = try Tensor(u8).fromArray(&allocator, &inputArray2, &shape);
-    defer tensor2.deinit();
-    //tensor2.info();
-
-    var tensor3 = try Tensor(i32).fromArray(&allocator, &inputArray3, &shape);
-    defer tensor3.deinit();
-    //tensor3.info();
-
-    //Just a bunch of trials
-    try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
-
-    var tensor4 = try Tensor(u8).fromArray(&allocator, &inputArray4, &shape4);
-    defer tensor4.deinit();
-    tensor4.print();
-
-    const tensor5 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor4);
-    defer tensor5.deinit();
-
-    tensor5.info();
-    tensor5.print();
 }
