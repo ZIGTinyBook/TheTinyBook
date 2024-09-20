@@ -7,7 +7,7 @@ pub const ArchitectureError = error{
     UnderDevelopementArchitecture,
 };
 
-pub const TensorError = error{
+pub const TensorMathError = error{
     MemError,
     InputTensorDifferentSize,
     InputTensorDifferentShape,
@@ -38,7 +38,7 @@ pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime
 //return the sum of the tensors inside another Tensor and put into t3
 fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), allocator: *const std.mem.Allocator) !void {
     if (t2.shape.len != 2 or t1.shape.len < 2) {
-        return TensorError.InputTensorDimensionMismatch;
+        return TensorMathError.InputTensorDimensionMismatch;
     }
 
     t3.deinit();
@@ -75,7 +75,7 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
             i += 1;
         }
     } else {
-        return TensorError.InputTensorDifferentSize;
+        return TensorMathError.InputTensorDifferentSize;
     }
 }
 
@@ -101,13 +101,13 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
 pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !*Tensor(outputType) {
     //CHECKS :
     // -input size
-    if (t1.size != t2.size) return TensorError.InputTensorDifferentSize;
+    if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
 
     const nDimT1 = t1.shape.len; //number of dimesion of tensor 1
     const nDimT2 = t2.shape.len; //number of dimesion of tensor 2
     // -imput shape
-    if (nDimT1 != nDimT2) return TensorError.InputTensorDifferentShape;
-    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t2.shape[nDimT1 - 1]) return TensorError.InputTensorsWrongShape;
+    if (nDimT1 != nDimT2) return TensorMathError.InputTensorDifferentShape;
+    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t2.shape[nDimT1 - 1]) return TensorMathError.InputTensorsWrongShape;
 
     // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
     // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
@@ -132,9 +132,9 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         // Evitiamo l'errore in questo caso
     } else {
         if (@bitSizeOf(outputType) <= 16) { //quantized
-            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
+            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
         } else { //non-quant
-            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
+            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
         }
     }
 

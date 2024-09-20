@@ -2,65 +2,65 @@ const std = @import("std");
 const tMath = @import("./tensor_math.zig");
 const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
 
-pub fn Tensor(comptime T: type) type {
+pub const TensorError = error{
+    TensorNotInitialized,
+    InputArrayWrongType,
+    InputArrayWrongSize,
+};
+
+pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
         data: []T,
         size: usize,
         shape: []usize,
-        allocator: *const std.mem.Allocator,
+        allocator: *const std.mem.Allocator = allocator,
 
-        pub fn fromArray(self: *@This(), inputArray: anytype, shape: []usize) !*@This() {
+        pub fn fromArray(inputArray: anytype, shape: []usize) !@This() {
+            std.debug.print("\n fromArray initialization...", .{});
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
             }
+            const tensorShape = try allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
 
-            // Usare lo stesso allocatore di self
-            const flatArray = try self.allocator.alloc(T, total_size);
-            _ = flattenArray(T, inputArray, flatArray, 0);
+            const tensorData = try allocator.alloc(T, total_size);
+            _ = flattenArray(T, inputArray, tensorData, 0);
 
-            self.data = flatArray;
-            self.size = total_size;
-
-            // Usare lo stesso allocatore di self per la shape
-            self.shape = try self.allocator.alloc(usize, shape.len);
-            @memcpy(self.shape, shape);
-
-            return self;
+            return @This(){
+                .data = tensorData,
+                .size = total_size,
+                .shape = tensorShape,
+                .allocator = allocator,
+            };
         }
 
-        pub fn init(allocator: *const std.mem.Allocator, shape: []usize) !*@This() {
-            var total_size: usize = 1;
-            for (0..shape.len) |i| {
-                total_size *= shape[i];
-            }
+        pub fn init() !@This() {
+            return @This(){
+                .data = undefined,
+                .size = undefined,
+                .shape = undefined,
+            };
+        }
 
-            // Alloca memoria per l'istanza di @This
-            const instance = try allocator.create(@This());
+        pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !@This() {
+            std.debug.print("\nfilling tensor with inputArray...", .{});
 
-            // Alloca la memoria per i dati e la shape
-            instance.data = try allocator.alloc(T, total_size);
-            instance.shape = try allocator.alloc(usize, shape.len);
+            //deinitialize data e shape
+            self.deinit(); //if the Tensor has been just init() this function does nothing
 
-            // Copia la shape nella nuova area di memoria allocata
-            @memcpy(instance.shape, shape);
-
-            // Imposta le altre proprietà dell'istanza
-            instance.size = total_size;
-            instance.allocator = allocator;
-
-            // Restituisce il puntatore all'istanza allocata
-            return instance;
+            //than, filling with the new values
+            return self.fromArray(inputArray, shape);
         }
 
         pub fn deinit(self: *@This()) void {
+            std.debug.print("\n deinit tensor:\n", .{});
             // Verifica se `data` è valido e non vuoto prima di liberarlo
             if (self.data.len > 0) {
                 std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
                 self.allocator.free(self.data);
                 self.data = &[_]T{}; // Resetta lo slice a vuoto
             }
-
             // Verifica se `shape` è valido e non vuoto prima di liberarlo
             if (self.shape.len > 0) {
                 std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
@@ -120,10 +120,11 @@ pub fn Tensor(comptime T: type) type {
                 std.debug.print("{} ", .{self.shape[i]});
             }
             std.debug.print("] ", .{});
+            self.print();
         }
 
         pub fn print(self: *@This()) void {
-            std.debug.print("\ntensor data: ", .{});
+            std.debug.print("\n  tensor data: ", .{});
             for (0..self.data.len) |i| {
                 std.debug.print("{} ", .{self.data[i]});
             }
@@ -164,37 +165,38 @@ pub fn main() !void {
         [_]i32{ 6.0, 5.0, 4.0 },
         [_]i32{ 3.0, 2.0, 1.0 },
     };
-    var inputArray4: [3][2]u8 = [_][2]u8{
-        [_]u8{ 6.0, 5.0 },
-        [_]u8{ 3.0, 2.0 },
-        [_]u8{ 1.0, 2.0 },
-    };
+    // var inputArray4: [3][2]u8 = [_][2]u8{
+    //     [_]u8{ 6.0, 5.0 },
+    //     [_]u8{ 3.0, 2.0 },
+    //     [_]u8{ 1.0, 2.0 },
+    // };
 
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var shape4: [2]usize = [_]usize{ 3, 2 };
+    //var shape4: [2]usize = [_]usize{ 3, 2 };
 
-    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
     defer tensor.deinit();
-    tensor.print();
+    tensor.info();
 
-    var tensor2 = try Tensor(u8).fromArray(&allocator, &inputArray2, &shape);
+    var tensor2 = try Tensor(u8, &allocator).fromArray(&inputArray2, &shape);
     defer tensor2.deinit();
-    //tensor2.info();
+    tensor2.info();
 
-    var tensor3 = try Tensor(i32).fromArray(&allocator, &inputArray3, &shape);
+    var tensor3 = try Tensor(i32, &allocator).fromArray(&inputArray3, &shape);
     defer tensor3.deinit();
-    //tensor3.info();
+    tensor3.info();
 
     //Just a bunch of trials
-    try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
+    // try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
+    // tensor3.info();
 
-    var tensor4 = try Tensor(u8).fromArray(&allocator, &inputArray4, &shape4);
+    var tensor4 = try Tensor(u8, &allocator).init();
     defer tensor4.deinit();
-    tensor4.print();
+    tensor4.info();
 
-    const tensor5 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor4);
-    defer tensor5.deinit();
+    // const tensor5 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor4);
+    // defer tensor5.deinit();
 
-    tensor5.info();
-    tensor5.print();
+    // tensor5.info();
+    // tensor5.print();
 }
