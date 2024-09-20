@@ -38,19 +38,33 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
         pub fn init() !@This() {
             return @This(){
                 .data = undefined,
-                .size = undefined,
+                .size = 0,
                 .shape = undefined,
             };
         }
 
-        pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !@This() {
+        //pay attentio, the fill() can also perform a reshape
+        pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
             std.debug.print("\nfilling tensor with inputArray...", .{});
 
             //deinitialize data e shape
             self.deinit(); //if the Tensor has been just init() this function does nothing
 
             //than, filling with the new values
-            return self.fromArray(inputArray, shape);
+            std.debug.print("\n fromArray initialization...", .{});
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            const tensorShape = try allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
+
+            const tensorData = try allocator.alloc(T, total_size);
+            _ = flattenArray(T, inputArray, tensorData, 0);
+
+            self.data = tensorData;
+            self.size = total_size;
+            self.shape = tensorShape;
         }
 
         pub fn deinit(self: *@This()) void {
@@ -70,11 +84,7 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
         }
 
         pub fn getSize(self: *@This()) usize {
-            var total_size: usize = 1;
-            for (self.shape) |dim| {
-                total_size *= dim;
-            }
-            return total_size;
+            return self.size;
         }
 
         pub fn get(self: *const @This(), idx: usize) !T {
