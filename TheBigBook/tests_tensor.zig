@@ -7,27 +7,42 @@ test "Tensor test description" {
 
 test "Sizetest" {
     const allocator = std.heap.page_allocator;
-    var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(f64).init(&allocator, &shape);
+    var tensor = try Tensor(f64, &allocator).init();
     const size = tensor.getSize();
-    try std.testing.expect(size == 6);
+    try std.testing.expect(size == 0);
 }
 
-test "GetSetTest" {
+test "Get_Set_Test" {
     const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(f64).init(&allocator, &shape);
-    try tensor.set(0, 1.0);
-    const value = try tensor.get(0);
-    try std.testing.expect(value == 1.0);
+    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    defer tensor.deinit();
+
+    try tensor.set(5, 33);
+    const val = try tensor.get(5);
+
+    try std.testing.expect(val == 33);
 }
 
-test "FlattenIndexTest" {
+test "Flatten Index Test" {
     const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
     var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(f64).init(&allocator, &shape);
+    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    defer tensor.deinit();
+
     var indices = [_]usize{ 1, 2 };
     const flatIndex = try tensor.flatten_index(&indices);
+
     std.debug.print("\nflatIndex: {}\n", .{flatIndex});
     try std.testing.expect(flatIndex == 5);
     indices = [_]usize{ 0, 0 };
@@ -36,56 +51,70 @@ test "FlattenIndexTest" {
     try std.testing.expect(flatIndex2 == 0);
 }
 
-test "GetSetAtTest" {
+test "Get_at Set_at Test" {
     const allocator = std.heap.page_allocator;
-    var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(f64).init(&allocator, &shape);
-    var indices = [_]usize{ 1, 2 };
-    try tensor.set_at(&indices, 1.0);
-    const value = try tensor.get_at(&indices);
-    try std.testing.expect(value == 1.0);
-}
 
-test "SetAtTest" {
-    const allocator = std.heap.page_allocator;
-    var shape: [2]usize = [_]usize{ 2, 3 };
-    var tensor = try Tensor(f64).init(&allocator, &shape);
-    var indices = [_]usize{ 1, 2 };
-    try tensor.set_at(&indices, 1.0);
-    const value = try tensor.get_at(&indices);
-    try std.testing.expect(value == 1.0);
-}
-
-test "test Tensor fromArray" {
-    const allocator = std.testing.allocator;
-
-    // Definisco un array multidimensionale
-    var inputArray: [2][3]f64 = [_][3]f64{
-        [_]f64{ 1.0, 2.0, 3.0 },
-        [_]f64{ 4.0, 5.0, 6.0 },
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
     };
-
-    // Definisco la forma desiderata
     var shape: [2]usize = [_]usize{ 2, 3 };
+    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    defer tensor.deinit();
+    var indices = [_]usize{ 1, 2 };
+    try tensor.set_at(&indices, 1.0);
+    const value = try tensor.get_at(&indices);
+    try std.testing.expect(value == 1.0);
+}
 
-    var tensor = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+test "init than fill " {
+    const allocator = std.heap.page_allocator;
+    var tensor = try Tensor(u8, &allocator).init();
     defer tensor.deinit();
 
-    try std.testing.expectEqual(6, tensor.size);
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
 
-    try std.testing.expectEqual(2, tensor.shape[0]);
-    try std.testing.expectEqual(3, tensor.shape[1]);
+    try tensor.fill(&inputArray, &shape);
 
-    try std.testing.expectEqual(1.0, tensor.data[0]);
-    try std.testing.expectEqual(2.0, tensor.data[1]);
-    try std.testing.expectEqual(3.0, tensor.data[2]);
-    try std.testing.expectEqual(4.0, tensor.data[3]);
-    try std.testing.expectEqual(5.0, tensor.data[4]);
-    try std.testing.expectEqual(6.0, tensor.data[5]);
+    try std.testing.expect(tensor.data[0] == 1);
+    try std.testing.expect(tensor.data[1] == 2);
+    try std.testing.expect(tensor.data[2] == 3);
+    try std.testing.expect(tensor.data[3] == 4);
+    try std.testing.expect(tensor.data[4] == 5);
+    try std.testing.expect(tensor.data[5] == 6);
+}
 
-    const value = try tensor.get_at(&[_]usize{ 1, 2 });
-    try std.testing.expectEqual(6.0, value);
+test "fromArray than fill " {
+    const allocator = std.heap.page_allocator;
 
-    const tensorSize = tensor.getSize();
-    try std.testing.expectEqual(6, tensorSize);
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 10, 20, 30 },
+        [_]u8{ 40, 50, 60 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    defer tensor.deinit();
+
+    var inputArray2: [3][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+        [_]u8{ 7, 8, 9 },
+    };
+    var shape2: [2]usize = [_]usize{ 3, 3 };
+
+    try tensor.fill(&inputArray2, &shape2);
+
+    try std.testing.expect(tensor.data[0] == 1);
+    try std.testing.expect(tensor.data[1] == 2);
+    try std.testing.expect(tensor.data[2] == 3);
+    try std.testing.expect(tensor.data[3] == 4);
+    try std.testing.expect(tensor.data[4] == 5);
+    try std.testing.expect(tensor.data[5] == 6);
+    try std.testing.expect(tensor.data[6] == 7);
+    try std.testing.expect(tensor.data[7] == 8);
+    try std.testing.expect(tensor.data[8] == 9);
 }
