@@ -149,7 +149,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
     out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
 
-    var out_tensor = try Tensor(outputType).init(&allocator, out_shape);
+    const out_tensor = try Tensor(outputType).init(&allocator, out_shape);
 
     //initialize the current location to all 0
     const location = try allocator.alloc(usize, nDimT1);
