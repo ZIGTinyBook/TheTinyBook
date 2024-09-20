@@ -8,14 +8,14 @@ pub const TensorError = error{
     InputArrayWrongSize,
 };
 
-pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
+pub fn Tensor(comptime T: type) type {
     return struct {
         data: []T,
         size: usize,
         shape: []usize,
-        allocator: *const std.mem.Allocator = allocator,
+        allocator: *const std.mem.Allocator,
 
-        pub fn fromArray(inputArray: anytype, shape: []usize) !@This() {
+        pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
             std.debug.print("\n fromArray initialization...", .{});
             var total_size: usize = 1;
             for (shape) |dim| {
@@ -35,11 +35,12 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
             };
         }
 
-        pub fn init() !@This() {
+        pub fn init(allocator: *const std.mem.Allocator) !@This() {
             return @This(){
-                .data = undefined,
+                .data = &[_]T{},
                 .size = 0,
-                .shape = undefined,
+                .shape = &[_]usize{},
+                .allocator = allocator,
             };
         }
 
@@ -56,10 +57,10 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
             for (shape) |dim| {
                 total_size *= dim;
             }
-            const tensorShape = try allocator.alloc(usize, shape.len);
+            const tensorShape = try self.allocator.alloc(usize, shape.len);
             @memcpy(tensorShape, shape);
 
-            const tensorData = try allocator.alloc(T, total_size);
+            const tensorData = try self.allocator.alloc(T, total_size);
             _ = flattenArray(T, inputArray, tensorData, 0);
 
             self.data = tensorData;
@@ -125,7 +126,7 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
             std.debug.print("\ntensor infos: ", .{});
             std.debug.print("\n  data type:{}", .{@TypeOf(self.data[0])});
             std.debug.print("\n  size:{}", .{self.size});
-            std.debug.print("\n  shape: [ ", .{});
+            std.debug.print("\n shape.len:{} shape: [ ", .{self.shape.len});
             for (0..self.shape.len) |i| {
                 std.debug.print("{} ", .{self.shape[i]});
             }
@@ -135,7 +136,7 @@ pub fn Tensor(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub fn print(self: *@This()) void {
             std.debug.print("\n  tensor data: ", .{});
-            for (0..self.data.len) |i| {
+            for (0..self.size) |i| {
                 std.debug.print("{} ", .{self.data[i]});
             }
             std.debug.print("\n", .{});
@@ -184,15 +185,15 @@ pub fn main() !void {
     var shape: [2]usize = [_]usize{ 2, 3 };
     //var shape4: [2]usize = [_]usize{ 3, 2 };
 
-    var tensor = try Tensor(u8, &allocator).fromArray(&inputArray, &shape);
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
     tensor.info();
 
-    var tensor2 = try Tensor(u8, &allocator).fromArray(&inputArray2, &shape);
+    var tensor2 = try Tensor(u8).fromArray(&allocator, &inputArray2, &shape);
     defer tensor2.deinit();
     tensor2.info();
 
-    var tensor3 = try Tensor(i32, &allocator).fromArray(&inputArray3, &shape);
+    var tensor3 = try Tensor(i32).fromArray(&allocator, &inputArray3, &shape);
     defer tensor3.deinit();
     tensor3.info();
 
@@ -200,7 +201,7 @@ pub fn main() !void {
     // try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
     // tensor3.info();
 
-    var tensor4 = try Tensor(u8, &allocator).init();
+    var tensor4 = try Tensor(u8).init(&allocator);
     defer tensor4.deinit();
     tensor4.info();
 
