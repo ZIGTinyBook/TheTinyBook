@@ -23,6 +23,15 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(lib);
 
+    //libraries
+    // const tool = b.addExecutable(.{
+    //     .name = "timekeeper",
+    //     .root_source_file = b.path("src/Utils/timekeeper.zig"),
+    //     .target = target,
+    // });
+    // const tool_step = b.addRunArtifact(tool);
+    // const tool_output = tool_step.addOutputFileArg("person.zig");
+
     const exe = b.addExecutable(.{
         .name = "TheTinyBook",
         .root_source_file = b.path("src/main.zig"),
@@ -51,11 +60,12 @@ pub fn build(b: *std.Build) void {
 
     //add here your tests
     const test_list: []const []const u8 = &[_][]const u8{
-        "src/Core/Tensor/tests_tensor.zig",
-        "src/Core/Tensor/tests_tensor_math.zig",
-        "src/Utils/utils_tests.zig",
-        "src/Utils/Dataprocessing/tests_dataLoader.zig",
-        //"src/Model/LossFunction/tests_lossFunction.zig",
+        "TheBigBook/tests_dataLoader.zig",
+        "TheBigBook/tests_layers.zig.zig",
+        "TheBigBook/tests_lossFunction.zig",
+        "TheBigBook/tests_tensor_math.zig",
+        "TheBigBook/tests_tensor.zig",
+        "TheBigBook/tests_utils.zig",
     };
 
     for (test_list) |path| {
