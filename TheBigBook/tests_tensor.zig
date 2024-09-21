@@ -55,11 +55,11 @@ test "Flatten Index Test" {
     var indices = [_]usize{ 1, 2 };
     const flatIndex = try tensor.flatten_index(&indices);
 
-    std.debug.print("\nflatIndex: {}\n", .{flatIndex});
+    //std.debug.print("\nflatIndex: {}\n", .{flatIndex});
     try std.testing.expect(flatIndex == 5);
     indices = [_]usize{ 0, 0 };
     const flatIndex2 = try tensor.flatten_index(&indices);
-    std.debug.print("\nflatIndex2: {}\n", .{flatIndex2});
+    //std.debug.print("\nflatIndex2: {}\n", .{flatIndex2});
     try std.testing.expect(flatIndex2 == 0);
 }
 
@@ -73,9 +73,24 @@ test "Get_at Set_at Test" {
     var shape: [2]usize = [_]usize{ 2, 3 };
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
-    var indices = [_]usize{ 1, 2 };
+    var indices = [_]usize{ 1, 1 };
+    var value = try tensor.get_at(&indices);
+    try std.testing.expect(value == 5.0);
+    //try tensor.set_at(&indices, 1.0);
+    //tensor.info();
+
+    for (0..2) |i| {
+        for (0..3) |j| {
+            indices[0] = i;
+            indices[1] = j;
+            value = try tensor.get_at(&indices);
+            //std.debug.print(" ({},{}):{} ", .{ i, j, value });
+            try std.testing.expect(value == i * 3 + j + 1);
+        }
+    }
+
     try tensor.set_at(&indices, 1.0);
-    const value = try tensor.get_at(&indices);
+    value = try tensor.get_at(&indices);
     try std.testing.expect(value == 1.0);
 }
 

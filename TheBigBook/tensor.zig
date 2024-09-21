@@ -16,7 +16,7 @@ pub fn Tensor(comptime T: type) type {
         allocator: *const std.mem.Allocator,
 
         pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
-            std.debug.print("\n fromArray initialization...", .{});
+            //std.debug.print("\n fromArray initialization...", .{});
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
@@ -82,16 +82,16 @@ pub fn Tensor(comptime T: type) type {
         }
 
         pub fn deinit(self: *@This()) void {
-            std.debug.print("\n deinit tensor:\n", .{});
+            //std.debug.print("\n deinit tensor:\n", .{});
             // Verifica se `data` è valido e non vuoto prima di liberarlo
             if (self.data.len > 0) {
-                std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
+                //std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
                 self.allocator.free(self.data);
                 self.data = &[_]T{}; // Resetta lo slice a vuoto
             }
             // Verifica se `shape` è valido e non vuoto prima di liberarlo
             if (self.shape.len > 0) {
-                std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
+                //std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
                 self.allocator.free(self.shape);
                 self.shape = &[_]usize{}; // Resetta lo slice a vuoto
             }
@@ -127,9 +127,9 @@ pub fn Tensor(comptime T: type) type {
         pub fn flatten_index(self: *const @This(), indices: []const usize) !usize {
             var idx: usize = 0;
             var stride: usize = 1;
-            for (self.shape, 0..) |dim, i| {
-                idx += indices[i] * stride;
-                stride *= dim;
+            for (0..self.shape.len) |i| {
+                idx += indices[self.shape.len - 1 - i] * stride;
+                stride *= self.shape[self.shape.len - 1 - i];
             }
             return idx;
         }

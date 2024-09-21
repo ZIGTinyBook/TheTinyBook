@@ -111,7 +111,7 @@ test "GPU architecture under development error" {
     var t2 = try Tensor(f32).fromShape(&allocator, &shape);
     var t3 = try Tensor(f64).fromShape(&allocator, &shape);
 
-    try std.testing.expectError(ArchitectureError.UnderDevelopementArchitecture, TensMath.sum_tensors(Architectures.GPU, f32, f64, &t1, &t2, &t3));
+    try std.testing.expectError(ArchitectureError.UnderDevelopementArchitecture, TensMath.sum_tensors(Architectures.GPU, f32, f64, &t1, &t2));
 
     t1.deinit();
     t2.deinit();
