@@ -29,9 +29,9 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
 
 pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
     return struct {
-        weights: *tensor.Tensor(T),
-        bias: *tensor.Tensor(T),
-        output: *tensor.Tensor(T),
+        weights: tensor.Tensor(T),
+        bias: tensor.Tensor(T),
+        output: tensor.Tensor(T),
         n_inputs: usize,
         n_neurons: usize,
         weightShape: []usize,
@@ -50,12 +50,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("Weight shape: {d} x {d}\n", .{ weight_shape[0], weight_shape[1] });
             std.debug.print("Bias shape: {d} x {d}\n", .{ bias_shape[0], bias_shape[1] });
 
-            self.weights = try std.heap.page_allocator.create(tensor.Tensor(T));
-            self.weights = try tensor.Tensor(T).init(self.allocator, weight_shape[0..]);
-
-            self.bias = try std.heap.page_allocator.create(tensor.Tensor(T));
-            self.bias = try tensor.Tensor(T).init(self.allocator, bias_shape[0..]);
-
             std.debug.print("shapes are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
             std.debug.print("Generating random weights...\n", .{});
@@ -65,18 +59,18 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("Initializing weights and bias...\n", .{});
             std.debug.print("shapes after are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
-            _ = try self.weights.fromArray(weight_matrix[0..], weight_shape[0..]);
-            _ = try self.bias.fromArray(bias_matrix[0..], bias_shape[0..]);
+            self.weights = try tensor.Tensor(T).fromArray(alloc, &weight_matrix, &weight_shape);
+            self.bias = try tensor.Tensor(T).fromArray(alloc, &bias_matrix, &bias_shape);
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
 
             std.debug.print("Weights and bias initialized.\n", .{});
         }
-        pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn forward(self: *@This(), input: tensor.Tensor(T)) !tensor.Tensor(T) {
             std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
             std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.bias.shape[1] });
 
-            var dot_product = try TensMath.compute_dot_product(T, input, self.weights);
+            var dot_product = try TensMath.compute_dot_product(T, &input, &self.weights);
 
             self.output = try tensor.Tensor(T).init(self.allocator, dot_product.shape);
 
@@ -113,8 +107,7 @@ pub fn main() !void {
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
 
-    var input_tensor = try tensor.Tensor(f64).init(&allocator, shape[0..]);
-    _ = try input_tensor.fromArray(&inputArray, shape[0..]);
+    var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
 
     _ = try dense_layer.forward(input_tensor);
 
