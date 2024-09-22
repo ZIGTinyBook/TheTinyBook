@@ -104,7 +104,7 @@ test "Error when input tensors have incompatible shapes for dot product" {
 }
 
 test "GPU architecture under development error" {
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
     var t1 = try Tensor(f32).fromShape(&allocator, &shape);
