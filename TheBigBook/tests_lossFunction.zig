@@ -4,8 +4,7 @@ const MSELoss = @import("./lossFunction.zig").MSELoss;
 const CCELoss = @import("./lossFunction.zig").CCELoss;
 
 test " MSE target==predictor, 2 x 2" {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
