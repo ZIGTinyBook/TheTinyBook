@@ -117,3 +117,23 @@ test "GPU architecture under development error" {
     t2.deinit();
     t3.deinit();
 }
+
+test "add bias" {
+    const allocator = std.heap.page_allocator;
+
+    var shape_tensor: [2]usize = [_]usize{ 2, 3 }; // 2x3 matrix
+    var inputArray: [2][3]f32 = [_][3]f32{
+        [_]f32{ 1.0, 2.0, 3.0 },
+        [_]f32{ 4.0, 5.0, 6.0 },
+    };
+
+    var bias_array: [3]f32 = [_]f32{ 1.0, 1.0, 1.0 };
+    var shape_bias: [1]usize = [_]usize{3};
+
+    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape_tensor);
+    var bias = try Tensor(f32).fromArray(&allocator, &bias_array, &shape_bias);
+
+    try TensMath.add_bias(f32, &t1, &bias);
+
+    t1.info();
+}
