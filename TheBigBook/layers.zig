@@ -81,6 +81,24 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             return self.output;
         }
+        pub fn deinit(self: *@This()) void {
+            std.debug.print("Deallocating DenseLayer resources...\n", .{});
+
+            // Dealloca i tensori di weights, bias e output se allocati
+            if (self.weights.data.len > 0) {
+                self.weights.deinit();
+            }
+
+            if (self.bias.data.len > 0) {
+                self.bias.deinit();
+            }
+
+            if (self.output.data.len > 0) {
+                self.output.deinit();
+            }
+
+            std.debug.print("DenseLayer resources deallocated.\n", .{});
+        }
     };
 }
 
@@ -89,7 +107,7 @@ pub fn main() !void {
 
     var rng = std.Random.Xoshiro256.init(12345);
 
-    const n_inputs: usize = 3;
+    const n_inputs: usize = 4;
     const n_neurons: usize = 2;
 
     var dense_layer = DenseLayer(f64, &allocator){
@@ -109,11 +127,11 @@ pub fn main() !void {
 
     //std.debug.print("shapes after init main are {} x {} and {} x {}\n", .{ dense_layer.weights.shape[0], dense_layer.weights.shape[1], 1, dense_layer.bias.shape[0] });
 
-    var inputArray: [2][3]f64 = [_][3]f64{
-        [_]f64{ 1.0, 2.0, 3.0 },
-        [_]f64{ 4.0, 5.0, 6.0 },
+    var inputArray: [2][4]f64 = [_][4]f64{
+        [_]f64{ 1.0, 2.0, 3.0, 1 },
+        [_]f64{ 4.0, 5.0, 6.0, 2 },
     };
-    var shape: [2]usize = [_]usize{ 2, 3 };
+    var shape: [2]usize = [_]usize{ 2, 4 };
 
     var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
     defer input_tensor.deinit();
