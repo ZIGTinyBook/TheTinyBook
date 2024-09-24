@@ -1,5 +1,6 @@
 const std = @import("std");
 const Tensor = @import("tensor.zig").Tensor; // Import Tensor type
+const TensorError = @import("tensor.zig").TensorError;
 const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
 
 pub const ArchitectureError = error{
@@ -17,6 +18,57 @@ pub const TensorMathError = error{
     InputTensorDimensionMismatch,
 };
 
+pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
+
+    //checks:
+    //- empty tensor
+    //- empty bias
+    //- bias shape, so far is always monodimensional
+    //- a bias for each neuron aka: for ech column of tensor
+    if (tensor.size == 0) {
+        return TensorError.EmptyTensor;
+    }
+    if (bias.size == 0) { // I keep it separate so to facilitate the debugging of a poor programmer
+        return TensorError.EmptyTensor;
+    }
+    if (bias.shape.len != 1) { // I keep it separate so to facilitate the debugging of a poor programmer
+        return TensorMathError.InputTensorsWrongShape;
+    }
+    const len = bias.shape[0];
+    if (len != tensor.shape[tensor.shape.len - 2]) { // I keep it separate so to facilitate the debugging of a poor programmer
+        return TensorMathError.InputTensorDimensionMismatch;
+    }
+
+    //IMPORTANT:
+    //Since all the data are ordered row after row, and the dimension of a row (aka the number of columns/neurons) is the same of the bias, I'll launch
+    //a thread for each row. I directly work on tensor.data, without moving in the tensor using the "location" coordinates.
+    //
+    const allocator = std.heap.page_allocator;
+    const num_threads = tensor.size / bias.size;
+    var threads = try allocator.alloc(std.Thread, num_threads); // Array to store thread handles
+
+    var index: usize = 0;
+    var i: usize = 0;
+    while (index < tensor.size - 1) : ({
+        index += len;
+        i += 1;
+    }) {
+        threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, &tensor.data[index], len, bias });
+    }
+
+    // Join all threads
+    for (threads) |*thread| {
+        thread.join();
+    }
+}
+
+fn add_bias_thread(comptime T: anytype, array: *T, len: usize, bias: *Tensor(T)) void {
+    for (0..len) |i| {
+        array[i] += bias.data[i];
+    }
+}
+
+//returns a Tensor with the same shape pf t1 and t2, where each element --> out[location] = t1[location] + t2[location]
 pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
 
     //selecting between all possible architectures
@@ -185,7 +237,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     return out_tensor;
 }
 
-pub fn multidim_multiplication(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), current_depth: usize, location: []usize) !void {
+fn multidim_multiplication(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), current_depth: usize, location: []usize) !void {
     if (current_depth == (t1.shape.len - 2)) {
 
         //declaring sum
