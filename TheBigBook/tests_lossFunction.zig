@@ -8,10 +8,9 @@ test "tests description" {
 }
 
 test " MSE target==predictor, 2 x 2" {
-    std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
 
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    const allocator = gpa.allocator();
+    std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
+    const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
