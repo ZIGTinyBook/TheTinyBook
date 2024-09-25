@@ -65,7 +65,7 @@ pub fn build(b: *std.Build) void {
         "TheBigBook/tests_lossFunction.zig",
         "TheBigBook/tests_tensor_math.zig",
         "TheBigBook/tests_tensor.zig",
-        //"TheBigBook/tests_utils.zig",
+        "TheBigBook/tests_utils.zig",
     };
 
     for (test_list) |path| {

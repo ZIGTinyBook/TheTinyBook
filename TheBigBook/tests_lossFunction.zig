@@ -3,7 +3,13 @@ const Tensor = @import("./tensor.zig").Tensor;
 const MSELoss = @import("./lossFunction.zig").MSELoss;
 const CCELoss = @import("./lossFunction.zig").CCELoss;
 
+test "tests description" {
+    std.debug.print("\n--- Running loss_function tests\n", .{});
+}
+
 test " MSE target==predictor, 2 x 2" {
+
+    std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -18,8 +24,6 @@ test " MSE target==predictor, 2 x 2" {
     var t2_PREDICTION = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t2_PREDICTION.deinit();
 
-    std.debug.print("\n MSE target==predictor, 2 x 2 \n", .{});
-
     //LOSS SHOULD RESULT ALL ZEROS
     var loss: Tensor(f32) = try MSELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
 
@@ -32,6 +36,7 @@ test " MSE target==predictor, 2 x 2" {
 }
 
 test " MSE target==predictor, 2 x 3 X 2" {
+    std.debug.print("\n     test: MSE target==predictor, 2 x 3 X 2 ", .{});
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -55,7 +60,7 @@ test " MSE target==predictor, 2 x 3 X 2" {
     var t2_PREDICTION = try Tensor(u32).fromArray(&allocator, &inputArray, &shape);
     defer t2_PREDICTION.deinit();
 
-    std.debug.print("\n creating a new MSE loss function", .{});
+    //std.debug.print("\n creating a new MSE loss function", .{});
 
     //LOSS SHOULD RESULT ALL ZEROS
     var loss: Tensor(u32) = try MSELoss.lossFn(u32, &t2_PREDICTION, &t1_TARGET);
@@ -67,6 +72,7 @@ test " MSE target==predictor, 2 x 3 X 2" {
 }
 
 test " MSE target!=predictor, 2 x 3 X 2" {
+    std.debug.print("\n     test: MSE target!=predictor, 2 x 3 X 2", .{});
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -115,6 +121,7 @@ test " MSE target!=predictor, 2 x 3 X 2" {
 }
 
 test " CCE target==predictor, 2 x 2" {
+    std.debug.print("\n     test:CCE target==predictor, 2 x 2 \n", .{});
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -130,14 +137,7 @@ test " CCE target==predictor, 2 x 2" {
     var t2_PREDICTION = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t2_PREDICTION.deinit();
 
-    std.debug.print("\n CCE target==predictor, 2 x 2 \n", .{});
-
-    //LOSS SHOULD RESULT ALL ZEROS
     var loss: Tensor(f32) = try CCELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
-    loss.info();
-
-    // for (0..loss.size) |i| {
-    //     try std.testing.expect(0.0 == loss.data[i]);
-    // }
+    //loss.info();
 }
