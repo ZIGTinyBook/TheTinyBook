@@ -6,6 +6,10 @@ const zeros = @import("layers.zig").zeros;
 const TensMath = @import("tensor_math.zig");
 const Architectures = @import("architectures.zig");
 
+test "tests description" {
+    std.debug.print("\n--- Running layers tests\n", .{});
+}
+
 test "DenseLayer init and forward test" {
     const allocator = std.heap.page_allocator;
 

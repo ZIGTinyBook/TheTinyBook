@@ -5,7 +5,12 @@ const Architectures = @import("./architectures.zig").Architectures;
 const TensorMathError = @import("./tensor_math.zig").TensorMathError;
 const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
 
+test "tests description" {
+    std.debug.print("\n--- Running tensor_math tests\n", .{});
+}
+
 test "Sum two tensors on CPU architecture" {
+    std.debug.print("\n     test: Sum two tensors on CPU architecture", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -29,6 +34,7 @@ test "Sum two tensors on CPU architecture" {
 }
 
 test "Error when input tensors have different sizes" {
+    std.debug.print("\n     test: Error when input tensors have different sizes", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -53,6 +59,8 @@ test "Error when input tensors have different sizes" {
 }
 
 test "Dot product 2x2" {
+    std.debug.print("\n     test:Dot product 2x2", .{});
+
     const allocator = std.heap.page_allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
@@ -90,6 +98,7 @@ test "Error when input tensors have incompatible sizes for dot product" {
 }
 
 test "Error when input tensors have incompatible shapes for dot product" {
+    std.debug.print("\n     test: Error when input tensors have incompatible shapes for dot product", .{});
     const allocator = std.heap.page_allocator;
 
     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
@@ -104,6 +113,7 @@ test "Error when input tensors have incompatible shapes for dot product" {
 }
 
 test "GPU architecture under development error" {
+    std.debug.print("\n     test: GPU architecture under development error\n", .{});
     const allocator = std.heap.page_allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
@@ -119,6 +129,7 @@ test "GPU architecture under development error" {
 }
 
 test "add bias" {
+    std.debug.print("\n     test:add bias", .{});
     const allocator = std.heap.page_allocator;
 
     var shape_tensor: [2]usize = [_]usize{ 2, 3 }; // 2x3 matrix
@@ -126,14 +137,17 @@ test "add bias" {
         [_]f32{ 1.0, 2.0, 3.0 },
         [_]f32{ 4.0, 5.0, 6.0 },
     };
+    const flatArr: [6]f32 = [_]f32{ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0 };
 
-    var bias_array: [3]f32 = [_]f32{ 1.0, 1.0, 1.0 };
     var shape_bias: [1]usize = [_]usize{3};
+    var bias_array: [3]f32 = [_]f32{ 1.0, 1.0, 1.0 };
 
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape_tensor);
     var bias = try Tensor(f32).fromArray(&allocator, &bias_array, &shape_bias);
 
     try TensMath.add_bias(f32, &t1, &bias);
 
-    t1.info();
+    for (t1.data, 0..) |*data, i| {
+        try std.testing.expect(data.* == flatArr[i] + 1);
+    }
 }
