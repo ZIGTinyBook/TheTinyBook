@@ -205,7 +205,6 @@ pub const CCELoss = struct {
     }
 
     fn multidim_CCE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
-        //      0                  1
         if (current_depth == (predictions.shape.len - 1)) {
             //declaring res as the result of the sum of the MSE
             var res: f32 = 0.0;
