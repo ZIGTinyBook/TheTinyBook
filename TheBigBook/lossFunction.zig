@@ -217,10 +217,10 @@ pub const CCELoss = struct {
                 get_location[i] = location[i];
             }
 
-            predictions.info();
-            targets.info();
-            std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
-            std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
+            //predictions.info();
+            //targets.info();
+            //std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
+            //std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
 
             //calculating the loss
             for (0..predictions.shape[current_depth]) |i| {
@@ -229,10 +229,10 @@ pub const CCELoss = struct {
                 const prediction = try predictions.get_at(get_location);
                 const log = std.math.log(f32, std.math.e, prediction);
                 res -= (target * log);
-                std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
-                for (get_location) |*val| {
-                    std.debug.print("{} ", .{val.*});
-                }
+                //std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
+                // for (get_location) |*val| {
+                //     std.debug.print("{} ", .{val.*});
+                // }
             }
 
             //declaring and initializing the landing location of the sum
@@ -244,16 +244,16 @@ pub const CCELoss = struct {
 
             const out_res: T = Convert.convert(f32, T, res);
             //set the loss value into out_tensor
-            std.debug.print("\n CCE set val {} at: ", .{out_res});
-            for (out_location) |*val| {
-                std.debug.print("{} ", .{val.*});
-            }
+            //std.debug.print("\n CCE set val {} at: ", .{out_res});
+            // for (out_location) |*val| {
+            //     std.debug.print("{} ", .{val.*});
+            // }
             try out_tensor.set_at(out_location, out_res);
         } else {
             // for 0,1
             for (0..predictions.shape[current_depth]) |element_at_current_depth| {
                 //print depth:
-                std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+                //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
                 location[current_depth] = element_at_current_depth;
                 //otherwise I have to go deeper
                 try multidim_CCE(

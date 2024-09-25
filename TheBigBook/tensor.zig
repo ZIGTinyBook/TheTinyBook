@@ -6,6 +6,7 @@ pub const TensorError = error{
     TensorNotInitialized,
     InputArrayWrongType,
     InputArrayWrongSize,
+    EmptyTensor,
     ZeroSizeTensor,
 };
 
