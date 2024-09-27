@@ -4,8 +4,9 @@ const TensorMathError = @import("./tensor_math.zig").TensorMathError;
 const Convert = @import("./typeConverter.zig");
 
 pub const LossError = error{
-    PredictionAndTargetSizeMismatch,
-    PredictionAndTargetShapeMismatch,
+    SizeMismatch,
+    ShapeMismatch,
+    InvalidPrediction,
 };
 
 // LossFunction Interface
@@ -152,29 +153,24 @@ pub const MSELoss = struct {
         }
     }
 
-    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(f32) {
-
-        //check on the size
-        if (predictions.size != targets.size) {
-            return LossError.PredictionAndTargetSizeMismatch;
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        //check on the size of predictions, targets and gradient
+        if (predictions.size != targets.size or gradient.size != targets.size) {
+            return LossError.SizeMismatch;
         }
-
-        //checks on the shape
-        if (predictions.shape.len != targets.shape.len) {
-            return LossError.PredictionAndTargetShapeMismatch;
+        //checks on the shape of predictions, targets and gradient
+        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            return LossError.ShapeMismatch;
         }
         for (predictions.shape, 0..) |*dim, i| {
-            if (dim.* != targets.shape[i]) return LossError.PredictionAndTargetShapeMismatch;
+            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
         }
 
-        const n = predictions.size;
-        var grad = try Tensor(f32).fromShape(predictions.allocator, predictions.shape);
+        const n: f32 = @floatFromInt(predictions.size);
 
-        for (0..n) |i| {
-            grad.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
+        for (0..predictions.size) |i| {
+            gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
         }
-
-        return grad;
     }
 };
 
@@ -298,30 +294,27 @@ pub const CCELoss = struct {
         }
     }
 
-    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(f32) {
-        //check on the size
-        if (predictions.size != targets.size) {
-            return LossError.PredictionAndTargetSizeMismatch;
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        //check on the size of predictions, targets and gradient
+        if (predictions.size != targets.size or gradient.size != targets.size) {
+            return LossError.SizeMismatch;
         }
 
-        //checks on the shape
-        if (predictions.shape.len != targets.shape.len) {
-            return LossError.PredictionAndTargetShapeMismatch;
+        //checks on the shape of predictions, targets and gradient
+        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            return LossError.ShapeMismatch;
         }
         for (predictions.shape, 0..) |*dim, i| {
-            if (dim.* != targets.shape[i]) return LossError.PredictionAndTargetShapeMismatch;
+            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
         }
 
         const n = predictions.size;
-        var grad = try Tensor(f32).fromShape(predictions.allocator, predictions.shape);
 
         for (0..n) |i| {
             if (predictions.data[i] == 0.0) {
-                return error.InvalidPrediction; // Avoid division by zero
+                return LossError.InvalidPrediction; // Avoid division by zero
             }
-            grad.data[i] = -targets.data[i] / predictions.data[i];
+            gradient.data[i] = -targets.data[i] / predictions.data[i];
         }
-
-        return grad;
     }
 };
