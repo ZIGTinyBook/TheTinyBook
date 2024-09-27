@@ -3,6 +3,11 @@ const Tensor = @import("./tensor.zig").Tensor;
 const TensorMathError = @import("./tensor_math.zig").TensorMathError;
 const Convert = @import("./typeConverter.zig");
 
+pub const LossError = error{
+    PredictionAndTargetSizeMismatch,
+    PredictionAndTargetShapeMismatch,
+};
+
 // LossFunction Interface
 // pub fn LossFunction(
 //     comptime T: type,
@@ -146,6 +151,31 @@ pub const MSELoss = struct {
             }
         }
     }
+
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(f32) {
+
+        //check on the size
+        if (predictions.size != targets.size) {
+            return LossError.PredictionAndTargetSizeMismatch;
+        }
+
+        //checks on the shape
+        if (predictions.shape.len != targets.shape.len) {
+            return LossError.PredictionAndTargetShapeMismatch;
+        }
+        for (predictions.shape, 0..) |*dim, i| {
+            if (dim.* != targets.shape[i]) return LossError.PredictionAndTargetShapeMismatch;
+        }
+
+        const n = predictions.size;
+        var grad = try Tensor(f32).fromShape(predictions.allocator, predictions.shape);
+
+        for (0..n) |i| {
+            grad.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
+        }
+
+        return grad;
+    }
 };
 
 //Categorical Cross-Entropy loss function
@@ -266,5 +296,32 @@ pub const CCELoss = struct {
                 );
             }
         }
+    }
+
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(f32) {
+        //check on the size
+        if (predictions.size != targets.size) {
+            return LossError.PredictionAndTargetSizeMismatch;
+        }
+
+        //checks on the shape
+        if (predictions.shape.len != targets.shape.len) {
+            return LossError.PredictionAndTargetShapeMismatch;
+        }
+        for (predictions.shape, 0..) |*dim, i| {
+            if (dim.* != targets.shape[i]) return LossError.PredictionAndTargetShapeMismatch;
+        }
+
+        const n = predictions.size;
+        var grad = try Tensor(f32).fromShape(predictions.allocator, predictions.shape);
+
+        for (0..n) |i| {
+            if (predictions.data[i] == 0.0) {
+                return error.InvalidPrediction; // Avoid division by zero
+            }
+            grad.data[i] = -targets.data[i] / predictions.data[i];
+        }
+
+        return grad;
     }
 };
