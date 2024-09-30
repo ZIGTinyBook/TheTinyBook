@@ -6,6 +6,8 @@ pub const TensorError = error{
     TensorNotInitialized,
     InputArrayWrongType,
     InputArrayWrongSize,
+    EmptyTensor,
+    ZeroSizeTensor,
 };
 
 pub fn Tensor(comptime T: type) type {

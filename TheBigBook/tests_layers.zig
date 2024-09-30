@@ -5,6 +5,7 @@ const tensor = @import("tensor.zig");
 test "DenseLayer forward test" {
     const allocator = &std.testing.allocator;
 
+
     var rng = std.rand.Random.Xoshiro256.init(12345);
 
     // Definizione del DenseLayer con 4 input e 2 neuroni
