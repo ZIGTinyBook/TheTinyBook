@@ -1,6 +1,11 @@
 const std = @import("std");
 const DataLoader = @import("./dataLoader.zig").DataLoader;
 const fs = std.fs;
+
+test "tests description" {
+    std.debug.print("\n--- Running dataLoader tests\n", .{});
+}
+
 test "DataLoader xNext Test" {
     var features = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },

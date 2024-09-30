@@ -3,6 +3,12 @@ const Tensor = @import("./tensor.zig").Tensor;
 const TensorMathError = @import("./tensor_math.zig").TensorMathError;
 const Convert = @import("./typeConverter.zig");
 
+pub const LossError = error{
+    SizeMismatch,
+    ShapeMismatch,
+    InvalidPrediction,
+};
+
 // LossFunction Interface
 // pub fn LossFunction(
 //     comptime T: type,
@@ -146,6 +152,26 @@ pub const MSELoss = struct {
             }
         }
     }
+
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        //check on the size of predictions, targets and gradient
+        if (predictions.size != targets.size or gradient.size != targets.size) {
+            return LossError.SizeMismatch;
+        }
+        //checks on the shape of predictions, targets and gradient
+        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            return LossError.ShapeMismatch;
+        }
+        for (predictions.shape, 0..) |*dim, i| {
+            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
+        }
+
+        const n: f32 = @floatFromInt(predictions.size);
+
+        for (0..predictions.size) |i| {
+            gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
+        }
+    }
 };
 
 //Categorical Cross-Entropy loss function
@@ -205,7 +231,6 @@ pub const CCELoss = struct {
     }
 
     fn multidim_CCE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
-        //      0                  1
         if (current_depth == (predictions.shape.len - 1)) {
             //declaring res as the result of the sum of the MSE
             var res: f32 = 0.0;
@@ -218,10 +243,10 @@ pub const CCELoss = struct {
                 get_location[i] = location[i];
             }
 
-            predictions.info();
-            targets.info();
-            std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
-            std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
+            //predictions.info();
+            //targets.info();
+            //std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
+            //std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
 
             //calculating the loss
             for (0..predictions.shape[current_depth]) |i| {
@@ -230,10 +255,10 @@ pub const CCELoss = struct {
                 const prediction = try predictions.get_at(get_location);
                 const log = std.math.log(f32, std.math.e, prediction);
                 res -= (target * log);
-                std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
-                for (get_location) |*val| {
-                    std.debug.print("{} ", .{val.*});
-                }
+                //std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
+                // for (get_location) |*val| {
+                //     std.debug.print("{} ", .{val.*});
+                // }
             }
 
             //declaring and initializing the landing location of the sum
@@ -245,16 +270,16 @@ pub const CCELoss = struct {
 
             const out_res: T = Convert.convert(f32, T, res);
             //set the loss value into out_tensor
-            std.debug.print("\n CCE set val {} at: ", .{out_res});
-            for (out_location) |*val| {
-                std.debug.print("{} ", .{val.*});
-            }
+            //std.debug.print("\n CCE set val {} at: ", .{out_res});
+            // for (out_location) |*val| {
+            //     std.debug.print("{} ", .{val.*});
+            // }
             try out_tensor.set_at(out_location, out_res);
         } else {
             // for 0,1
             for (0..predictions.shape[current_depth]) |element_at_current_depth| {
                 //print depth:
-                std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+                //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
                 location[current_depth] = element_at_current_depth;
                 //otherwise I have to go deeper
                 try multidim_CCE(
@@ -266,6 +291,30 @@ pub const CCELoss = struct {
                     location,
                 );
             }
+        }
+    }
+
+    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        //check on the size of predictions, targets and gradient
+        if (predictions.size != targets.size or gradient.size != targets.size) {
+            return LossError.SizeMismatch;
+        }
+
+        //checks on the shape of predictions, targets and gradient
+        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            return LossError.ShapeMismatch;
+        }
+        for (predictions.shape, 0..) |*dim, i| {
+            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
+        }
+
+        const n = predictions.size;
+
+        for (0..n) |i| {
+            if (predictions.data[i] == 0.0) {
+                return LossError.InvalidPrediction; // Avoid division by zero
+            }
+            gradient.data[i] = -targets.data[i] / predictions.data[i];
         }
     }
 };
