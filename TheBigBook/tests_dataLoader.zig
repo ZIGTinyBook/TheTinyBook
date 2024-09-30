@@ -287,7 +287,7 @@ test "DataLoader shuffle simple test" {
         .y = labelSlice,
     };
 
-    var rng = std.rand.DefaultPrng.init(12345);
+    var rng = std.Random.DefaultPrng.init(12345);
 
     const original_feature0 = loader.X[0];
     const original_label0 = loader.y[0];
