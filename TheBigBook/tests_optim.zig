@@ -3,8 +3,10 @@ const tensor = @import("tensor.zig");
 const layer = @import("layers.zig");
 const Model = @import("model.zig");
 const OptimizerSGD = @import("optim.zig").optimizer_SGD;
+
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
+    std.debug.print("\n     test: SGD Optimizer No Update with Zero Gradients (Print Only)", .{});
     const allocator = std.testing.allocator;
 
     var model = Model.Model(f64, &allocator){
@@ -13,7 +15,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     };
     try model.init();
 
-    var rng = std.rand.Random.Xoshiro256.init(12345);
+    var rng = std.Random.Xoshiro256.init(12345);
 
     var dense_layer = layer.DenseLayer(f64, &allocator){
         .weights = undefined,

@@ -50,7 +50,7 @@ pub fn main() !void {
         .biasShape = undefined,
         .allocator = undefined,
     };
-    try dense_layer.init(3, 2, &rng); // Layer con 3 input e 2 neuroni
+    try dense_layer.init(3, 2, &rng); // Layer with 3 inputs and 2 neurons
     try model.addLayer(&dense_layer);
 
     std.debug.print("Weights before:\n", .{});

@@ -22,6 +22,18 @@ pub const ReLU = struct {
             if (input.data[i] <= threshold) input.data[i] = threshold;
         }
     }
+
+    pub fn derivate(comptime T: anytype, threshold: T, input: *Tensor(T)) !void {
+
+        //checks
+        if (input.size <= 0) return TensorError.ZeroSizeTensor;
+
+        //apply ReLU
+        //OSS: can be improved, see how did I parallelized CPU Tensor Sum
+        for (0..input.size) |i| {
+            if (input.data[i] > threshold) input.data[i] = 1.0;
+        }
+    }
 };
 
 pub const Softmax = struct {
@@ -91,5 +103,13 @@ pub const Softmax = struct {
                 );
             }
         }
+    }
+
+    pub fn derivate(comptime T: anytype, threshold: T, input: *Tensor(T)) !void {
+
+        //checks
+        if (input.size <= 0) return TensorError.ZeroSizeTensor;
+
+        _ = threshold;
     }
 };
