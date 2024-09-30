@@ -14,6 +14,8 @@ test "DenseLayer forward test" {
         .output = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = allocator,

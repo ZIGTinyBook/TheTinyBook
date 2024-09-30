@@ -48,6 +48,14 @@ pub fn Tensor(comptime T: type) type {
             self.allocator.free(self.data);
         }
 
+        pub fn duplicate(self: *@This(), allocator: *const std.mem.Allocator) !Tensor(T) {
+            var new_tensor = try Tensor(T).init(allocator);
+
+            try new_tensor.fill(&self.data, &self.shape);
+
+            return new_tensor;
+        }
+
         pub fn getSize(self: *@This()) usize {
             var total_size: usize = 1;
             for (self.shape) |dim| {

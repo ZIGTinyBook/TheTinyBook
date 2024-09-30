@@ -34,6 +34,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         output: tensor.Tensor(T),
         n_inputs: usize,
         n_neurons: usize,
+        w_gradients: tensor.Tensor(T),
+        b_gradients: tensor.Tensor(T),
         weightShape: []usize,
         biasShape: []usize,
         allocator: *const std.mem.Allocator,
@@ -52,7 +54,10 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             const bias_matrix = try zeros(T, 1, n_neurons);
 
             std.debug.print("Initializing weights and bias...\n", .{});
-
+            self.w_gradients = try tensor.Tensor(T).init(alloc);
+            try self.w_gradients.fill(try zeros(T, n_inputs, n_neurons), &weight_shape);
+            self.b_gradients = try tensor.Tensor(T).init(alloc);
+            try self.b_gradients.fill(try zeros(T, 1, n_neurons), &bias_shape);
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);
             self.bias = try tensor.Tensor(T).fromArray(alloc, bias_matrix, &bias_shape);
             self.n_inputs = n_inputs;
@@ -111,6 +116,15 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             if (self.output.data.len > 0) {
                 self.output.deinit();
+            }
+
+            // Dealloca i tensori di gradients se allocati
+            if (self.w_gradients.data.len > 0) {
+                self.w_gradients.deinit();
+            }
+
+            if (self.b_gradients.data.len > 0) {
+                self.b_gradients.deinit();
             }
 
             std.debug.print("DenseLayer resources deallocated.\n", .{});
