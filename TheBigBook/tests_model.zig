@@ -24,7 +24,7 @@ test "Model with multiple layers forward test" {
         .biasShape = undefined,
         .allocator = undefined,
     };
-    try layer1.init(3, 4, &rng);
+    try layer1.init(3, 2, &rng);
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -37,7 +37,7 @@ test "Model with multiple layers forward test" {
         .biasShape = undefined,
         .allocator = undefined,
     };
-    try layer2.init(4, 2, &rng);
+    try layer2.init(2, 3, &rng);
     try model.addLayer(&layer2);
 
     var inputArray: [2][3]f64 = [_][3]f64{
@@ -49,17 +49,11 @@ test "Model with multiple layers forward test" {
     var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
     defer input_tensor.deinit();
 
-    // var output = try model.forward(&input_tensor);
-    // defer output.deinit();
+    var output = try model.forward(&input_tensor);
+    defer output.deinit();
 
-    // std.debug.print("Output tensor shape: {any}\n", .{output.shape});
-    // std.debug.print("Output tensor data: {any}\n", .{output.data});
-
-    // try std.testing.expectEqual(output.shape[0], 2);
-    // try std.testing.expectEqual(output.shape[1], 2);
-
-    // try std.testing.expect(output.data[0] != 0);
-    // try std.testing.expect(output.data[1] != 0);
+    std.debug.print("Output tensor shape: {any}\n", .{output.shape});
+    std.debug.print("Output tensor data: {any}\n", .{output.data});
 
     model.deinit();
 }

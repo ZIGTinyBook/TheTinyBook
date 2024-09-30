@@ -5,7 +5,6 @@ const tensor = @import("tensor.zig");
 test "DenseLayer forward test" {
     const allocator = &std.testing.allocator;
 
-
     var rng = std.rand.Random.Xoshiro256.init(12345);
 
     // Definizione del DenseLayer con 4 input e 2 neuroni
@@ -34,19 +33,14 @@ test "DenseLayer forward test" {
     var input_tensor = try tensor.Tensor(f64).fromArray(allocator, &inputArray, &shape);
     defer input_tensor.deinit();
 
-    var output = try dense_layer.forward(&input_tensor);
-    defer output.deinit();
+    _ = try dense_layer.forward(&input_tensor);
 
-    std.debug.print("Output tensor shape: {any}\n", .{output.shape});
-    std.debug.print("Output tensor data: {any}\n", .{output.data});
+    try std.testing.expectEqual(dense_layer.output.shape[0], 2);
+    try std.testing.expectEqual(dense_layer.output.shape[1], 2);
 
-    try std.testing.expectEqual(output.shape[0], 2);
-    try std.testing.expectEqual(output.shape[1], 2);
-
-    try std.testing.expect(output.data[0] != 0);
-    try std.testing.expect(output.data[1] != 0);
+    try std.testing.expect(dense_layer.output.data[0] != 0);
+    try std.testing.expect(dense_layer.output.data[1] != 0);
 
     dense_layer.deinit();
-    output.deinit();
     input_tensor.deinit();
 }

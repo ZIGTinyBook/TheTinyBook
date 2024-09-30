@@ -69,18 +69,34 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
             std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
 
-            var dot_product: tensor.Tensor(T) = try TensMath.compute_dot_product(T, input, &self.weights);
-            defer dot_product.deinit();
+            // 1. Esegui la moltiplicazione tra input e pesi (dot product)
+            var dot_product = try TensMath.compute_dot_product(T, input, &self.weights);
+            defer dot_product.deinit(); // Defer per liberare il tensor alla fine
 
+            // 2. Stampa informazioni di debug per dot_product e bias
             dot_product.info();
             self.bias.info();
 
-            self.output = try TensMath.sum_tensors(Architectures.CPU, T, T, &dot_product, &self.bias);
+            // 3. Aggiungi il bias al dot product
+            try TensMath.add_bias(T, &dot_product, &self.bias);
 
-            std.debug.print("Output tensor: {any}\n", .{self.output});
+            // 4. Verifica se self.output è già allocato, dealloca se necessario
+            if (self.output.data.len > 0) {
+                self.output.deinit();
+            }
+
+            // 5. Alloca la memoria per self.output con la stessa shape di dot_product
+            self.output = try tensor.Tensor(T).init(self.allocator);
+
+            // 6. Riempie self.output con i dati di dot_product
+            try self.output.fill(dot_product.data, dot_product.shape);
+
+            // 7. Stampa informazioni sull'output finale
+            self.output.info(); // Stampa l'output usando info()
 
             return self.output;
         }
+
         pub fn deinit(self: *@This()) void {
             std.debug.print("Deallocating DenseLayer resources...\n", .{});
 
@@ -137,6 +153,7 @@ pub fn main() !void {
     defer input_tensor.deinit();
 
     _ = try dense_layer.forward(&input_tensor);
+    dense_layer.output.info();
 
     //
 
