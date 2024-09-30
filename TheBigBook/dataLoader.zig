@@ -54,7 +54,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
         //We are using Knuth shuffle algorithm with complexity O(n)
 
-        pub fn shuffle(self: *@This(), rng: *std.rand.DefaultPrng) void {
+        pub fn shuffle(self: *@This(), rng: *std.Random.DefaultPrng) void {
             const len = self.X.len;
 
             if (len <= 1) return;

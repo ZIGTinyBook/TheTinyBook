@@ -60,8 +60,8 @@ pub fn build(b: *std.Build) void {
 
     //add here your tests
     const test_list: []const []const u8 = &[_][]const u8{
-        //"TheBigBook/tests_dataLoader.zig",
-        //"TheBigBook/tests_layers.zig.zig",
+        "TheBigBook/tests_dataLoader.zig",
+        "TheBigBook/tests_layers.zig",
         "TheBigBook/tests_lossFunction.zig",
         "TheBigBook/tests_tensor_math.zig",
         "TheBigBook/tests_tensor.zig",

@@ -9,7 +9,6 @@ const TensorError = @import("./tensor.zig").TensorError;
 //
 
 pub const ReLU = struct {
-
     //it directly modify the input tensor
     //threshold is usually set to zero
     pub fn forward(comptime T: anytype, threshold: T, input: *Tensor(T)) !void {

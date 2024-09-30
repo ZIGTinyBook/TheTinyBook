@@ -5,9 +5,9 @@ const tensor = @import("tensor.zig");
 test "DenseLayer forward test" {
     const allocator = &std.testing.allocator;
 
-    var rng = std.rand.Random.Xoshiro256.init(12345);
+    var rng = std.Random.Xoshiro256.init(12345);
 
-    // Definizione del DenseLayer con 4 input e 2 neuroni
+    // Definition of the DenseLayer with 4 inputs and 2 neurons
     var dense_layer = DenseLayer(f64, allocator){
         .weights = undefined,
         .bias = undefined,
@@ -19,11 +19,12 @@ test "DenseLayer forward test" {
         .allocator = allocator,
     };
 
+    // n_input = 4, n_neurons= 2
     try dense_layer.init(4, 2, &rng);
 
     std.debug.print("Pesi e bias inizializzati\n", .{});
 
-    // Definisci un input tensor con forma 2x4
+    //Define an input tensor with 2x4 shape, an input for each neuron
     var inputArray: [2][4]f64 = [_][4]f64{
         [_]f64{ 1.0, 2.0, 3.0, 1.0 },
         [_]f64{ 4.0, 5.0, 6.0, 2.0 },

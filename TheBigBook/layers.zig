@@ -69,30 +69,30 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
             std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
 
-            // 1. Esegui la moltiplicazione tra input e pesi (dot product)
+            // 1. Perform multiplication between inputs and weights (dot product)
             var dot_product = try TensMath.compute_dot_product(T, input, &self.weights);
             defer dot_product.deinit(); // Defer per liberare il tensor alla fine
 
-            // 2. Stampa informazioni di debug per dot_product e bias
+            // 2. Print debug information for dot_product and bias
             dot_product.info();
             self.bias.info();
 
-            // 3. Aggiungi il bias al dot product
+            // 3. Add bias to the dot product
             try TensMath.add_bias(T, &dot_product, &self.bias);
 
-            // 4. Verifica se self.output è già allocato, dealloca se necessario
+            // 4. Check if self.output is already allocated, deallocate if necessary
             if (self.output.data.len > 0) {
                 self.output.deinit();
             }
 
-            // 5. Alloca la memoria per self.output con la stessa shape di dot_product
+            // 5. Allocate memory for self.output with the same shape as dot_product
             self.output = try tensor.Tensor(T).init(self.allocator);
 
-            // 6. Riempie self.output con i dati di dot_product
+            // 6. Fills self.output with data from dot_product
             try self.output.fill(dot_product.data, dot_product.shape);
 
-            // 7. Stampa informazioni sull'output finale
-            self.output.info(); // Stampa l'output usando info()
+            // 7. Print information on the final output
+            self.output.info(); // print output using info()
 
             return self.output;
         }
@@ -100,7 +100,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn deinit(self: *@This()) void {
             std.debug.print("Deallocating DenseLayer resources...\n", .{});
 
-            // Dealloca i tensori di weights, bias e output se allocati
+            // Dealloc tensors of weights, bias and output if allocated
             if (self.weights.data.len > 0) {
                 self.weights.deinit();
             }
@@ -139,7 +139,7 @@ pub fn main() !void {
 
     try dense_layer.init(n_inputs, n_neurons, &rng);
 
-    std.debug.print("Pesi e bias inizializzati\n", .{});
+    std.debug.print("Weights and bias initialized\n", .{});
 
     //std.debug.print("shapes after init main are {} x {} and {} x {}\n", .{ dense_layer.weights.shape[0], dense_layer.weights.shape[1], 1, dense_layer.bias.shape[0] });
 
