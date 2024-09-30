@@ -54,7 +54,7 @@ pub fn main() !void {
         .biasShape = undefined,
         .allocator = undefined,
     };
-    try layer1.init(3, 4, &rng);
+    try layer1.init(3, 2, &rng);
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -67,7 +67,7 @@ pub fn main() !void {
         .biasShape = undefined,
         .allocator = undefined,
     };
-    try layer2.init(4, 2, &rng);
+    try layer2.init(2, 3, &rng);
     try model.addLayer(&layer2);
 
     // Creazione di un input tensor
@@ -80,8 +80,8 @@ pub fn main() !void {
     var input_tensor = try tensor.Tensor(f64).init(&allocator);
     _ = try input_tensor.fill(&inputArray, shape[0..]);
 
-    //const output = try model.forward(&input_tensor);
-    //std.debug.print("Output finale: {any}\n", .{output});
+    const output = try model.forward(&input_tensor);
+    std.debug.print("Output finale: {any}\n", .{output});
 
     //output.deinit();
     model.deinit();
