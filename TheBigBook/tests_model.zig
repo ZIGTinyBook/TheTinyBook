@@ -20,6 +20,8 @@ test "Model with multiple layers forward test" {
         .output = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = undefined,
@@ -33,6 +35,8 @@ test "Model with multiple layers forward test" {
         .output = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = undefined,
@@ -49,8 +53,7 @@ test "Model with multiple layers forward test" {
     var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
     defer input_tensor.deinit();
 
-    var output = try model.forward(&input_tensor);
-    defer output.deinit();
+    const output = try model.forward(&input_tensor);
 
     std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     std.debug.print("Output tensor data: {any}\n", .{output.data});
