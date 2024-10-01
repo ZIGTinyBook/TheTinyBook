@@ -4,6 +4,7 @@ const TensMath = @import("./tensor_math.zig");
 const Architectures = @import("./architectures.zig").Architectures;
 const TensorError = @import("./tensor_math.zig").TensorError;
 const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
+const ActivationFunction = @import("./activation_function");
 
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
@@ -39,6 +40,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         weightShape: []usize,
         biasShape: []usize,
         allocator: *const std.mem.Allocator,
+        //activation: type,
 
         pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
             std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
