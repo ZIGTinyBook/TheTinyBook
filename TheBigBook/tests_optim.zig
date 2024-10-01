@@ -13,7 +13,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     };
     try model.init();
 
-    var rng = std.rand.Random.Xoshiro256.init(12345);
+    var rng = std.Random.Xoshiro256.init(12345);
 
     var dense_layer = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
