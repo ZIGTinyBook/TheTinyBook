@@ -14,29 +14,25 @@ const errors = error{
     InputTensorDifferentSize,
 };
 
+// Define the Optimizer struct with the optimizer function, learning rate, and allocator
 pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.Allocator) type, lr: f64, allocator: *const std.mem.Allocator) type {
     return struct {
-        optimizer: func(T, lr, allocator), // Qui stai costruendo effettivamente l'istanza dell'ottimizzatore
-        optType: Optimizers,
+        optimizer: func(T, lr, allocator), // Instantiation of the optimizer (e.g., SGD, Adam)
 
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
-            switch (self.optType) {
-                Optimizers.SGD => {
-                    try self.optimizer.step(model);
-                },
-                else => {
-                    return errors.UnsupportedType;
-                },
-            }
+            // Directly call the optimizer's step function
+            try self.optimizer.step(model);
         }
     };
 }
 
+// Define the SGD optimizer
 pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type {
     return struct {
         learning_rate: f64 = lr,
         allocator: *const std.mem.Allocator = allocator,
 
+        // Step function to update weights and biases using gradients
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             for (model.layers) |*dense_layer| {
                 const weight_gradients = &dense_layer.w_gradients;
@@ -47,6 +43,32 @@ pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type
             }
         }
 
+        // Helper function to update tensors
+        fn update_tensor(self: *@This(), t: *tensor.Tensor(T), gradients: *tensor.Tensor(T)) !void {
+            if (t.size != gradients.size) return errors.InputTensorDifferentSize;
+
+            for (t.data, 0..) |*value, i| {
+                value.* -= gradients.data[i] * self.learning_rate;
+            }
+        }
+    };
+}
+
+pub fn optimizer_ADAMTEST(T: type, lr: f64, allocator: *const std.mem.Allocator) type {
+    return struct {
+        learning_rate: f64 = lr,
+        allocator: *const std.mem.Allocator = allocator,
+
+        // Step function to update weights and biases using gradients
+        pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
+            for (model.layers) |*dense_layer| {
+                const weight_gradients = &dense_layer.w_gradients;
+
+                try self.update_tensor(&dense_layer.weights, weight_gradients);
+            }
+        }
+
+        // Helper function to update tensors
         fn update_tensor(self: *@This(), t: *tensor.Tensor(T), gradients: *tensor.Tensor(T)) !void {
             if (t.size != gradients.size) return errors.InputTensorDifferentSize;
 
@@ -58,9 +80,9 @@ pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type
 }
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator; // Usa un puntatore costante all'allocatore
+    const allocator = std.heap.page_allocator; // Constant pointer to the allocator
 
-    var model = Model.Model(f64, &allocator){ // Inizializza il modello con il corretto allocatore
+    var model = Model.Model(f64, &allocator){ // Initialize the model with the correct allocator
         .layers = undefined,
         .allocator = &allocator,
     };
@@ -86,18 +108,23 @@ pub fn main() !void {
     std.debug.print("Weights before:\n", .{});
     dense_layer.weights.info();
 
-    // Inizializzazione dell'ottimizzatore SGD con allocatore corretto
-    var optimizer = optimizer_SGD(f64, 0.01, &allocator){};
-
-    // Inizializzazione di Optimizer e set del campo optimizer con allocatore corretto
+    // Create an instance of the optimizer_SGD
+    var sgd_optimizer = optimizer_SGD(f64, 0.01, &allocator){};
+    var adam_optimizer = optimizer_ADAMTEST(f64, 0.01, &allocator){};
+    // Initialize the Optimizer struct, passing the sgd_optimizer instance
     var optimizer1 = Optimizer(f64, optimizer_SGD, 0.01, &allocator){
-        .optType = Optimizers.SGD,
-        .optimizer = optimizer, // Qui assegni l'istanza dell'ottimizzatore
+        .optimizer = sgd_optimizer, // Here we pass the actual instance of the optimizer
     };
 
-    try optimizer.step(&model);
-    std.debug.print("AFTERRRRRR", .{});
+    var optimizer2 = Optimizer(f64, optimizer_ADAMTEST, 0.01, &allocator){
+        .optimizer = adam_optimizer, // Here we pass the actual instance of the optimizer
+    };
+
+    sgd_optimizer.learning_rate = 0.1;
+    adam_optimizer.learning_rate = 0.1;
+    std.debug.print("AFTERRRRRR\n", .{});
     try optimizer1.step(&model);
+    try optimizer2.step(&model);
 
     std.debug.print("\nWeights after:\n", .{});
     dense_layer.weights.info();
