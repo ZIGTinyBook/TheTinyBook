@@ -1,5 +1,6 @@
 const std = @import("std");
 const Tensor = @import("./tensor.zig").Tensor;
+const Loss = @import("./lossFunction.zig");
 const MSELoss = @import("./lossFunction.zig").MSELoss;
 const CCELoss = @import("./lossFunction.zig").CCELoss;
 const LossError = @import("./lossFunction.zig").LossError;
@@ -9,6 +10,34 @@ test "tests description" {
 }
 
 // LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
+
+test " Loss Function MSE using Interface, target==predictor" {
+    std.debug.print("\n     test: Loss Function MSE using Interface, target==predictor ", .{});
+    const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ 1.0, 2.0 },
+        [_]f32{ 4.0, 5.0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+    var t1_TARGET = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t1_TARGET.deinit();
+    var t2_PREDICTION = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t2_PREDICTION.deinit();
+
+    //LOSS SHOULD RESULT ALL ZEROS
+    //var lossStruct = Loss.LossFunction()
+    var loss: Tensor(f32) = try MSELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
+
+    defer loss.deinit();
+    //loss.info();
+
+    for (0..loss.size) |i| {
+        try std.testing.expect(0.0 == loss.data[i]);
+    }
+}
 
 test " MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
