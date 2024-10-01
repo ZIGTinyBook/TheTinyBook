@@ -9,7 +9,7 @@ test "tests description" {
     std.debug.print("\n--- Running loss_function tests\n", .{});
 }
 
-// LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
+// INTERFACE LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
 
 test " Loss Function MSE using Interface, target==predictor" {
     std.debug.print("\n     test: Loss Function MSE using Interface, target==predictor ", .{});
@@ -28,9 +28,8 @@ test " Loss Function MSE using Interface, target==predictor" {
     defer t2_PREDICTION.deinit();
 
     //LOSS SHOULD RESULT ALL ZEROS
-    //var lossStruct = Loss.LossFunction()
-    var loss: Tensor(f32) = try MSELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
-
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+    var loss: Tensor(f32) = try mse.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
     //loss.info();
 
@@ -38,6 +37,30 @@ test " Loss Function MSE using Interface, target==predictor" {
         try std.testing.expect(0.0 == loss.data[i]);
     }
 }
+
+test " Loss Function CCE using Interface, target==predictor" {
+    std.debug.print("\n     test: Loss Function CCE using Interface, target==predictor", .{});
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
+
+    var inputArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ 1.0, 2.0 },
+        [_]f32{ 4.0, 5.0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+    var t1_TARGET = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t1_TARGET.deinit();
+    var t2_PREDICTION = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t2_PREDICTION.deinit();
+
+    var cce = Loss.LossFunction(Loss.CCELoss){};
+    var loss: Tensor(f32) = try cce.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
+    defer loss.deinit();
+}
+
+// LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
 
 test " MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
@@ -56,10 +79,9 @@ test " MSE target==predictor, 2 x 2" {
     defer t2_PREDICTION.deinit();
 
     //LOSS SHOULD RESULT ALL ZEROS
-    var loss: Tensor(f32) = try MSELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
-
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+    var loss: Tensor(f32) = try mse.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
-    //loss.info();
 
     for (0..loss.size) |i| {
         try std.testing.expect(0.0 == loss.data[i]);
@@ -94,7 +116,8 @@ test " MSE target==predictor, 2 x 3 X 2" {
     //std.debug.print("\n creating a new MSE loss function", .{});
 
     //LOSS SHOULD RESULT ALL ZEROS
-    var loss: Tensor(u32) = try MSELoss.lossFn(u32, &t2_PREDICTION, &t1_TARGET);
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+    var loss: Tensor(u32) = try mse.computeLoss(u32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
 
     for (0..loss.size) |i| {
@@ -143,7 +166,8 @@ test " MSE target!=predictor, 2 x 3 X 2" {
     //std.debug.print("\n creating a new MSE loss function", .{});
 
     //LOSS SHOULD RESULT ALL ZEROS
-    var loss = try MSELoss.lossFn(i32, &t2_PREDICTION, &t1_TARGET);
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+    var loss: Tensor(i32) = try mse.computeLoss(i32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
 
     for (0..loss.size) |i| {
@@ -168,7 +192,8 @@ test " CCE target==predictor, 2 x 2" {
     var t2_PREDICTION = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t2_PREDICTION.deinit();
 
-    var loss: Tensor(f32) = try CCELoss.lossFn(f32, &t2_PREDICTION, &t1_TARGET);
+    var cce = Loss.LossFunction(Loss.CCELoss){};
+    var loss: Tensor(f32) = try cce.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
     //loss.info();
 }
@@ -194,7 +219,8 @@ test " GRADIENT MSE target==predictor, 2 x 2" {
     defer t3_GRAD.deinit();
 
     //gradient SHOULD RESULT ALL ZEROS
-    try MSELoss.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD);
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+    try mse.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD);
 }
 
 test " GRADIENT MSE error on shape (dimensions)" {
@@ -216,8 +242,10 @@ test " GRADIENT MSE error on shape (dimensions)" {
     var t3_GRAD = try Tensor(f64).fromShape(&allocator, &shape1);
     defer t3_GRAD.deinit();
 
+    var mse = Loss.LossFunction(Loss.MSELoss){};
+
     //gradient SHOULD RESULT ALL ZEROS
-    try std.testing.expectError(LossError.ShapeMismatch, MSELoss.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
+    try std.testing.expectError(LossError.ShapeMismatch, mse.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
 }
 
 test " GRADIENT MSE error on shape (len)" {
@@ -234,8 +262,9 @@ test " GRADIENT MSE error on shape (len)" {
     var t3_GRAD = try Tensor(f64).fromShape(&allocator, &shape1);
     defer t3_GRAD.deinit();
 
+    var mse = Loss.LossFunction(Loss.MSELoss){};
     //gradient SHOULD RESULT ALL ZEROS
-    try std.testing.expectError(LossError.ShapeMismatch, MSELoss.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
+    try std.testing.expectError(LossError.ShapeMismatch, mse.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
 }
 
 test " GRADIENT CCE error on shape (dimensions)" {
@@ -257,8 +286,10 @@ test " GRADIENT CCE error on shape (dimensions)" {
     var t3_GRAD = try Tensor(f64).fromShape(&allocator, &shape1);
     defer t3_GRAD.deinit();
 
+    var cce = Loss.LossFunction(Loss.CCELoss){};
+
     //gradient SHOULD RESULT ALL ZEROS
-    try std.testing.expectError(LossError.ShapeMismatch, CCELoss.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
+    try std.testing.expectError(LossError.ShapeMismatch, cce.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
 }
 
 test " GRADIENT CCE error on shape (len)" {
@@ -275,6 +306,8 @@ test " GRADIENT CCE error on shape (len)" {
     var t3_GRAD = try Tensor(f64).fromShape(&allocator, &shape1);
     defer t3_GRAD.deinit();
 
+    var cce = Loss.LossFunction(Loss.CCELoss){};
+
     //gradient SHOULD RESULT ALL ZEROS
-    try std.testing.expectError(LossError.ShapeMismatch, CCELoss.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
+    try std.testing.expectError(LossError.ShapeMismatch, cce.computeGradient(f32, &t2_PREDICTION, &t1_TARGET, &t3_GRAD));
 }
