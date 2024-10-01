@@ -9,312 +9,313 @@ pub const LossError = error{
     InvalidPrediction,
 };
 
-// LossFunction Interface
-// pub fn LossFunction(
-//     comptime T: type,
-//     computeLossFunction: fn (*Tensor(T), *Tensor(T)) TensorMathError!*Tensor(T),
-// ) type {
-//     return struct {
-//         lossFunction: fn (*Tensor(T), *Tensor(T)) TensorMathError!*Tensor(T) = computeLossFunction,
-//         //return a rensor where the smallest element is the result of the loss function for each array of weights
-//         //ex:
-//         // PredictionTens =[ [ vect , vect ],
-//         //                   [ vect , vect ],
-//         //                   [ vect , vect ] ] -> 3 x 2 x vect.len
-//         // TargetTens = same of prediction
-//         // OutputTens = [ [ a, b],
-//         //                [ c, d],
-//         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
-//         //
-//
-//         // TODO !!!!!!!!!!!!!!!!
-//         fn lossFn(predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
-//             return computeLossFunction(
-//                 predictions,
-//                 targets,
-//             );
-//         }
+//LossFunction Interface
+pub fn LossFunction(lossFunctionStruct: fn () type) type {
+    const ls = lossFunctionStruct(){};
+    return struct {
+        loss: lossFunctionStruct() = ls,
 
-//         // pub fn gradientFn(self: *const @This(), predictions: []f64, targets: []f64, out_gradient: []f64) TensorMathError!void {
-//         //     return self.gradientFunction(predictions, targets, out_gradient);
-//         // }
-//     };
-// }
-
-pub const MSELoss = struct {
-    //return a rensor where the smallest element is the result of the loss function for each array of weights
-    //         //ex:
-    //         // PredictionTens =[ [ vect , vect ],
-    //         //                   [ vect , vect ],
-    //         //                   [ vect , vect ] ] -> 3 x 2 x vect.len
-    //         // TargetTens = same of prediction
-    //         // OutputTens = [ [ a, b],
-    //         //                [ c, d],
-    //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
-    //         //
-    //
-    pub fn lossFn(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
-
-        //CHECKS :
-        // -inputs size
-        if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
-
-        //create the shape of the output tensor
-        const allocator = std.heap.page_allocator;
-        var out_shape = allocator.alloc(usize, (predictions.shape.len - 1)) catch {
-            return TensorMathError.MemError;
-        };
-
-        for (0..out_shape.len) |i| {
-            out_shape[i] = predictions.shape[i];
+        //return a rensor where the smallest element is the result of the loss function for each array of weights
+        //ex:
+        // PredictionTens =[ [ vect , vect ],
+        //                   [ vect , vect ],
+        //                   [ vect , vect ] ] -> 3 x 2 x vect.len
+        // TargetTens = same of prediction
+        // OutputTens = [ [ a, b],
+        //                [ c, d],
+        //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
+        //
+        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            return try self.loss.computeLoss(T, predictions, targets);
         }
-
-        var out_tensor = Tensor(T).fromShape(&allocator, out_shape) catch {
-            return TensorMathError.MemError;
-        };
-
-        //initialize the current location to all 0
-        const location = allocator.alloc(usize, predictions.shape.len) catch {
-            return TensorMathError.MemError;
-        };
-
-        for (location) |*loc| {
-            loc.* = 0;
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+            return try self.loss.computeGradient(T, predictions, targets, gradient);
         }
+    };
+}
 
-        //call mutidim_mat_mul to handle multidimensionality
-        try multidim_MSE(
-            T,
-            predictions,
-            targets,
-            &out_tensor,
-            0,
-            location,
-        );
+pub fn MSELoss() type {
+    return struct {
+        //return a rensor where the smallest element is the result of the loss function for each array of weights
+        //         //ex:
+        //         // PredictionTens =[ [ vect , vect ],
+        //         //                   [ vect , vect ],
+        //         //                   [ vect , vect ] ] -> 3 x 2 x vect.len
+        //         // TargetTens = same of prediction
+        //         // OutputTens = [ [ a, b],
+        //         //                [ c, d],
+        //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
+        //         //
+        //
+        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            _ = self;
+            //CHECKS :
+            // -inputs size
+            if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
 
-        //out_tensor.info();
-        return out_tensor;
-    }
-
-    fn multidim_MSE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
-        //      0                  1
-        if (current_depth == (predictions.shape.len - 1)) {
-            //declaring res as the result of the sum of the MSE
-            var res: T = 0;
+            //create the shape of the output tensor
             const allocator = std.heap.page_allocator;
+            var out_shape = allocator.alloc(usize, (predictions.shape.len - 1)) catch {
+                return TensorMathError.MemError;
+            };
 
-            const get_location = try allocator.alloc(usize, location.len);
-            defer allocator.free(get_location);
-            //initializing get location to the same values of location
-            for (0..get_location.len) |i| {
-                get_location[i] = location[i];
+            for (0..out_shape.len) |i| {
+                out_shape[i] = predictions.shape[i];
             }
 
-            //calculating the loss
-            for (0..predictions.shape[current_depth]) |i| {
-                get_location[current_depth] = i; //for each element of predictions vect and target vect
+            var out_tensor = Tensor(T).fromShape(&allocator, out_shape) catch {
+                return TensorMathError.MemError;
+            };
 
-                const target = try targets.get_at(location);
-                const prediction = try predictions.get_at(location);
-                const diff = target - prediction;
-                res += diff * diff;
-            }
-            const divisor: T = Convert.convert(usize, T, predictions.shape[current_depth]);
-            switch (@typeInfo(T)) {
-                .Int => res = @divFloor(res, divisor),
-                else => res = res / divisor,
+            //initialize the current location to all 0
+            const location = allocator.alloc(usize, predictions.shape.len) catch {
+                return TensorMathError.MemError;
+            };
+
+            for (location) |*loc| {
+                loc.* = 0;
             }
 
-            //declaring and initializing the landing location of the sum
-            const out_location = try allocator.alloc(usize, predictions.shape.len - 1);
-            defer allocator.free(out_location);
-            for (0..out_location.len) |i| {
-                out_location[i] = location[i];
+            //call mutidim_mat_mul to handle multidimensionality
+            try multidim_MSE(
+                T,
+                predictions,
+                targets,
+                &out_tensor,
+                0,
+                location,
+            );
+
+            //out_tensor.info();
+            return out_tensor;
+        }
+
+        fn multidim_MSE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
+            //      0                  1
+            if (current_depth == (predictions.shape.len - 1)) {
+                //declaring res as the result of the sum of the MSE
+                var res: T = 0;
+                const allocator = std.heap.page_allocator;
+
+                const get_location = try allocator.alloc(usize, location.len);
+                defer allocator.free(get_location);
+                //initializing get location to the same values of location
+                for (0..get_location.len) |i| {
+                    get_location[i] = location[i];
+                }
+
+                //calculating the loss
+                for (0..predictions.shape[current_depth]) |i| {
+                    get_location[current_depth] = i; //for each element of predictions vect and target vect
+
+                    const target = try targets.get_at(location);
+                    const prediction = try predictions.get_at(location);
+                    const diff = target - prediction;
+                    res += diff * diff;
+                }
+                const divisor: T = Convert.convert(usize, T, predictions.shape[current_depth]);
+                switch (@typeInfo(T)) {
+                    .Int => res = @divFloor(res, divisor),
+                    else => res = res / divisor,
+                }
+
+                //declaring and initializing the landing location of the sum
+                const out_location = try allocator.alloc(usize, predictions.shape.len - 1);
+                defer allocator.free(out_location);
+                for (0..out_location.len) |i| {
+                    out_location[i] = location[i];
+                }
+
+                //set the loss value into out_tensor
+                try out_tensor.set_at(out_location, res);
+            } else {
+                // for 0,1
+                for (0..predictions.shape[current_depth]) |element_at_current_depth| {
+                    //print depth:
+                    //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+                    location[current_depth] = element_at_current_depth;
+                    //otherwise I have to go deeper
+                    try multidim_MSE(
+                        T,
+                        predictions,
+                        targets,
+                        out_tensor,
+                        current_depth + 1,
+                        location,
+                    );
+                }
+            }
+        }
+
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+            _ = self;
+
+            //check on the size of predictions, targets and gradient
+            if (predictions.size != targets.size or gradient.size != targets.size) {
+                return LossError.SizeMismatch;
+            }
+            //checks on the shape of predictions, targets and gradient
+            if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+                return LossError.ShapeMismatch;
+            }
+            for (predictions.shape, 0..) |*dim, i| {
+                if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
             }
 
-            //set the loss value into out_tensor
-            try out_tensor.set_at(out_location, res);
-        } else {
-            // for 0,1
-            for (0..predictions.shape[current_depth]) |element_at_current_depth| {
-                //print depth:
-                //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
-                location[current_depth] = element_at_current_depth;
-                //otherwise I have to go deeper
-                try multidim_MSE(
-                    T,
-                    predictions,
-                    targets,
-                    out_tensor,
-                    current_depth + 1,
-                    location,
-                );
+            const n: f32 = @floatFromInt(predictions.size);
+
+            for (0..predictions.size) |i| {
+                gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
             }
         }
-    }
-
-    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
-        //check on the size of predictions, targets and gradient
-        if (predictions.size != targets.size or gradient.size != targets.size) {
-            return LossError.SizeMismatch;
-        }
-        //checks on the shape of predictions, targets and gradient
-        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
-            return LossError.ShapeMismatch;
-        }
-        for (predictions.shape, 0..) |*dim, i| {
-            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
-        }
-
-        const n: f32 = @floatFromInt(predictions.size);
-
-        for (0..predictions.size) |i| {
-            gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
-        }
-    }
-};
-
+    };
+}
 //Categorical Cross-Entropy loss function
-pub const CCELoss = struct {
-    //return a rensor where the smallest element is the result of the loss function for each array of weights
-    //         //ex:
-    //         // PredictionTens =[ [ vect , vect ],
-    //         //                   [ vect , vect ],
-    //         //                   [ vect , vect ] ] -> 3 x 2 x vect.len
-    //         // TargetTens = same of prediction
-    //         // OutputTens = [ [ a, b],
-    //         //                [ c, d],
-    //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
-    //         //
-    //
-    pub fn lossFn(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+pub fn CCELoss() type {
+    return struct {
+        //return a rensor where the smallest element is the result of the loss function for each array of weights
+        //         //ex:
+        //         // PredictionTens =[ [ vect , vect ],
+        //         //                   [ vect , vect ],
+        //         //                   [ vect , vect ] ] -> 3 x 2 x vect.len
+        //         // TargetTens = same of prediction
+        //         // OutputTens = [ [ a, b],
+        //         //                [ c, d],
+        //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
+        //         //
+        //
+        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            _ = self;
 
-        //CHECKS :
-        // -inputs size
-        if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
+            //CHECKS :
+            // -inputs size
+            if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
 
-        //create the shape of the output tensor
-        const allocator = std.heap.page_allocator;
-        var out_shape = allocator.alloc(usize, (predictions.shape.len - 1)) catch {
-            return TensorMathError.MemError;
-        };
-
-        for (0..out_shape.len) |i| {
-            out_shape[i] = predictions.shape[i];
-        }
-
-        var out_tensor = Tensor(T).fromShape(&allocator, out_shape) catch {
-            return TensorMathError.MemError;
-        };
-
-        //initialize the current location to all 0
-        const location = allocator.alloc(usize, predictions.shape.len) catch {
-            return TensorMathError.MemError;
-        };
-
-        for (location) |*loc| {
-            loc.* = 0;
-        }
-
-        //call mutidim_mat_mul to handle multidimensionality
-        try multidim_CCE(
-            T,
-            predictions,
-            targets,
-            &out_tensor,
-            0,
-            location,
-        );
-
-        //out_tensor.info();
-        return out_tensor;
-    }
-
-    fn multidim_CCE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
-        if (current_depth == (predictions.shape.len - 1)) {
-            //declaring res as the result of the sum of the MSE
-            var res: f32 = 0.0;
+            //create the shape of the output tensor
             const allocator = std.heap.page_allocator;
+            var out_shape = allocator.alloc(usize, (predictions.shape.len - 1)) catch {
+                return TensorMathError.MemError;
+            };
 
-            const get_location = try allocator.alloc(usize, location.len);
-            defer allocator.free(get_location);
-            //initializing get location to the same values of location
-            for (0..get_location.len) |i| {
-                get_location[i] = location[i];
+            for (0..out_shape.len) |i| {
+                out_shape[i] = predictions.shape[i];
             }
 
-            //predictions.info();
-            //targets.info();
-            //std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
-            //std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
+            var out_tensor = Tensor(T).fromShape(&allocator, out_shape) catch {
+                return TensorMathError.MemError;
+            };
 
-            //calculating the loss
-            for (0..predictions.shape[current_depth]) |i| {
-                get_location[current_depth] = i; //for each element of predictions vect and target vect
-                const target = try targets.get_at(get_location);
-                const prediction = try predictions.get_at(get_location);
-                const log = std.math.log(f32, std.math.e, prediction);
-                res -= (target * log);
-                //std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
-                // for (get_location) |*val| {
+            //initialize the current location to all 0
+            const location = allocator.alloc(usize, predictions.shape.len) catch {
+                return TensorMathError.MemError;
+            };
+
+            for (location) |*loc| {
+                loc.* = 0;
+            }
+
+            //call mutidim_mat_mul to handle multidimensionality
+            try multidim_CCE(
+                T,
+                predictions,
+                targets,
+                &out_tensor,
+                0,
+                location,
+            );
+
+            //out_tensor.info();
+            return out_tensor;
+        }
+
+        fn multidim_CCE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
+            if (current_depth == (predictions.shape.len - 1)) {
+                //declaring res as the result of the sum of the MSE
+                var res: f32 = 0.0;
+                const allocator = std.heap.page_allocator;
+
+                const get_location = try allocator.alloc(usize, location.len);
+                defer allocator.free(get_location);
+                //initializing get location to the same values of location
+                for (0..get_location.len) |i| {
+                    get_location[i] = location[i];
+                }
+
+                //predictions.info();
+                //targets.info();
+                //std.debug.print("\n predictions get_at [0, 1]:{} ", .{try predictions.get_at(&[2]usize{ 0, 1 })});
+                //std.debug.print("\n predictions get 1:{} ", .{try predictions.get(1)});
+
+                //calculating the loss
+                for (0..predictions.shape[current_depth]) |i| {
+                    get_location[current_depth] = i; //for each element of predictions vect and target vect
+                    const target = try targets.get_at(get_location);
+                    const prediction = try predictions.get_at(get_location);
+                    const log = std.math.log(f32, std.math.e, prediction);
+                    res -= (target * log);
+                    //std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
+                    // for (get_location) |*val| {
+                    //     std.debug.print("{} ", .{val.*});
+                    // }
+                }
+
+                //declaring and initializing the landing location of the sum
+                const out_location = try allocator.alloc(usize, predictions.shape.len - 1);
+                defer allocator.free(out_location);
+                for (0..out_location.len) |i| {
+                    out_location[i] = location[i];
+                }
+
+                const out_res: T = Convert.convert(f32, T, res);
+                //set the loss value into out_tensor
+                //std.debug.print("\n CCE set val {} at: ", .{out_res});
+                // for (out_location) |*val| {
                 //     std.debug.print("{} ", .{val.*});
                 // }
-            }
-
-            //declaring and initializing the landing location of the sum
-            const out_location = try allocator.alloc(usize, predictions.shape.len - 1);
-            defer allocator.free(out_location);
-            for (0..out_location.len) |i| {
-                out_location[i] = location[i];
-            }
-
-            const out_res: T = Convert.convert(f32, T, res);
-            //set the loss value into out_tensor
-            //std.debug.print("\n CCE set val {} at: ", .{out_res});
-            // for (out_location) |*val| {
-            //     std.debug.print("{} ", .{val.*});
-            // }
-            try out_tensor.set_at(out_location, out_res);
-        } else {
-            // for 0,1
-            for (0..predictions.shape[current_depth]) |element_at_current_depth| {
-                //print depth:
-                //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
-                location[current_depth] = element_at_current_depth;
-                //otherwise I have to go deeper
-                try multidim_CCE(
-                    T,
-                    predictions,
-                    targets,
-                    out_tensor,
-                    current_depth + 1,
-                    location,
-                );
+                try out_tensor.set_at(out_location, out_res);
+            } else {
+                // for 0,1
+                for (0..predictions.shape[current_depth]) |element_at_current_depth| {
+                    //print depth:
+                    //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+                    location[current_depth] = element_at_current_depth;
+                    //otherwise I have to go deeper
+                    try multidim_CCE(
+                        T,
+                        predictions,
+                        targets,
+                        out_tensor,
+                        current_depth + 1,
+                        location,
+                    );
+                }
             }
         }
-    }
 
-    pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
-        //check on the size of predictions, targets and gradient
-        if (predictions.size != targets.size or gradient.size != targets.size) {
-            return LossError.SizeMismatch;
-        }
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+            _ = self;
 
-        //checks on the shape of predictions, targets and gradient
-        if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
-            return LossError.ShapeMismatch;
-        }
-        for (predictions.shape, 0..) |*dim, i| {
-            if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
-        }
-
-        const n = predictions.size;
-
-        for (0..n) |i| {
-            if (predictions.data[i] == 0.0) {
-                return LossError.InvalidPrediction; // Avoid division by zero
+            //check on the size of predictions, targets and gradient
+            if (predictions.size != targets.size or gradient.size != targets.size) {
+                return LossError.SizeMismatch;
             }
-            gradient.data[i] = -targets.data[i] / predictions.data[i];
+
+            //checks on the shape of predictions, targets and gradient
+            if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+                return LossError.ShapeMismatch;
+            }
+            for (predictions.shape, 0..) |*dim, i| {
+                if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
+            }
+
+            const n = predictions.size;
+
+            for (0..n) |i| {
+                if (predictions.data[i] == 0.0) {
+                    return LossError.InvalidPrediction; // Avoid division by zero
+                }
+                gradient.data[i] = -targets.data[i] / predictions.data[i];
+            }
         }
-    }
-};
+    };
+}

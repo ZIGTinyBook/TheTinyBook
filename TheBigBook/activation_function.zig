@@ -4,10 +4,10 @@ const TensorError = @import("./tensor.zig").TensorError;
 
 // activation function Interface
 
-pub fn ActivationFunction(activationFunction: fn () type) type {
-    const act = activationFunction(){};
+pub fn ActivationFunction(activationFunctionStruct: fn () type) type {
+    const act = activationFunctionStruct(){};
     return struct {
-        activation: activationFunction() = act,
+        activation: activationFunctionStruct() = act,
 
         pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
             try self.activation.forward(T, input);

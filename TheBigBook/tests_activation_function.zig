@@ -4,8 +4,14 @@ const ActivFun = @import("./activation_function.zig");
 const ReLU = @import("./activation_function.zig").ReLU;
 const Softmax = @import("./activation_function.zig").Softmax;
 
+test "tests description" {
+    std.debug.print("\n--- Running activation_function tests\n", .{});
+}
+
 // initialization from activationFunction()------------------------------------------------
 test "ReLU from ActivationFunction()" {
+    std.debug.print("\n     test: ReLU from ActivationFunction()", .{});
+
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -28,6 +34,7 @@ test "ReLU from ActivationFunction()" {
 }
 
 test "Softmax from ActivationFunction()" {
+    std.debug.print("\n     test: Softmax from ActivationFunction()", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -51,6 +58,8 @@ test "Softmax from ActivationFunction()" {
 }
 
 test "ReLU all negative" {
+    std.debug.print("\n     test: ReLU all negative", .{});
+
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -63,7 +72,9 @@ test "ReLU all negative" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
-    try ReLU.forward(f32, 0, &t1);
+    var relu = ActivFun.ActivationFunction(ActivFun.ReLU){};
+
+    try relu.forward(f32, &t1);
 
     for (t1.data) |*val| {
         try std.testing.expect(0.0 == val.*);
@@ -71,6 +82,8 @@ test "ReLU all negative" {
 }
 
 test "ReLU all positive" {
+    std.debug.print("\n     test: ReLU all positive", .{});
+
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -83,7 +96,8 @@ test "ReLU all positive" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
-    try ReLU.forward(f32, 0, &t1);
+    var relu = ActivFun.ActivationFunction(ActivFun.ReLU){};
+    try relu.forward(f32, &t1);
 
     for (t1.data) |*val| {
         try std.testing.expect(val.* >= 0);
@@ -91,6 +105,8 @@ test "ReLU all positive" {
 }
 
 test "Softmax all positive" {
+    std.debug.print("\n     test: Softmax all positive", .{});
+
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -103,7 +119,8 @@ test "Softmax all positive" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
-    try Softmax.forward(f32, &t1);
+    var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
+    try soft.forward(f32, &t1);
     //now data is:
     //{ 0.2689414,  0.7310586  }
     //{ 0.2689414,  0.73105854 }
@@ -116,6 +133,8 @@ test "Softmax all positive" {
 }
 
 test "Softmax all 0" {
+    std.debug.print("\n     test: Softmax all 0", .{});
+
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
@@ -128,7 +147,8 @@ test "Softmax all 0" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
-    try Softmax.forward(f32, &t1);
+    var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
+    try soft.forward(f32, &t1);
     //now data is:
     //{ 0.2689414,  0.7310586  }
     //{ 0.2689414,  0.73105854 }
