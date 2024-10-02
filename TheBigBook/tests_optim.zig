@@ -2,7 +2,7 @@ const std = @import("std");
 const tensor = @import("tensor.zig");
 const layer = @import("layers.zig");
 const Model = @import("model.zig");
-const OptimizerSGD = @import("optim.zig").optimizer_SGD;
+const Optim = @import("optim.zig");
 
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
@@ -36,8 +36,8 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     std.debug.print("Weights before:\n", .{});
     dense_layer.weights.info();
 
-    var optimizer = OptimizerSGD(f64, 0.01, &allocator){};
-
+    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.01, &allocator){ // Here we pass the actual instance of the optimizer
+    };
     try optimizer.step(&model);
 
     // Stampa i pesi dopo l'aggiornamento
