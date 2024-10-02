@@ -16,8 +16,9 @@ const errors = error{
 
 // Define the Optimizer struct with the optimizer function, learning rate, and allocator
 pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.Allocator) type, lr: f64, allocator: *const std.mem.Allocator) type {
+    const optim = func(T, lr, allocator){};
     return struct {
-        optimizer: func(T, lr, allocator), // Instantiation of the optimizer (e.g., SGD, Adam)
+        optimizer: func(T, lr, allocator) = optim, // Instantiation of the optimizer (e.g., SGD, Adam)
 
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             // Directly call the optimizer's step function
@@ -109,22 +110,13 @@ pub fn main() !void {
     dense_layer.weights.info();
 
     // Create an instance of the optimizer_SGD
-    var sgd_optimizer = optimizer_SGD(f64, 0.01, &allocator){};
-    var adam_optimizer = optimizer_ADAMTEST(f64, 0.01, &allocator){};
+
     // Initialize the Optimizer struct, passing the sgd_optimizer instance
-    var optimizer1 = Optimizer(f64, optimizer_SGD, 0.01, &allocator){
-        .optimizer = sgd_optimizer, // Here we pass the actual instance of the optimizer
+    var optimizer1 = Optimizer(f64, optimizer_SGD, 0.01, &allocator){ // Here we pass the actual instance of the optimizer
     };
 
-    var optimizer2 = Optimizer(f64, optimizer_ADAMTEST, 0.01, &allocator){
-        .optimizer = adam_optimizer, // Here we pass the actual instance of the optimizer
-    };
-
-    sgd_optimizer.learning_rate = 0.1;
-    adam_optimizer.learning_rate = 0.1;
     std.debug.print("AFTERRRRRR\n", .{});
     try optimizer1.step(&model);
-    try optimizer2.step(&model);
 
     std.debug.print("\nWeights after:\n", .{});
     dense_layer.weights.info();
