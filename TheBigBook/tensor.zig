@@ -46,6 +46,11 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
+        //copy self and return it in another Tensor
+        pub fn copy(self: *@This()) !Tensor(T) {
+            return try Tensor(T).fromArray(self.allocator, self.data, self.shape);
+        }
+
         //inizialize and return a all-zero tensor starting from the shape
         pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
             var total_size: usize = 1;
