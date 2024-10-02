@@ -12,6 +12,7 @@ test "DenseLayer forward test" {
         .weights = undefined,
         .bias = undefined,
         .output = undefined,
+        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
