@@ -26,8 +26,9 @@ test "Model with multiple layers forward test" {
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
-    try layer1.init(3, 2, &rng);
+    try layer1.init(3, 2, &rng, "ReLU");
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -41,8 +42,9 @@ test "Model with multiple layers forward test" {
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
-    try layer2.init(2, 3, &rng);
+    try layer2.init(2, 3, &rng, "ReLU");
     try model.addLayer(&layer2);
 
     var inputArray: [2][3]f64 = [_][3]f64{
