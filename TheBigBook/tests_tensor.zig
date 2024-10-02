@@ -6,6 +6,7 @@ test "Tensor test description" {
 }
 
 test "Sizetest" {
+    std.debug.print("\n     test: Size ", .{});
     const allocator = std.heap.page_allocator;
     var tensor = try Tensor(f64).init(&allocator);
     const size = tensor.getSize();
@@ -13,7 +14,7 @@ test "Sizetest" {
 }
 
 test "initialization fromShape" {
-    std.debug.print("\n     initialization fromShape", .{});
+    std.debug.print("\n     test:initialization fromShape", .{});
     const allocator = std.heap.page_allocator;
     var shape: [2]usize = [_]usize{ 2, 3 };
     var tensor = try Tensor(f64).fromShape(&allocator, &shape);
@@ -26,7 +27,7 @@ test "initialization fromShape" {
 }
 
 test "Get_Set_Test" {
-    std.debug.print("\n     Get_Set_Test", .{});
+    std.debug.print("\n     test:Get_Set_Test", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -44,7 +45,7 @@ test "Get_Set_Test" {
 }
 
 test "Flatten Index Test" {
-    std.debug.print("\n     Flatten Index Test", .{});
+    std.debug.print("\n     test:Flatten Index Test", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -67,7 +68,7 @@ test "Flatten Index Test" {
 }
 
 test "Get_at Set_at Test" {
-    std.debug.print("\n     Get_at Set_at Test", .{});
+    std.debug.print("\n     test:Get_at Set_at Test", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -99,7 +100,7 @@ test "Get_at Set_at Test" {
 }
 
 test "init than fill " {
-    std.debug.print("\n     init than fill ", .{});
+    std.debug.print("\n     test:init than fill ", .{});
     const allocator = std.heap.page_allocator;
     var tensor = try Tensor(u8).init(&allocator);
     defer tensor.deinit();
@@ -121,7 +122,7 @@ test "init than fill " {
 }
 
 test "fromArray than fill " {
-    std.debug.print("\n     fromArray than fill ", .{});
+    std.debug.print("\n     test:fromArray than fill ", .{});
     const allocator = std.heap.page_allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -150,4 +151,31 @@ test "fromArray than fill " {
     try std.testing.expect(tensor.data[6] == 7);
     try std.testing.expect(tensor.data[7] == 8);
     try std.testing.expect(tensor.data[8] == 9);
+}
+
+test " copy() method" {
+    std.debug.print("\n     test:copy() method ", .{});
+    const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 10, 20, 30 },
+        [_]u8{ 40, 50, 60 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    defer tensor.deinit();
+
+    var tensorCopy = try tensor.copy();
+    defer tensorCopy.deinit();
+
+    for (0..tensor.data.len) |i| {
+        try std.testing.expect(tensor.data[i] == tensorCopy.data[i]);
+    }
+
+    for (0..tensor.shape.len) |i| {
+        try std.testing.expect(tensor.shape[i] == tensorCopy.shape[i]);
+    }
+
+    tensorCopy.info();
+    tensor.info();
 }
