@@ -4,7 +4,7 @@ const TensMath = @import("./tensor_math.zig");
 const Architectures = @import("./architectures.zig").Architectures;
 const TensorError = @import("./tensor_math.zig").TensorError;
 const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
-const ActivationFunction = @import("./activation_function");
+const ActivLib = @import("./activation_function.zig");
 
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
@@ -40,10 +40,10 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         weightShape: []usize,
         biasShape: []usize,
         allocator: *const std.mem.Allocator,
-        //activation: type,
+        activation: []const u8,
 
-        pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
-            std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
+        pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256, activationFunction: []const u8) !void {
+            //std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             var weight_shape: [2]usize = [_]usize{ n_inputs, n_neurons };
             var bias_shape: [1]usize = [_]usize{n_neurons};
@@ -51,11 +51,11 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.biasShape = &bias_shape;
             self.allocator = alloc;
 
-            std.debug.print("Generating random weights...\n", .{});
+            //std.debug.print("Generating random weights...\n", .{});
             const weight_matrix = try randn(T, n_inputs, n_neurons, rng);
             const bias_matrix = try zeros(T, 1, n_neurons);
 
-            std.debug.print("Initializing weights and bias...\n", .{});
+            //std.debug.print("Initializing weights and bias...\n", .{});
             self.w_gradients = try tensor.Tensor(T).init(alloc);
             try self.w_gradients.fill(try zeros(T, n_inputs, n_neurons), &weight_shape);
             self.b_gradients = try tensor.Tensor(T).init(alloc);
@@ -65,16 +65,23 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
 
-            std.debug.print("Weight shape: {d} x {d}\n", .{ weight_shape[0], weight_shape[1] });
-            std.debug.print("Bias shape: {d} x {d}\n", .{ 1, bias_shape[0] });
+            //this showld be the correct way to implement it ...
+            //self.activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
+            //It doesn't work and I'm stuck... please forgive me for what Imma do...
+            self.activation = activationFunction;
+            //just see sep 7 of forward()
 
-            std.debug.print("shapes are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
+            //std.debug.print("Weight shape: {d} x {d}\n", .{ weight_shape[0], weight_shape[1] });
+            //std.debug.print("Bias shape: {d} x {d}\n", .{ 1, bias_shape[0] });
 
-            std.debug.print("Weights and bias initialized.\n", .{});
+            //std.debug.print("shapes are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
+
+            //std.debug.print("Weights and bias initialized.\n", .{});
         }
+
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
-            std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
+            // std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
+            // std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
 
             // 1. Perform multiplication between inputs and weights (dot product)
             var dot_product = try TensMath.compute_dot_product(T, input, &self.weights);
@@ -98,14 +105,23 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 6. Fills self.output with data from dot_product
             try self.output.fill(dot_product.data, dot_product.shape);
 
-            // 7. Print information on the final output
+            // 7. Apply activation function
+            if (std.mem.eql(u8, self.activation, "ReLU")) {
+                var activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
+                try activation.forward(T, &self.output);
+            } else {
+                var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
+                try activation.forward(T, &self.output);
+            }
+
+            // 8. Print information on the final output
             self.output.info(); // print output using info()
 
             return self.output;
         }
 
         pub fn deinit(self: *@This()) void {
-            std.debug.print("Deallocating DenseLayer resources...\n", .{});
+            //std.debug.print("Deallocating DenseLayer resources...\n", .{});
 
             // Dealloc tensors of weights, bias and output if allocated
             if (self.weights.data.len > 0) {
@@ -150,10 +166,13 @@ pub fn main() !void {
         .n_neurons = 0,
         .weightShape = undefined,
         .biasShape = undefined,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
 
-    try dense_layer.init(n_inputs, n_neurons, &rng);
+    try dense_layer.init(n_inputs, n_neurons, &rng, "ReLU");
 
     std.debug.print("Weights and bias initialized\n", .{});
 
@@ -170,8 +189,6 @@ pub fn main() !void {
 
     _ = try dense_layer.forward(&input_tensor);
     dense_layer.output.info();
-
-    //
 
     dense_layer.output.deinit();
 }

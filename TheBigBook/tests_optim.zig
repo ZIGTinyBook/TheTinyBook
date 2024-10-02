@@ -28,8 +28,9 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
-    try dense_layer.init(3, 2, &rng); // Layer con 3 input e 2 neuroni
+    try dense_layer.init(3, 2, &rng, "ReLU"); // Layer con 3 input e 2 neuroni
     try model.addLayer(&dense_layer);
 
     // Stampa informazioni iniziali dei pesi

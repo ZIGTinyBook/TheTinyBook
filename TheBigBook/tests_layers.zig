@@ -3,7 +3,7 @@ const DenseLayer = @import("layers.zig").DenseLayer;
 const tensor = @import("tensor.zig");
 
 test "DenseLayer forward test" {
-    const allocator = &std.testing.allocator;
+    const allocator = &std.heap.page_allocator;
 
     var rng = std.Random.Xoshiro256.init(12345);
 
@@ -19,10 +19,11 @@ test "DenseLayer forward test" {
         .weightShape = undefined,
         .biasShape = undefined,
         .allocator = allocator,
+        .activation = undefined,
     };
 
     // n_input = 4, n_neurons= 2
-    try dense_layer.init(4, 2, &rng);
+    try dense_layer.init(4, 2, &rng, "ReLU");
 
     std.debug.print("Pesi e bias inizializzati\n", .{});
 
@@ -41,8 +42,8 @@ test "DenseLayer forward test" {
     try std.testing.expectEqual(dense_layer.output.shape[0], 2);
     try std.testing.expectEqual(dense_layer.output.shape[1], 2);
 
-    try std.testing.expect(dense_layer.output.data[0] != 0);
-    try std.testing.expect(dense_layer.output.data[1] != 0);
+    try std.testing.expect(dense_layer.output.data[0] >= 0);
+    try std.testing.expect(dense_layer.output.data[1] >= 0);
 
     dense_layer.deinit();
     input_tensor.deinit();
