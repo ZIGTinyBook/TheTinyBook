@@ -134,24 +134,26 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
 
             // 5. Allocate memory for self.output with the same shape as dot_product
-            self.output = try tensor.Tensor(T).init(self.allocator);
+            self.output = try dot_product.copy();
 
-            // 6. Fills self.output with data from dot_product
-            try self.output.fill(dot_product.data, dot_product.shape);
+            //copy the output in to outputActivation so to be modified in the activation function
+            self.outputActivation = try self.output.copy();
 
             // 7. Apply activation function
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
-                try activation.forward(T, &self.output);
-            } else {
+                try activation.forward(T, &self.outputActivation);
+            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
-                try activation.forward(T, &self.output);
+                try activation.forward(T, &self.outputActivation);
             }
 
             // 8. Print information on the final output
             self.output.info(); // print output using info()
+            self.outputActivation.info();
 
-            return self.output;
+            //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
+            return self.outputActivation;
         }
 
         pub fn backward(self: *@This(), dval: *tensor.Tensor(T)) void {

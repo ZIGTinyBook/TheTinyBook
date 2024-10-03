@@ -1,6 +1,8 @@
 const std = @import("std");
 const tensor = @import("tensor.zig");
 const layer = @import("layers.zig");
+const Loss = @import("lossFunction.zig");
+const TensMath = @import("tensor_math.zig");
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
@@ -30,6 +32,28 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             }
             self.allocator.free(self.layers);
         }
+
+        pub fn train(self: *@This(), input: *tensor.Tensor(T), targets: *tensor.Tensor(T), epochs: u32) void {
+            var LossMeanRecord = allocator.alloc(f32, epochs);
+
+            for (epochs) |i| {
+
+                //forwarding
+                const predictions = self.forward(input);
+
+                //compute loss
+                const loser = Loss.LossFunction(Loss.MSELoss){};
+                var loss = loser.computeLoss(T, predictions, targets);
+                loss.info();
+
+                //compute accuracy
+                LossMeanRecord[i] = TensMath.mean(T, loss);
+                //backwarding
+                self.backward();
+                //optimizing
+
+            }
+        }
     };
 }
 
@@ -39,6 +63,7 @@ pub fn main() !void {
     var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
+        .loss = undefined,
     };
     try model.init();
 

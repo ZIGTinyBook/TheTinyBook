@@ -176,6 +176,6 @@ test " copy() method" {
         try std.testing.expect(tensor.shape[i] == tensorCopy.shape[i]);
     }
 
-    tensorCopy.info();
-    tensor.info();
+    // tensorCopy.info();
+    // tensor.info();
 }
