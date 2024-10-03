@@ -43,8 +43,8 @@ test "DenseLayer forward test" {
     try std.testing.expectEqual(dense_layer.output.shape[0], 2);
     try std.testing.expectEqual(dense_layer.output.shape[1], 2);
 
-    try std.testing.expect(dense_layer.output.data[0] >= 0);
-    try std.testing.expect(dense_layer.output.data[1] >= 0);
+    try std.testing.expect(dense_layer.outputActivation.data[0] >= 0);
+    try std.testing.expect(dense_layer.outputActivation.data[1] >= 0);
 
     dense_layer.deinit();
     input_tensor.deinit();

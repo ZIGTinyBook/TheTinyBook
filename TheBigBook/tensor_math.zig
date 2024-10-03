@@ -2,6 +2,7 @@ const std = @import("std");
 const Tensor = @import("tensor.zig").Tensor; // Import Tensor type
 const TensorError = @import("tensor.zig").TensorError;
 const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
+const Converter = @import("typeConverter.zig");
 
 pub const ArchitectureError = error{
     UnknownArchitecture,
@@ -66,6 +67,16 @@ fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bi
         array[start + i] += bias.data[i];
         //std.debug.print("\nthread array[{}] = {}", .{ start + i, array[start + i] });
     }
+}
+
+pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
+    var res: f32 = 0;
+
+    for (tensor.data) |*d| {
+        res += d.*;
+    }
+    res = res / Converter.convert(usize, f32, tensor.size);
+    return res;
 }
 
 //returns a Tensor with the same shape pf t1 and t2, where each element --> out[location] = t1[location] + t2[location]
