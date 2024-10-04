@@ -160,7 +160,8 @@ pub fn MSELoss() type {
             for (predictions.shape, 0..) |*dim, i| {
                 if (dim.* != targets.shape[i]) return LossError.ShapeMismatch;
             }
-
+            predictions.info();
+            targets.info();
             var gradient = try Tensor(T).fromShape(predictions.allocator, predictions.shape);
 
             const n: f32 = @floatFromInt(predictions.size);

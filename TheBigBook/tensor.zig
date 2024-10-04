@@ -17,26 +17,6 @@ pub fn Tensor(comptime T: type) type {
         shape: []usize,
         allocator: *const std.mem.Allocator,
 
-        pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
-            //std.debug.print("\n fromArray initialization...", .{});
-            var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
-            }
-            const tensorShape = try allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
-
-            const tensorData = try allocator.alloc(T, total_size);
-            _ = flattenArray(T, inputArray, tensorData, 0);
-
-            return @This(){
-                .data = tensorData,
-                .size = total_size,
-                .shape = tensorShape,
-                .allocator = allocator,
-            };
-        }
-
         pub fn init(allocator: *const std.mem.Allocator) !@This() {
             return @This(){
                 .data = &[_]T{},
@@ -60,6 +40,26 @@ pub fn Tensor(comptime T: type) type {
                 self.allocator.free(self.shape);
                 self.shape = &[_]usize{}; // Resetta lo slice a vuoto
             }
+        }
+
+        pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
+            //std.debug.print("\n fromArray initialization...", .{});
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            const tensorShape = try allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
+
+            const tensorData = try allocator.alloc(T, total_size);
+            _ = flattenArray(T, inputArray, tensorData, 0);
+
+            return @This(){
+                .data = tensorData,
+                .size = total_size,
+                .shape = tensorShape,
+                .allocator = allocator,
+            };
         }
 
         fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
@@ -131,12 +131,20 @@ pub fn Tensor(comptime T: type) type {
                 total_size *= dim;
             }
 
+            const tensorShape = try allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
+
             const tensorData = try allocator.alloc(T, total_size);
             for (tensorData) |*data| {
                 data.* = 0;
             }
 
-            return @This().fromArray(allocator, tensorData, shape);
+            return @This(){
+                .data = tensorData,
+                .size = total_size,
+                .shape = tensorShape,
+                .allocator = allocator,
+            };
         }
 
         pub fn reshape(self: *@This(), shape: []usize) !void {

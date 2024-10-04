@@ -70,6 +70,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 //compute gradient of the loss
                 std.debug.print("\n-------------------------------computing loss gradient", .{});
                 const grad = try loser.computeGradient(T, &predictions, targets);
+                grad.info();
 
                 //backwarding
                 std.debug.print("\n-------------------------------backwarding", .{});
