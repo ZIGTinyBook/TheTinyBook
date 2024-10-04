@@ -168,6 +168,20 @@ pub fn Tensor(comptime T: type) type {
             self.size = total_size;
         }
 
+        pub fn reshape(self: *@This(), shape: []usize) !void {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            if (total_size != self.size) {
+                return TensorError.InputArrayWrongSize;
+            }
+            //use cycle to copy elements of shape
+            for (shape, 0..) |dim, i| {
+                self.shape[i] = dim;
+            }
+        }
+
         pub fn getSize(self: *@This()) usize {
             return self.size;
         }
@@ -265,6 +279,7 @@ pub fn main() !void {
     };
 
     var shape: [2]usize = [_]usize{ 2, 3 };
+    var shape2: [2]usize = [_]usize{ 3, 2 };
 
     // Creazione e gestione del primo tensore (tensor)
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
@@ -294,6 +309,11 @@ pub fn main() !void {
     std.debug.print("\nTesting toArray on Tensor 1:\n", .{});
     const array_from_tensor = tensor.toArray(2);
     std.debug.print("Array extracted from tensor: {any}\n", .{array_from_tensor});
+
+    std.debug.print("\nTesting reshape 2:\n", .{});
+    try tensor.reshape(&shape2);
+    const array_from_tensor_R = tensor.toArray(2);
+    std.debug.print("Array extracted from tensor after reshape: {any}\n", .{array_from_tensor_R});
 
     std.debug.print("\nTesting toArray on Tensor 3:\n", .{});
     const array_from_tensor3 = tensor3.toArray(2);
