@@ -46,6 +46,22 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
+        pub fn deinit(self: *@This()) void {
+            //std.debug.print("\n deinit tensor:\n", .{});
+            // Verifica se `data` è valido e non vuoto prima di liberarlo
+            if (self.data.len > 0) {
+                //std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
+                self.allocator.free(self.data);
+                self.data = &[_]T{}; // Resetta lo slice a vuoto
+            }
+            // Verifica se `shape` è valido e non vuoto prima di liberarlo
+            if (self.shape.len > 0) {
+                //std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
+                self.allocator.free(self.shape);
+                self.shape = &[_]usize{}; // Resetta lo slice a vuoto
+            }
+        }
+
         fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
             return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
         }
@@ -56,6 +72,7 @@ pub fn Tensor(comptime T: type) type {
             }
             return constructMultidimensionalArray(self.allocator, T, self.data, self.shape, 0, dimension);
         }
+
         fn constructMultidimensionalArray(
             allocator: *const std.mem.Allocator,
             comptime ElementType: type,
@@ -93,6 +110,7 @@ pub fn Tensor(comptime T: type) type {
 
             return result;
         }
+
         fn calculateProduct(slice: []usize) usize {
             var product: usize = 1;
             for (slice) |elem| {
@@ -121,6 +139,20 @@ pub fn Tensor(comptime T: type) type {
             return @This().fromArray(allocator, tensorData, shape);
         }
 
+        pub fn reshape(self: *@This(), shape: []usize) !void {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            if (total_size != self.size) {
+                return TensorError.InputArrayWrongSize;
+            }
+            //use cycle to copy elements of shape
+            for (shape, 0..) |dim, i| {
+                self.shape[i] = dim;
+            }
+        }
+
         //pay attention, the fill() can also perform a reshape
         pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
 
@@ -143,22 +175,6 @@ pub fn Tensor(comptime T: type) type {
             self.shape = tensorShape;
         }
 
-        pub fn deinit(self: *@This()) void {
-            //std.debug.print("\n deinit tensor:\n", .{});
-            // Verifica se `data` è valido e non vuoto prima di liberarlo
-            if (self.data.len > 0) {
-                //std.debug.print("Liberazione di data con lunghezza: {}\n", .{self.data.len});
-                self.allocator.free(self.data);
-                self.data = &[_]T{}; // Resetta lo slice a vuoto
-            }
-            // Verifica se `shape` è valido e non vuoto prima di liberarlo
-            if (self.shape.len > 0) {
-                //std.debug.print("Liberazione di shape con lunghezza: {}\n", .{self.shape.len});
-                self.allocator.free(self.shape);
-                self.shape = &[_]usize{}; // Resetta lo slice a vuoto
-            }
-        }
-
         pub fn setShape(self: *@This(), shape: []usize) !void {
             var total_size: usize = 1;
             for (shape) |dim| {
@@ -166,20 +182,6 @@ pub fn Tensor(comptime T: type) type {
             }
             self.shape = shape;
             self.size = total_size;
-        }
-
-        pub fn reshape(self: *@This(), shape: []usize) !void {
-            var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
-            }
-            if (total_size != self.size) {
-                return TensorError.InputArrayWrongSize;
-            }
-            //use cycle to copy elements of shape
-            for (shape, 0..) |dim, i| {
-                self.shape[i] = dim;
-            }
         }
 
         pub fn getSize(self: *@This()) usize {

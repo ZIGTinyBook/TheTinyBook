@@ -42,7 +42,7 @@ pub fn ReLU() type {
 
             //apply ReLU
             //OSS: can be improved, see how did I parallelized CPU Tensor Sum
-            for (0..input.size) |i| {
+            for (0..(input.size - 1)) |i| {
                 if (input.data[i] > 0) input.data[i] = 1.0;
             }
         }

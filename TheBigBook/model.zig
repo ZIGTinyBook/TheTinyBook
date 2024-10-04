@@ -13,19 +13,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             self.layers = try self.allocator.alloc(layer.DenseLayer(T, allocator), 0);
         }
 
-        pub fn addLayer(self: *@This(), new_layer: *layer.DenseLayer(T, allocator)) !void {
-            self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
-            self.layers[self.layers.len - 1] = new_layer.*;
-        }
-
-        pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            var output = input.*;
-            for (self.layers) |*dense_layer| {
-                output = try dense_layer.forward(&output);
-            }
-            return output;
-        }
-
         pub fn deinit(self: *@This()) void {
             for (self.layers) |*dense_layer| {
                 dense_layer.deinit();
@@ -33,25 +20,63 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             self.allocator.free(self.layers);
         }
 
-        pub fn train(self: *@This(), input: *tensor.Tensor(T), targets: *tensor.Tensor(T), epochs: u32) void {
-            var LossMeanRecord = allocator.alloc(f32, epochs);
+        pub fn addLayer(self: *@This(), new_layer: *layer.DenseLayer(T, allocator)) !void {
+            self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
+            self.layers[self.layers.len - 1] = new_layer.*;
+        }
 
-            for (epochs) |i| {
+        pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
+            var output = input.*;
+            for (self.layers, 0..) |*dense_layer, i| {
+                std.debug.print("\n----------------------------------------output layer {}", .{i});
+                output = try dense_layer.forward(&output);
+                output.info();
+            }
+            return output;
+        }
+
+        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+
+            //grad is always equal to dot(grad, weights)
+            var grad = gradient;
+            var counter = self.layers.len - 1;
+            while (counter >= 0) : (counter -= 1) {
+                grad = try self.layers[counter].backward(grad);
+            }
+
+            return grad;
+        }
+
+        pub fn train(self: *@This(), input: *tensor.Tensor(T), targets: *tensor.Tensor(T), epochs: u32) !void {
+            var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
+
+            for (0..epochs) |i| {
+                std.debug.print("\n\n----------------------epoch:{}", .{i});
 
                 //forwarding
-                const predictions = self.forward(input);
+                std.debug.print("\n-------------------------------forwarding", .{});
+                var predictions = try self.forward(input);
 
                 //compute loss
-                const loser = Loss.LossFunction(Loss.MSELoss){};
-                var loss = loser.computeLoss(T, predictions, targets);
+                std.debug.print("\n-------------------------------computing loss", .{});
+                var loser = Loss.LossFunction(Loss.MSELoss){};
+                var loss = try loser.computeLoss(T, &predictions, targets);
                 loss.info();
 
                 //compute accuracy
-                LossMeanRecord[i] = TensMath.mean(T, loss);
-                //backwarding
-                self.backward();
-                //optimizing
+                LossMeanRecord[i] = TensMath.mean(T, &loss);
+                std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
 
+                //compute gradient of the loss
+                std.debug.print("\n-------------------------------computing loss gradient", .{});
+                const grad = try loser.computeGradient(T, &predictions, targets);
+
+                //backwarding
+                std.debug.print("\n-------------------------------backwarding", .{});
+                _ = try self.backward(grad);
+
+                //optimizing
+                std.debug.print("\n-------------------------------backwarding", .{});
             }
         }
     };

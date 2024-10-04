@@ -42,9 +42,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //gradients-----------------------
         w_gradients: tensor.Tensor(T),
         b_gradients: tensor.Tensor(T),
-        //shapes--------------------------
-        weightShape: []usize,
-        biasShape: []usize,
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
@@ -53,21 +50,24 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             var weight_shape: [2]usize = [_]usize{ n_inputs, n_neurons };
             var bias_shape: [1]usize = [_]usize{n_neurons};
-            self.weightShape = &weight_shape;
-            self.biasShape = &bias_shape;
             self.allocator = alloc;
 
             //std.debug.print("Generating random weights...\n", .{});
             const weight_matrix = try randn(T, n_inputs, n_neurons, rng);
-            const bias_matrix = try zeros(T, 1, n_neurons);
+            const bias_matrix = try randn(T, 1, n_neurons, rng);
 
             //std.debug.print("Initializing weights and bias...\n", .{});
+            //initializing gradients-----------------------------------------------------
             self.w_gradients = try tensor.Tensor(T).init(alloc);
             try self.w_gradients.fill(try zeros(T, n_inputs, n_neurons), &weight_shape);
             self.b_gradients = try tensor.Tensor(T).init(alloc);
             try self.b_gradients.fill(try zeros(T, 1, n_neurons), &bias_shape);
+
+            //initializing weights and biases--------------------------------------------
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);
             self.bias = try tensor.Tensor(T).fromArray(alloc, bias_matrix, &bias_shape);
+
+            //initializing number of neurons and inputs----------------------------------
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
 
@@ -101,7 +101,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 self.output.deinit();
             }
 
-            // Dealloca i tensori di gradients se allocati
+            // Dealloca i tensori di gradients se alsizelocati
             if (self.w_gradients.data.len > 0) {
                 self.w_gradients.deinit();
             }
@@ -122,8 +122,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             defer dot_product.deinit(); // Defer per liberare il tensor alla fine
 
             // 2. Print debug information for dot_product and bias
-            dot_product.info();
-            self.bias.info();
+            //dot_product.info();
+            //self.bias.info();
 
             // 3. Add bias to the dot product
             try TensMath.add_bias(T, &dot_product, &self.bias);
@@ -140,6 +140,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.outputActivation = try self.output.copy();
 
             // 7. Apply activation function
+            // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
+            //dynamic and we are trying to do everything at comtime, no excuses
+
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
                 try activation.forward(T, &self.outputActivation);
@@ -149,20 +152,31 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
 
             // 8. Print information on the final output
-            self.output.info(); // print output using info()
-            self.outputActivation.info();
+            //self.output.info(); // print output using info()
+            //self.outputActivation.info();
 
             //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
             return self.outputActivation;
         }
 
-        pub fn backward(self: *@This(), dval: *tensor.Tensor(T)) void {
-            _ = self;
-            _ = dval;
-            //compute Gradients on parameters
+        pub fn backward(self: *@This(), dval: *tensor.Tensor(T)) !*tensor.Tensor(T) {
 
-            //compute Gradient on values
+            //---derivate from the activation function
+            //forgive me the if cascade, look at sep 7 in this.forward() for more excuses
+            if (std.mem.eql(u8, self.activation, "ReLU")) {
+                var activ_grad = ActivLib.ActivationFunction(ActivLib.ReLU){};
+                try activ_grad.derivate(T, dval);
+            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
+                var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
+                try activ_grad.derivate(T, dval);
+            }
 
+            //---compute Gradients on parameters ( w_gradients, b_gradients )
+            dval.info();
+
+            //---compute Gradient on values and return it
+
+            return dval;
         }
     };
 }
