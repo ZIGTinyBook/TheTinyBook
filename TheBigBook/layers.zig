@@ -160,7 +160,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         pub fn backward(self: *@This(), dval: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-
+            std.debug.print("\n >>>>>>>>>>>", .{});
+            dval.info();
             //---derivate from the activation function
             //forgive me the if cascade, look at sep 7 in this.forward() for more excuses
             if (std.mem.eql(u8, self.activation, "ReLU")) {
@@ -171,6 +172,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activ_grad.derivate(T, dval);
             }
 
+            std.debug.print("\n >>>>>>>>>>>", .{});
             //---compute Gradients on parameters ( w_gradients, b_gradients )
             dval.info();
 
