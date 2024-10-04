@@ -179,3 +179,22 @@ test " copy() method" {
     // tensorCopy.info();
     // tensor.info();
 }
+
+test "to array " {
+    const allocator = std.heap.page_allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    defer tensor.deinit();
+    std.debug.print("Tensor 1 Info:\n", .{});
+    tensor.info();
+    std.debug.print("\nTesting toArray on Tensor 1:\n", .{});
+    const array_from_tensor = tensor.toArray(2);
+    std.debug.print("Array extracted from tensor: {any}\n", .{array_from_tensor});
+}

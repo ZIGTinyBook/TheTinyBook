@@ -46,6 +46,61 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
+        fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
+            return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
+        }
+
+        pub fn toArray(self: @This(), comptime dimension: usize) !MagicalReturnType(T, dimension) {
+            if (dimension == 1) {
+                return self.data;
+            }
+            return constructMultidimensionalArray(self.allocator, T, self.data, self.shape, 0, dimension);
+        }
+        fn constructMultidimensionalArray(
+            allocator: *const std.mem.Allocator,
+            comptime ElementType: type,
+            data: []ElementType,
+            shape: []usize,
+            comptime depth: usize,
+            comptime dimension: usize,
+        ) !MagicalReturnType(ElementType, dimension - depth) {
+            if (depth == dimension - 1) {
+                return data;
+            }
+
+            const current_dim = shape[depth];
+            var result = try allocator.alloc(
+                MagicalReturnType(ElementType, dimension - depth - 1),
+                current_dim,
+            );
+
+            //defer allocator.free(result);
+
+            var offset: usize = 0;
+            const sub_array_size = calculateProduct(shape[(depth + 1)..]);
+
+            for (0..current_dim) |i| {
+                result[i] = try constructMultidimensionalArray(
+                    allocator,
+                    ElementType,
+                    data[offset .. offset + sub_array_size],
+                    shape,
+                    depth + 1,
+                    dimension,
+                );
+                offset += sub_array_size;
+            }
+
+            return result;
+        }
+        fn calculateProduct(slice: []usize) usize {
+            var product: usize = 1;
+            for (slice) |elem| {
+                product *= elem;
+            }
+            return product;
+        }
+
         //copy self and return it in another Tensor
         pub fn copy(self: *@This()) !Tensor(T) {
             return try Tensor(T).fromArray(self.allocator, self.data, self.shape);
@@ -193,50 +248,65 @@ fn flattenArray(T: type, arr: anytype, flatArr: []T, startIndex: usize) usize {
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
+    // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
-        [_]u8{ 1.0, 2.0, 3.0 },
-        [_]u8{ 4.0, 5.0, 6.0 },
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
     };
+
     var inputArray2: [2][3]u8 = [_][3]u8{
-        [_]u8{ 6.0, 5.0, 4.0 },
-        [_]u8{ 3.0, 2.0, 1.0 },
+        [_]u8{ 6, 5, 4 },
+        [_]u8{ 3, 2, 1 },
     };
+
     var inputArray3: [2][3]i32 = [_][3]i32{
-        [_]i32{ 6.0, 5.0, 4.0 },
-        [_]i32{ 3.0, 2.0, 1.0 },
+        [_]i32{ 6, 5, 4 },
+        [_]i32{ 3, 2, 1 },
     };
-    // var inputArray4: [3][2]u8 = [_][2]u8{
-    //     [_]u8{ 6.0, 5.0 },
-    //     [_]u8{ 3.0, 2.0 },
-    //     [_]u8{ 1.0, 2.0 },
-    // };
 
     var shape: [2]usize = [_]usize{ 2, 3 };
-    //var shape4: [2]usize = [_]usize{ 3, 2 };
 
+    // Creazione e gestione del primo tensore (tensor)
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
+    std.debug.print("Tensor 1 Info:\n", .{});
     tensor.info();
 
+    // Creazione e gestione del secondo tensore (tensor2)
     var tensor2 = try Tensor(u8).fromArray(&allocator, &inputArray2, &shape);
     defer tensor2.deinit();
+    std.debug.print("Tensor 2 Info:\n", .{});
     tensor2.info();
 
+    // Creazione e gestione del terzo tensore (tensor3)
     var tensor3 = try Tensor(i32).fromArray(&allocator, &inputArray3, &shape);
     defer tensor3.deinit();
+    std.debug.print("Tensor 3 Info:\n", .{});
     tensor3.info();
 
-    //Just a bunch of trials
+    // Inizializzazione di un tensore vuoto (tensor4)
+    var tensor4 = try Tensor(u8).init(&allocator);
+    defer tensor4.deinit();
+    std.debug.print("Empty Tensor 4 Info:\n", .{});
+    tensor4.info();
+
+    // Test della funzione toArray
+    std.debug.print("\nTesting toArray on Tensor 1:\n", .{});
+    const array_from_tensor = tensor.toArray(2);
+    std.debug.print("Array extracted from tensor: {any}\n", .{array_from_tensor});
+
+    std.debug.print("\nTesting toArray on Tensor 3:\n", .{});
+    const array_from_tensor3 = tensor3.toArray(2);
+    std.debug.print("Array extracted from tensor3: {any}\n", .{array_from_tensor3});
+
+    // È possibile inserire ulteriori operazioni sui tensori come somma o prodotto scalare
+    // Prova con una somma di tensori (commentata per ora):
     // try tMath.sum_tensors(Architectures.CPU, u8, i32, &tensor, &tensor2, &tensor3);
     // tensor3.info();
 
-    var tensor4 = try Tensor(u8).init(&allocator);
-    defer tensor4.deinit();
-    tensor4.info();
-
+    // Prova con un prodotto scalare (commentato per ora):
     // const tensor5 = try tMath.dot_product_tensor(Architectures.CPU, u8, i32, &tensor, &tensor4);
     // defer tensor5.deinit();
-
     // tensor5.info();
     // tensor5.print();
 }
