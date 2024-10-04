@@ -26,8 +26,6 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
-        .weightShape = undefined,
-        .biasShape = undefined,
         .allocator = undefined,
         .activation = undefined,
     };
