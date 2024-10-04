@@ -28,8 +28,8 @@ pub fn LossFunction(lossFunctionStruct: fn () type) type {
         pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             return try self.loss.computeLoss(T, predictions, targets);
         }
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
-            return try self.loss.computeGradient(T, predictions, targets, gradient);
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
+            return try self.loss.computeGradient(T, predictions, targets);
         }
     };
 }
@@ -103,7 +103,6 @@ pub fn MSELoss() type {
                 for (0..get_location.len) |i| {
                     get_location[i] = location[i];
                 }
-
                 //calculating the loss
                 for (0..predictions.shape[current_depth]) |i| {
                     get_location[current_depth] = i; //for each element of predictions vect and target vect
@@ -147,27 +146,32 @@ pub fn MSELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
             _ = self;
 
             //check on the size of predictions, targets and gradient
-            if (predictions.size != targets.size or gradient.size != targets.size) {
+            if (predictions.size != targets.size) {
                 return LossError.SizeMismatch;
             }
             //checks on the shape of predictions, targets and gradient
-            if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            if (predictions.shape.len != targets.shape.len) {
                 return LossError.ShapeMismatch;
             }
             for (predictions.shape, 0..) |*dim, i| {
-                if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
+                if (dim.* != targets.shape[i]) return LossError.ShapeMismatch;
             }
+
+            var gradient = try Tensor(T).fromShape(predictions.allocator, predictions.shape);
 
             const n: f32 = @floatFromInt(predictions.size);
 
             for (0..predictions.size) |i| {
                 gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
             }
+
+            return &gradient;
         }
+        // -inputs size
     };
 }
 //Categorical Cross-Entropy loss function
@@ -267,7 +271,7 @@ pub fn CCELoss() type {
                 }
 
                 const out_res: T = Convert.convert(f32, T, res);
-                //set the loss value into out_tensor
+                //set the loss value into out_tensortry
                 //std.debug.print("\n CCE set val {} at: ", .{out_res});
                 // for (out_location) |*val| {
                 //     std.debug.print("{} ", .{val.*});
@@ -292,23 +296,24 @@ pub fn CCELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), gradient: *Tensor(f64)) !void {
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
             _ = self;
 
             //check on the size of predictions, targets and gradient
-            if (predictions.size != targets.size or gradient.size != targets.size) {
+            if (predictions.size != targets.size) {
                 return LossError.SizeMismatch;
             }
 
             //checks on the shape of predictions, targets and gradient
-            if (predictions.shape.len != targets.shape.len or predictions.shape.len != gradient.shape.len) {
+            if (predictions.shape.len != targets.shape.len) {
                 return LossError.ShapeMismatch;
             }
             for (predictions.shape, 0..) |*dim, i| {
-                if (dim.* != targets.shape[i] or dim.* != gradient.shape[i]) return LossError.ShapeMismatch;
+                if (dim.* != targets.shape[i]) return LossError.ShapeMismatch;
             }
 
             const n = predictions.size;
+            var gradient = try Tensor(T).fromShape(predictions.allocator, predictions.shape);
 
             for (0..n) |i| {
                 if (predictions.data[i] == 0.0) {
@@ -316,6 +321,8 @@ pub fn CCELoss() type {
                 }
                 gradient.data[i] = -targets.data[i] / predictions.data[i];
             }
+
+            return &gradient;
         }
     };
 }

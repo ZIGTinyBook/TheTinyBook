@@ -50,6 +50,11 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
 
     var index: usize = 0;
     var i: usize = 0;
+    std.debug.print("\n data pre bias :", .{});
+    tensor.print();
+    std.debug.print("\n bias :", .{});
+    bias.print();
+
     while (index < tensor.size - 1) : (i += 1) {
         //std.debug.print("\nthread[{}] from {} to {}", .{ i, index, index + len - 1 });
         threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, tensor.data, index, len, bias });
@@ -60,6 +65,9 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
     for (threads) |*thread| {
         thread.join();
     }
+
+    std.debug.print("\n data post bias :", .{});
+    tensor.info();
 }
 
 fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bias: *Tensor(T)) void {
@@ -73,7 +81,7 @@ pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
     var res: f32 = 0;
 
     for (tensor.data) |*d| {
-        res += d.*;
+        res += Converter.convert(T, f32, d.*);
     }
     res = res / Converter.convert(usize, f32, tensor.size);
     return res;
