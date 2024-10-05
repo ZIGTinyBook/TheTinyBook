@@ -187,20 +187,23 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             prec_layer_output.info();
 
             // 2. Compute the weight and bias gradients( w_gradients, b_gradients )
+            var prec_layer_output_transposed = try prec_layer_output.transpose2D();
+            defer prec_layer_output_transposed.deinit();
+            //--weight gradient
             self.w_gradients.deinit();
-            //                                                                      prec_layer_output is to traspose!!!!!!!!!!!!!!!!!!!!!
-            self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, prec_layer_output, dL_dOutput);
+            self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &prec_layer_output_transposed, dL_dOutput);
             std.debug.print("\n >>>>>>>>>>> w_gradients", .{});
             self.w_gradients.info();
-
+            //--bias gradient
             self.b_gradients.deinit();
             self.b_gradients = try dL_dOutput.copy();
             std.debug.print("\n >>>>>>>>>>> b_gradients", .{});
             self.b_gradients.info();
 
             // 3. Compute the input gradient: dL/dInput = dot(dL_dOutputAct, weights.T)
-            //                                                                      weights is to traspose!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dL_dOutput, &self.weights);
+            var weights_transposed = try self.weights.transpose2D();
+            defer weights_transposed.deinit();
+            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dL_dOutput, &weights_transposed);
             return &dL_dInput;
         }
     };
