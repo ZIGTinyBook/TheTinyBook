@@ -5,7 +5,7 @@ const Model = @import("model.zig").Model;
 
 // test "Model with multiple layers forward test" {
 //     std.debug.print("\n     test: Model with multiple layers forward test", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = std.heap.page_allocator;
 
 //     var model = Model(f64, &allocator){
 //         .layers = undefined,
@@ -65,11 +65,12 @@ const Model = @import("model.zig").Model;
 
 test "Model with multiple layers training test" {
     std.debug.print("\n     test: Model with multiple layers training test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
+        .input_tensor = undefined,
     };
     try model.init();
 

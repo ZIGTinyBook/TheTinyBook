@@ -8,9 +8,11 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
         layers: []layer.DenseLayer(T, allocator) = undefined,
         allocator: *const std.mem.Allocator,
+        input_tensor: tensor.Tensor(T),
 
         pub fn init(self: *@This()) !void {
             self.layers = try self.allocator.alloc(layer.DenseLayer(T, allocator), 0);
+            self.input_tensor = undefined;
         }
 
         pub fn deinit(self: *@This()) void {
@@ -18,6 +20,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 dense_layer.deinit();
             }
             self.allocator.free(self.layers);
+            self.input_tensor.deinit();
         }
 
         pub fn addLayer(self: *@This(), new_layer: *layer.DenseLayer(T, allocator)) !void {
@@ -40,8 +43,12 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             //grad is always equal to dot(grad, weights)
             var grad = gradient;
             var counter = self.layers.len - 1;
+            var current_layer_input: *tensor.Tensor(T) = undefined;
             while (counter >= 0) : (counter -= 1) {
-                grad = try self.layers[counter].backward(grad);
+                //getting precedent layer output, aka current layer input
+                current_layer_input = self.get_current_layer_input(counter);
+                std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
+                grad = try self.layers[counter].backward(grad, current_layer_input);
             }
 
             return grad;
@@ -69,16 +76,21 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                 //compute gradient of the loss
                 std.debug.print("\n-------------------------------computing loss gradient", .{});
-                const grad = try loser.computeGradient(T, &predictions, targets);
+                var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
                 grad.info();
 
                 //backwarding
                 std.debug.print("\n-------------------------------backwarding", .{});
-                _ = try self.backward(grad);
+                _ = try self.backward(&grad);
 
                 //optimizing
                 std.debug.print("\n-------------------------------backwarding", .{});
             }
+        }
+
+        fn get_current_layer_input(self: *@This(), layer_number: usize) *tensor.Tensor(T) {
+            if (layer_number == 0) return &self.input_tensor;
+            return &self.layers[layer_number - 1].outputActivation;
         }
     };
 }
@@ -90,6 +102,7 @@ pub fn main() !void {
         .layers = undefined,
         .allocator = &allocator,
         .loss = undefined,
+        .input_tensor = undefined,
     };
     try model.init();
 

@@ -159,26 +159,49 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             return self.outputActivation;
         }
 
-        pub fn backward(self: *@This(), dval: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-            std.debug.print("\n >>>>>>>>>>>", .{});
-            dval.info();
+        pub fn backward(self: *@This(), prec_layer_output: *tensor.Tensor(T), dL_dOutput: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+            //---- Key Steps: -----
+            //
+            // Output Gradient: The gradient of the loss with respect to the layer’s output (dL/dOutput).
+            // Activation Gradient: If an activation function is applied, the output gradients must be multiplied by the derivative of the activation function.
+            // Weight Gradient: The gradient of the loss with respect to the weights (dL/dWeights) is the dot product of the input and dL/dOutput.
+            // Bias Gradient: The gradient of the loss with respect to the biases (dL/dBias) is just the sum of dL/dOutput.
+            // Input Gradient: The gradient of the loss with respect to the input (dL/dInput) is the dot product of dL/dOutput and the transposed weights.
+
+            std.debug.print("\n >>>>>>>>>>> dL_dOutput before derivare activation function", .{});
+            dL_dOutput.info();
+
             //---derivate from the activation function
             //forgive me the if cascade, look at sep 7 in this.forward() for more excuses
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.ReLU){};
-                try activ_grad.derivate(T, dval);
+                try activ_grad.derivate(T, dL_dOutput);
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
-                try activ_grad.derivate(T, dval);
+                try activ_grad.derivate(T, dL_dOutput);
             }
+            std.debug.print("\n >>>>>>>>>>> dL_dOutput after derivare activation function", .{});
+            dL_dOutput.info();
 
-            std.debug.print("\n >>>>>>>>>>>", .{});
-            //---compute Gradients on parameters ( w_gradients, b_gradients )
-            dval.info();
+            std.debug.print("\n >>>>>>>>>>> prec_layer_output ", .{});
+            prec_layer_output.info();
 
-            //---compute Gradient on values and return it
+            // 2. Compute the weight and bias gradients( w_gradients, b_gradients )
+            self.w_gradients.deinit();
+            //                                                                      prec_layer_output is to traspose!!!!!!!!!!!!!!!!!!!!!
+            self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, prec_layer_output, dL_dOutput);
+            std.debug.print("\n >>>>>>>>>>> w_gradients", .{});
+            self.w_gradients.info();
 
-            return dval;
+            self.b_gradients.deinit();
+            self.b_gradients = try dL_dOutput.copy();
+            std.debug.print("\n >>>>>>>>>>> b_gradients", .{});
+            self.b_gradients.info();
+
+            // 3. Compute the input gradient: dL/dInput = dot(dL_dOutputAct, weights.T)
+            //                                                                      weights is to traspose!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dL_dOutput, &self.weights);
+            return &dL_dInput;
         }
     };
 }
