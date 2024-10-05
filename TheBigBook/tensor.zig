@@ -249,6 +249,39 @@ pub fn Tensor(comptime T: type) type {
             }
             std.debug.print("\n", .{});
         }
+
+        pub fn transpose2D(self: *@This()) !Tensor(T) {
+            if (self.shape.len != 2) {
+                return error.InvalidDimension; // For simplicity, let's focus on 2D for now
+            }
+
+            const allocator = self.allocator;
+
+            // Shape of the transposed tensor
+            const transposed_shape: [2]usize = [_]usize{ self.shape[1], self.shape[0] };
+            const tensorShape = try allocator.alloc(usize, self.shape.len);
+            @memcpy(tensorShape, &transposed_shape);
+
+            // Allocate space for transposed data
+            const transposed_data = try allocator.alloc(T, self.size);
+
+            // Perform the transposition
+            for (0..self.shape[0]) |i| {
+                for (0..self.shape[1]) |j| {
+                    // For 2D tensor, flatten the index and swap row/column positions
+                    const old_idx = i * self.shape[1] + j;
+                    const new_idx = j * self.shape[0] + i;
+                    transposed_data[new_idx] = self.data[old_idx];
+                }
+            }
+
+            return Tensor(T){
+                .data = transposed_data,
+                .size = self.size,
+                .shape = tensorShape,
+                .allocator = allocator,
+            };
+        }
     };
 }
 

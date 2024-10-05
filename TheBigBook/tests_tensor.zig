@@ -181,6 +181,8 @@ test " copy() method" {
 }
 
 test "to array " {
+    std.debug.print("\n     test:to array ", .{});
+
     const allocator = std.heap.page_allocator;
 
     // Inizializzazione degli array di input
@@ -200,6 +202,7 @@ test "to array " {
 }
 
 test "Reshape" {
+    std.debug.print("\n     test: Reshape ", .{});
     const allocator = std.heap.page_allocator;
 
     // Inizializzazione degli array di input
@@ -217,4 +220,31 @@ test "Reshape" {
     try tensor.reshape(&new_shape);
     std.debug.print("Tensor 1 Info after reshape:\n", .{});
     tensor.info();
+}
+
+test "transpose" {
+    std.debug.print("\n     test: transpose ", .{});
+    const allocator = std.heap.page_allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    defer tensor.deinit();
+
+    var tensor_transposed = try tensor.transpose2D();
+    defer tensor_transposed.deinit();
+    tensor.info();
+    tensor_transposed.info();
+
+    try std.testing.expect(tensor_transposed.data[0] == 1);
+    try std.testing.expect(tensor_transposed.data[1] == 4);
+    try std.testing.expect(tensor_transposed.data[2] == 2);
+    try std.testing.expect(tensor_transposed.data[3] == 5);
+    try std.testing.expect(tensor_transposed.data[4] == 3);
+    try std.testing.expect(tensor_transposed.data[5] == 6);
 }

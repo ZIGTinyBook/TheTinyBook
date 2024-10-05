@@ -28,7 +28,7 @@ pub fn LossFunction(lossFunctionStruct: fn () type) type {
         pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             return try self.loss.computeLoss(T, predictions, targets);
         }
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             return try self.loss.computeGradient(T, predictions, targets);
         }
     };
@@ -146,7 +146,7 @@ pub fn MSELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             _ = self;
 
             //check on the size of predictions, targets and gradient
@@ -160,17 +160,20 @@ pub fn MSELoss() type {
             for (predictions.shape, 0..) |*dim, i| {
                 if (dim.* != targets.shape[i]) return LossError.ShapeMismatch;
             }
-            predictions.info();
-            targets.info();
+            // predictions.info();
+            // targets.info();
             var gradient = try Tensor(T).fromShape(predictions.allocator, predictions.shape);
-
+            // std.debug.print("\n>>>>>>>>>>>>", .{});
+            // gradient.info();
             const n: f32 = @floatFromInt(predictions.size);
 
-            for (0..predictions.size) |i| {
+            for (0..gradient.size) |i| {
                 gradient.data[i] = (2.0 / n) * (predictions.data[i] - targets.data[i]);
             }
+            // std.debug.print("\n***************", .{});
+            // gradient.info();
 
-            return &gradient;
+            return gradient;
         }
         // -inputs size
     };
@@ -297,7 +300,7 @@ pub fn CCELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !*Tensor(T) {
+        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             _ = self;
 
             //check on the size of predictions, targets and gradient
@@ -323,7 +326,7 @@ pub fn CCELoss() type {
                 gradient.data[i] = -targets.data[i] / predictions.data[i];
             }
 
-            return &gradient;
+            return gradient;
         }
     };
 }
