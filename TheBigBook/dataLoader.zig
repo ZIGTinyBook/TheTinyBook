@@ -1,5 +1,7 @@
 const std = @import("std");
 
+//Look at to array to have the x type of custom dimension not just 2 (batch x features)
+
 pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
     return struct {
         X: [][]Ftype,
@@ -89,7 +91,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
                 if (maybeLine == null) break;
                 numRows += 1;
             }
-            //I really don't like this, pls refactor this shitt later
+            //I really don't like this, pls refactor this shit later
 
             try file.seekTo(0);
 
