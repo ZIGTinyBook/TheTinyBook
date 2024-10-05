@@ -7,11 +7,12 @@ const Optim = @import("optim.zig");
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     std.debug.print("\n     test: SGD Optimizer No Update with Zero Gradients (Print Only)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator;
 
     var model = Model.Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
+        .input_tensor = undefined,
     };
     try model.init();
 

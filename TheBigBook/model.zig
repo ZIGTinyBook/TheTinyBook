@@ -20,7 +20,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 dense_layer.deinit();
             }
             self.allocator.free(self.layers);
-            self.input_tensor.deinit();
         }
 
         pub fn addLayer(self: *@This(), new_layer: *layer.DenseLayer(T, allocator)) !void {
@@ -30,6 +29,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             var output = input.*;
+            self.input_tensor = try input.copy();
             for (self.layers, 0..) |*dense_layer, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
                 output = try dense_layer.forward(&output);
