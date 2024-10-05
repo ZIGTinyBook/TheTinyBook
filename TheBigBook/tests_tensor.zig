@@ -207,7 +207,7 @@ test "Reshape" {
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
-        [_]u8{ 1, 2, 3 },
+        [_]u8{ 1, 2, 4 },
         [_]u8{ 4, 5, 6 },
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
