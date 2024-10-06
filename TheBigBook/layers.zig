@@ -203,7 +203,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 3. Compute the input gradient: dL/dInput = dot(dL_dOutputAct, weights.T)
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
-            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dL_dOutput, &weights_transposed);
+            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dL_dOutput, &self.weights); //not using transpose
             return &dL_dInput;
         }
     };
