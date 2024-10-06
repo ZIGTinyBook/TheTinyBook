@@ -39,16 +39,18 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
         }
 
         pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-
             //grad is always equal to dot(grad, weights)
             var grad = gradient;
-            var counter = self.layers.len - 1;
+            var grad_duplicate = try grad.copy();
+            var counter = (self.layers.len - 1);
             var current_layer_input: *tensor.Tensor(T) = undefined;
             while (counter >= 0) : (counter -= 1) {
                 //getting precedent layer output, aka current layer input
                 current_layer_input = self.get_current_layer_input(counter);
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
-                grad = try self.layers[counter].backward(grad, current_layer_input);
+                grad = try self.layers[counter].backward(&grad_duplicate, current_layer_input);
+                grad_duplicate = try grad.copy();
+                if (counter == 0) break;
             }
 
             return grad;
@@ -84,7 +86,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 _ = try self.backward(&grad);
 
                 //optimizing
-                std.debug.print("\n-------------------------------backwarding", .{});
+                std.debug.print("\n-------------------------------backwarding waiting for optim", .{});
             }
         }
 
@@ -101,7 +103,6 @@ pub fn main() !void {
     var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
-        .loss = undefined,
         .input_tensor = undefined,
     };
     try model.init();
@@ -112,26 +113,32 @@ pub fn main() !void {
         .weights = undefined,
         .bias = undefined,
         .output = undefined,
+        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
-        .weightShape = undefined,
-        .biasShape = undefined,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
-    try layer1.init(3, 2, &rng);
+    //layer 1: 3 inputs, 2 neurons
+    try layer1.init(3, 2, &rng, "ReLU");
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .output = undefined,
+        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
-        .weightShape = undefined,
-        .biasShape = undefined,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .allocator = undefined,
+        .activation = undefined,
     };
-    try layer2.init(2, 3, &rng);
+    //layer 2: 2 inputs, 3 neurons
+    try layer2.init(2, 3, &rng, "ReLU");
     try model.addLayer(&layer2);
 
     // Creazione di un input tensor
@@ -141,12 +148,14 @@ pub fn main() !void {
     };
     var shape: [2]usize = [_]usize{ 2, 3 };
 
-    var input_tensor = try tensor.Tensor(f64).init(&allocator);
-    _ = try input_tensor.fill(&inputArray, shape[0..]);
+    var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    defer input_tensor.deinit();
 
-    const output = try model.forward(&input_tensor);
-    std.debug.print("Output finale: {any}\n", .{output});
+    var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
 
+    //const output = try model.forward(&input_tensor);
+    //std.debug.print("Output finale: {any}\n", .{output});
+    try model.train(&input_tensor, &target_tensor, 2);
     //output.deinit();
     model.deinit();
     input_tensor.deinit();
