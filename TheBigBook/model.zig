@@ -3,6 +3,7 @@ const tensor = @import("tensor.zig");
 const layer = @import("layers.zig");
 const Loss = @import("lossFunction.zig");
 const TensMath = @import("tensor_math.zig");
+const Optim = @import("optim.zig");
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
@@ -87,7 +88,10 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 _ = try self.backward(&grad);
 
                 //optimizing
-                std.debug.print("\n-------------------------------backwarding waiting for optim", .{});
+                std.debug.print("\n-------------------------------Optimizer Step", .{});
+                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.01, allocator){ // Here we pass the actual instance of the optimizer
+                };
+                try optimizer.step(self);
             }
         }
 
@@ -123,7 +127,7 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 1: 3 inputs, 2 neurons
-    try layer1.init(3, 2, &rng, "ReLU");
+    try layer1.init(4, 3, &rng, "ReLU");
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -139,24 +143,32 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 3 neurons
-    try layer2.init(2, 3, &rng, "ReLU");
+    try layer2.init(3, 3, &rng, "ReLU");
     try model.addLayer(&layer2);
 
     // Creazione di un input tensor
-    var inputArray: [2][3]f64 = [_][3]f64{
+    var inputArray: [3][4]f64 = [_][4]f64{
+        [_]f64{ 1.0, 2.0, 3.0, 1 },
+        [_]f64{ 4.0, 5.0, 6.0, 1 },
+        [_]f64{ 4.0, 5.0, 6.0, 1 },
+    };
+    var targetArray: [3][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },
         [_]f64{ 4.0, 5.0, 6.0 },
+        [_]f64{ 4.0, 5.0, 6.0 },
     };
-    var shape: [2]usize = [_]usize{ 2, 3 };
+    var shape: [2]usize = [_]usize{ 3, 4 };
+    var shape_target: [2]usize = [_]usize{ 3, 3 };
 
     var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+
     defer input_tensor.deinit();
 
-    var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &shape_target);
 
     //const output = try model.forward(&input_tensor);
     //std.debug.print("Output finale: {any}\n", .{output});
-    try model.train(&input_tensor, &target_tensor, 2);
+    try model.train(&input_tensor, &target_tensor, 20);
     //output.deinit();
     model.deinit();
     input_tensor.deinit();
