@@ -50,13 +50,8 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
 
     var index: usize = 0;
     var i: usize = 0;
-    // std.debug.print("\n data pre bias :", .{});
-    // tensor.print();
-    // std.debug.print("\n bias :", .{});
-    // bias.print();
 
     while (index < tensor.size - 1) : (i += 1) {
-        //std.debug.print("\nthread[{}] from {} to {}", .{ i, index, index + len - 1 });
         threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, tensor.data, index, len, bias });
         index += len;
     }
