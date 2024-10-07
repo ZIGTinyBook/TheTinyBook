@@ -33,6 +33,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             for (self.layers, 0..) |*dense_layer, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
                 output = try dense_layer.forward(&output);
+                std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
                 output.info();
             }
             return output;
