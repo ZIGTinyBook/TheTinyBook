@@ -1,13 +1,19 @@
 const std = @import("std");
+const tensor = @import("tensor.zig");
 
 //Look at to array to have the x type of custom dimension not just 2 (batch x features)
 
-pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
+pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16) type {
     return struct {
         X: [][]Ftype,
         y: []LabelType,
         x_index: usize = 0,
         y_index: usize = 0,
+        xTensor: tensor.Tensor(Ftype),
+        yTensor: tensor.Tensor(LabelType),
+        batchSize: usize = batchSize,
+        XBatch: [][]Ftype,
+        yBatch: []LabelType,
 
         pub fn xNext(self: *@This()) ?[]Ftype {
             const index = self.x_index;
@@ -27,6 +33,11 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             return null;
         }
 
+        pub fn toTensor(self: *@This(), allocator: *const std.mem.Allocator, shapeX: *[]usize, shapeY: *[]usize) !void {
+            self.xTensor = try tensor.Tensor(Ftype).fromArray(allocator, self.XBatch, shapeX.*);
+            self.yTensor = try tensor.Tensor(LabelType).fromArray(allocator, self.yBatch, shapeY.*);
+        }
+
         pub fn reset(self: *@This()) void {
             self.x_index = 0;
             self.y_index = 0;
@@ -40,6 +51,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
             const batch = self.X[start..end];
             self.x_index = end;
+            self.XBatch = batch;
             return batch;
         }
 
@@ -51,6 +63,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
             const batch = self.y[start..end];
             self.y_index = end;
+            self.yBatch = batch;
             return batch;
         }
 
