@@ -34,8 +34,8 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             for (self.layers, 0..) |*dense_layer, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
                 output = try dense_layer.forward(&output);
-                std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
-                output.info();
+                // std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
+                // output.info();
             }
             return output;
         }
@@ -45,12 +45,9 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             var grad = gradient;
             var grad_duplicate = try grad.copy();
             var counter = (self.layers.len - 1);
-            var current_layer_input: *tensor.Tensor(T) = undefined;
             while (counter >= 0) : (counter -= 1) {
-                //getting precedent layer output, aka current layer input
-                current_layer_input = self.get_current_layer_input(counter);
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
-                grad = try self.layers[counter].backward(&grad_duplicate, current_layer_input);
+                grad = try self.layers[counter].backward(&grad_duplicate);
                 grad_duplicate = try grad.copy();
                 if (counter == 0) break;
             }

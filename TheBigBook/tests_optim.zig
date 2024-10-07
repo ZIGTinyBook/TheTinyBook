@@ -21,6 +21,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     var dense_layer = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
+        .input = undefined,
         .output = undefined,
         .outputActivation = undefined,
         .n_inputs = 0,

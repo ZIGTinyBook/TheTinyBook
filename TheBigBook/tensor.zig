@@ -250,6 +250,16 @@ pub fn Tensor(comptime T: type) type {
             std.debug.print("\n", .{});
         }
 
+        pub fn printMultidim(self: *@This()) void {
+            const dim = self.shape.len;
+            for (0..self.shape[dim - 2]) |i| {
+                std.debug.print("\n[ ", .{});
+                for (0..self.shape[dim - 1]) |j| {
+                    std.debug.print("{} ", .{self.data[i * self.shape[dim - 1] + j]});
+                }
+                std.debug.print("]", .{});
+            }
+        }
         pub fn transpose2D(self: *@This()) !Tensor(T) {
             if (self.shape.len != 2) {
                 return error.InvalidDimension; // For simplicity, let's focus on 2D for now

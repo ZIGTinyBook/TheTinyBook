@@ -35,12 +35,18 @@ pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type
 
         // Step function to update weights and biases using gradients
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
+            var counter: u32 = 0;
             for (model.layers) |*dense_layer| {
                 const weight_gradients = &dense_layer.w_gradients;
                 const bias_gradients = &dense_layer.b_gradients;
+                const weight = &dense_layer.weights;
+                const bias = &dense_layer.bias;
 
-                try self.update_tensor(&dense_layer.weights, weight_gradients);
-                try self.update_tensor(&dense_layer.bias, bias_gradients);
+                std.debug.print("\n ------ step {}", .{counter});
+                counter += 1;
+
+                try self.update_tensor(weight, weight_gradients);
+                try self.update_tensor(bias, bias_gradients);
             }
         }
 
@@ -64,7 +70,6 @@ pub fn optimizer_ADAMTEST(T: type, lr: f64, allocator: *const std.mem.Allocator)
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             for (model.layers) |*dense_layer| {
                 const weight_gradients = &dense_layer.w_gradients;
-
                 try self.update_tensor(&dense_layer.weights, weight_gradients);
             }
         }

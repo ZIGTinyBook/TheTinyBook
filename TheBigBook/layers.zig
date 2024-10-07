@@ -30,9 +30,13 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
 
 pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
     return struct {
-        weights: tensor.Tensor(T),
-        bias: tensor.Tensor(T),
-        output: tensor.Tensor(T), // output = dot(input, weight) + bias
+        //          | w11   w12  w13 |
+        // weight = | w21   w22  w23 | , where Wij, i= neuron i-th and j=input j-th
+        //          | w31   w32  w33 |
+        weights: tensor.Tensor(T), //each row represent a neuron, where each weight is associated to an input
+        bias: tensor.Tensor(T), //a bias for each neuron
+        input: tensor.Tensor(T), //is saved for semplicity, it can be sobstituted
+        output: tensor.Tensor(T), // output = dot(input, weight.transposed) + bias
         outputActivation: tensor.Tensor(T), // outputActivation = activationFunction(output)
         //layer shape --------------------
         n_inputs: usize,
@@ -48,7 +52,14 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256, activationFunction: []const u8) !void {
             //std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
 
-            var weight_shape: [2]usize = [_]usize{ n_neurons, n_inputs };
+            //check on parameters
+            if (n_inputs <= 0 or n_neurons <= 0) return error.InvalidParameters;
+
+            //initializing number of neurons and inputs----------------------------------
+            self.n_inputs = n_inputs;
+            self.n_neurons = n_neurons;
+
+            var weight_shape: [2]usize = [_]usize{ n_inputs, n_neurons };
             var bias_shape: [1]usize = [_]usize{n_neurons};
             self.allocator = alloc;
 
@@ -56,34 +67,17 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             const weight_matrix = try randn(T, n_inputs, n_neurons, rng);
             const bias_matrix = try randn(T, 1, n_neurons, rng);
 
-            //std.debug.print("Initializing weights and bias...\n", .{});
-            //initializing gradients-----------------------------------------------------
-            self.w_gradients = try tensor.Tensor(T).init(alloc);
-            try self.w_gradients.fill(try zeros(T, n_inputs, n_neurons), &weight_shape);
-            self.b_gradients = try tensor.Tensor(T).init(alloc);
-            try self.b_gradients.fill(try zeros(T, 1, n_neurons), &bias_shape);
-
             //initializing weights and biases--------------------------------------------
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);
-            self.weights = try self.weights.transpose2D();
             self.bias = try tensor.Tensor(T).fromArray(alloc, bias_matrix, &bias_shape);
 
-            //initializing number of neurons and inputs----------------------------------
-            self.n_inputs = n_inputs;
-            self.n_neurons = n_neurons;
-
-            //this showld be the correct way to implement it ...
-            //self.activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
-            //It doesn't work and I'm stuck... please forgive me for what Imma do...
+            //initializing activation----------------------------------------------------
             self.activation = activationFunction;
             //just see sep 7 of forward()
 
-            //std.debug.print("Weight shape: {d} x {d}\n", .{ weight_shape[0], weight_shape[1] });
-            //std.debug.print("Bias shape: {d} x {d}\n", .{ 1, bias_shape[0] });
-
-            //std.debug.print("shapes are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
-
-            //std.debug.print("Weights and bias initialized.\n", .{});
+            //initializing gradients to all zeros----------------------------------------
+            self.w_gradients = try tensor.Tensor(T).fromShape(self.allocator, &weight_shape);
+            self.b_gradients = try tensor.Tensor(T).fromShape(self.allocator, &bias_shape);
         }
 
         pub fn deinit(self: *@This()) void {
@@ -115,13 +109,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            // std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
-            // std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
-            std.debug.print("\n >>>>>>>>>>> input: ", .{});
-            input.info();
-
-            std.debug.print("\n >>>>>>>>>>> self.weights: ", .{});
-            self.weights.info();
+            // std.debug.print("\n >>>>>>>>>>> input: ", .{});
+            // input.info();
+            self.input = try input.copy();
 
             // 1. Check if self.output is already allocated, deallocate if necessary
             if (self.output.data.len > 0) {
@@ -129,21 +119,20 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
 
             // 2. Perform multiplication between inputs and weights (dot product)
-            self.output = try TensMath.compute_dot_product(T, input, &self.weights);
-            //defer dot_product.deinit(); // Defer per liberare il tensor alla fine
+            self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
 
-            std.debug.print("\n >>>>>>>>>>> output pre-bias: ", .{});
-            self.output.info();
+            // std.debug.print("\n >>>>>>>>>>> output pre-bias: ", .{});
+            // self.output.info();
 
-            // 3. Print debug information for dot_product and bias
-            std.debug.print("\n >>>>>>>>>>> self.bias: ", .{});
-            self.bias.info();
+            // // 3. Print debug information for dot_product and bias
+            // std.debug.print("\n >>>>>>>>>>> self.bias: ", .{});
+            // self.bias.info();
 
             // 4. Add bias to the dot product
             try TensMath.add_bias(T, &self.output, &self.bias);
 
-            std.debug.print("\n >>>>>>>>>>> output post-bias: ", .{});
-            self.output.info();
+            // std.debug.print("\n >>>>>>>>>>> output post-bias: ", .{});
+            // self.output.info();
 
             //5. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
@@ -160,88 +149,92 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.forward(T, &self.outputActivation);
             }
 
+            self.printLayer();
+
             //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
             return self.outputActivation;
         }
 
-        pub fn backward(self: *@This(), prec_layer_output: *tensor.Tensor(T), dL_dOutput: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn backward(self: *@This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             //---- Key Steps: -----
             // 1. Output Gradient: dL/dOutput, apply activation derivative
             std.debug.print("\n >>>>>>>>>>> dL_dOutput before applying activation derivative", .{});
-            dL_dOutput.info();
+            dValues.info();
 
             //--- Apply the derivative of the activation function
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.ReLU){};
-                try activ_grad.derivate(T, dL_dOutput);
+                try activ_grad.derivate(T, dValues);
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
-                try activ_grad.derivate(T, dL_dOutput);
+                try activ_grad.derivate(T, dValues);
             }
             std.debug.print("\n >>>>>>>>>>> dL_dOutput after applying activation derivative", .{});
-            dL_dOutput.info();
+            dValues.info();
 
-            std.debug.print("\n >>>>>>>>>>> prec_layer_output ", .{});
-            prec_layer_output.info();
+            // std.debug.print("\n >>>>>>>>>>> prec_layer_output aka: current_layer_input ", .{});
+            // self.input.info();
 
             // 2. Compute weight gradients (w_gradients)
-            var prec_layer_output_transposed = try prec_layer_output.transpose2D();
-            defer prec_layer_output_transposed.deinit();
+            var input_transposed = try self.input.transpose2D();
+            defer input_transposed.deinit();
 
             self.w_gradients.deinit();
-            self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &prec_layer_output_transposed, dL_dOutput);
-            std.debug.print("\n >>>>>>>>>>> w_gradients", .{});
-            self.w_gradients.info();
+            self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &input_transposed, dValues);
+            // std.debug.print("\n >>>>>>>>>>> w_gradients", .{});
+            // self.w_gradients.info();
 
             // 3. Compute bias gradients (b_gradients)
             // Equivalent of np.sum(dL_dOutput, axis=0, keepdims=True)
-            self.b_gradients.deinit();
-            self.b_gradients = try self.sumAlongAxis(dL_dOutput);
-            std.debug.print("\n >>>>>>>>>>> b_gradients", .{});
-            self.b_gradients.info();
+            var sum: T = 0;
+            std.debug.print("\n self.n_neurons: {}  self.n_input:{}", .{ self.n_neurons, self.n_inputs });
+
+            for (0..dValues.shape[1]) |neuron| {
+                //scanning all the inputs
+                sum = 0;
+                for (0..dValues.shape[0]) |input| {
+                    sum += dValues.data[input * self.n_neurons + neuron];
+                }
+                self.b_gradients.data[neuron] = sum;
+            }
+            // std.debug.print("\n >>>>>>>>>>> b_gradients", .{});
+            // self.b_gradients.info();
 
             // 4. Compute input gradients: dL/dInput = dot(dL_dOutput, weights.T)
-            var dL_dOutput_transposed = try dL_dOutput.transpose2D();
-            defer dL_dOutput_transposed.deinit();
+            var dValues_transposed = try dValues.transpose2D();
+            defer dValues_transposed.deinit();
+            // std.debug.print("\n >>>>>>>>>>> dL_dOutput_transposed", .{});
+            // dValues_transposed.info();
 
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
 
-            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &dL_dOutput_transposed, &weights_transposed);
+            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
+            // std.debug.print("\n >>>>>>>>>>> dL_dInput", .{});
+            // dL_dInput.info();
+
+            self.printLayer();
+
             return &dL_dInput;
         }
 
-        fn sumAlongAxis(self: *@This(), ten: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            // Ensure axis is valid
-
-            // Transpose the tensor and store it in a new variable
-            var transposed_tensor = try ten.transpose2D(); // Use `try` to handle potential error
-
-            const rows = transposed_tensor.shape[0];
-            const cols = transposed_tensor.shape[1];
-
-            // Create the shape for the resulting tensor (collapsed to one row)
-            var result_shape: [2]usize = [_]usize{ 1, cols };
-
-            // Allocating dynamic memory for the result data instead of static array
-            var initial_result_data = try self.allocator.alloc(T, cols);
-
-            // Create a new tensor for storing the summed result using `fromArray`
-            var result = try tensor.Tensor(T).fromArray(self.allocator, initial_result_data, &result_shape);
-
-            // Sum along the rows (axis 0), keeping the columns intact
-            for (0..cols) |col| {
-                var sum: T = 0;
-                for (0..rows) |row| {
-                    sum += transposed_tensor.data[row * cols + col]; // Access the transposed data
-                }
-                result.data[col] = sum; // Store the sum of the current column
-            }
-
-            transposed_tensor.deinit(); // Deallocate the transposed tensor
-            initial_result_data = undefined; // Deallocate the initial result data
-
-            return result;
+        pub fn printLayer(self: *@This()) void {
+            std.debug.print("\n ************************layer*********************", .{});
+            std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
+            std.debug.print("\n \n************input", .{});
+            self.input.printMultidim();
+            std.debug.print("\n \n************weights", .{});
+            self.weights.printMultidim();
+            std.debug.print("\n \n************bias", .{});
+            std.debug.print("\n {any}", .{self.bias.data});
+            std.debug.print("\n \n************output", .{});
+            self.output.printMultidim();
+            std.debug.print("\n \n************outputActivation", .{});
+            self.outputActivation.printMultidim();
+            std.debug.print("\n \n************w_gradients", .{});
+            self.w_gradients.printMultidim();
+            std.debug.print("\n \n************b_gradients", .{});
+            std.debug.print("\n {any}", .{self.b_gradients.data});
         }
     };
 }
