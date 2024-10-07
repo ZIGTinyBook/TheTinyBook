@@ -116,25 +116,36 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             // std.debug.print("Forward pass: input tensor shape = {} x {}\n", .{ input.shape[0], input.shape[1] });
             // std.debug.print("shapes before forward pass are {} x {} and {} x {}\n", .{ self.weights.shape[0], self.weights.shape[1], 1, self.bias.shape[0] });
+            std.debug.print("\n >>>>>>>>>>> input: ", .{});
+            input.info();
 
-            // 1. Perform multiplication between inputs and weights (dot product)
-            var dot_product = try TensMath.compute_dot_product(T, input, &self.weights);
-            defer dot_product.deinit(); // Defer per liberare il tensor alla fine
-
-            // 2. Print debug information for dot_product and bias
-            //dot_product.info();
-            //self.bias.info();
-
-            // 3. Add bias to the dot product
-            try TensMath.add_bias(T, &dot_product, &self.bias);
+            std.debug.print("\n >>>>>>>>>>> self.weights: ", .{});
+            self.weights.info();
 
             // 4. Check if self.output is already allocated, deallocate if necessary
             if (self.output.data.len > 0) {
                 self.output.deinit();
             }
 
+            // 1. Perform multiplication between inputs and weights (dot product)
+            self.output = try TensMath.compute_dot_product(T, input, &self.weights);
+            //defer dot_product.deinit(); // Defer per liberare il tensor alla fine
+
+            std.debug.print("\n >>>>>>>>>>> output pre-bias: ", .{});
+            self.weights.info();
+
+            // 2. Print debug information for dot_product and bias
+            std.debug.print("\n >>>>>>>>>>> self.bias: ", .{});
+            self.bias.info();
+
+            // 3. Add bias to the dot product
+            try TensMath.add_bias(T, &self.output, &self.bias);
+
+            std.debug.print("\n >>>>>>>>>>> output post-bias: ", .{});
+            self.weights.info();
+
             // 5. Allocate memory for self.output with the same shape as dot_product
-            self.output = try dot_product.copy();
+            //self.output = try dot_product.copy();
 
             //copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();

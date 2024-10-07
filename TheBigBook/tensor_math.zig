@@ -182,8 +182,8 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
 }
 
 pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
-    //CHECKS :
 
+    //CHECKS :
     const nDimT1 = t1.shape.len; //number of dimesion of tensor 1
     const nDimT2 = t2.shape.len; //number of dimesion of tensor 2
     // -imput shape:
