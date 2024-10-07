@@ -183,14 +183,16 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
 
 pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
     //CHECKS :
-    // -input size
-    // if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
 
     const nDimT1 = t1.shape.len; //number of dimesion of tensor 1
     const nDimT2 = t2.shape.len; //number of dimesion of tensor 2
-    // -imput shape
+    // -imput shape:
     if (nDimT1 != nDimT2) return TensorMathError.InputTensorDifferentShape;
-    // if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t2.shape[nDimT1 - 1]) return TensorMathError.InputTensorsWrongShape;
+
+    //-dimensional compatibility:
+    // If you have two matrices A and B, to compute the product A×B, the number of columns in A must be equal to the number of rows in B.
+    // If A is a matrix of dimensions m×n and B is a matrix of dimensions n×p, then the product A×B is defined, and it results in a matrix of dimensions m×p.
+    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2]) return TensorMathError.InputTensorsWrongShape;
 
     // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
     // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
