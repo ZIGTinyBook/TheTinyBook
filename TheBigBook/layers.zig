@@ -121,26 +121,15 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 2. Perform multiplication between inputs and weights (dot product)
             self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
 
-            // std.debug.print("\n >>>>>>>>>>> output pre-bias: ", .{});
-            // self.output.info();
-
-            // // 3. Print debug information for dot_product and bias
-            // std.debug.print("\n >>>>>>>>>>> self.bias: ", .{});
-            // self.bias.info();
-
-            // 4. Add bias to the dot product
+            // 3. Add bias to the dot product
             try TensMath.add_bias(T, &self.output, &self.bias);
 
-            // std.debug.print("\n >>>>>>>>>>> output post-bias: ", .{});
-            // self.output.info();
-
-            //5. copy the output in to outputActivation so to be modified in the activation function
+            // 4. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
 
-            // 6. Apply activation function
+            // 5. Apply activation function
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
-
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
                 try activation.forward(T, &self.outputActivation);
@@ -149,7 +138,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.forward(T, &self.outputActivation);
             }
 
-            self.printLayer();
+            self.printLayer(1);
 
             //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
             return self.outputActivation;
@@ -157,11 +146,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         pub fn backward(self: *@This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             //---- Key Steps: -----
-            // 1. Output Gradient: dL/dOutput, apply activation derivative
-            std.debug.print("\n >>>>>>>>>>> dL_dOutput before applying activation derivative", .{});
-            dValues.info();
 
-            //--- Apply the derivative of the activation function
+            // 1. Apply the derivative of the activation function to dValues
             if (std.mem.eql(u8, self.activation, "ReLU")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.ReLU){};
                 try activ_grad.derivate(T, dValues);
@@ -169,11 +155,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
                 try activ_grad.derivate(T, dValues);
             }
-            std.debug.print("\n >>>>>>>>>>> dL_dOutput after applying activation derivative", .{});
-            dValues.info();
-
-            // std.debug.print("\n >>>>>>>>>>> prec_layer_output aka: current_layer_input ", .{});
-            // self.input.info();
 
             // 2. Compute weight gradients (w_gradients)
             var input_transposed = try self.input.transpose2D();
@@ -181,14 +162,11 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             self.w_gradients.deinit();
             self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &input_transposed, dValues);
-            // std.debug.print("\n >>>>>>>>>>> w_gradients", .{});
-            // self.w_gradients.info();
 
             // 3. Compute bias gradients (b_gradients)
             // Equivalent of np.sum(dL_dOutput, axis=0, keepdims=True)
             var sum: T = 0;
-            std.debug.print("\n self.n_neurons: {}  self.n_input:{}", .{ self.n_neurons, self.n_inputs });
-
+            //summing all the values in each column(neuron) of dValue and putting it into b_gradint[neuron]
             for (0..dValues.shape[1]) |neuron| {
                 //scanning all the inputs
                 sum = 0;
@@ -197,44 +175,49 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 }
                 self.b_gradients.data[neuron] = sum;
             }
-            // std.debug.print("\n >>>>>>>>>>> b_gradients", .{});
-            // self.b_gradients.info();
 
-            // 4. Compute input gradients: dL/dInput = dot(dL_dOutput, weights.T)
+            // 4. Compute input gradients: dL/dInput = dot(dValues, weights.T)
             var dValues_transposed = try dValues.transpose2D();
             defer dValues_transposed.deinit();
-            // std.debug.print("\n >>>>>>>>>>> dL_dOutput_transposed", .{});
-            // dValues_transposed.info();
 
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
-            // std.debug.print("\n >>>>>>>>>>> dL_dInput", .{});
-            // dL_dInput.info();
 
-            self.printLayer();
+            self.printLayer(1);
 
             return &dL_dInput;
         }
 
-        pub fn printLayer(self: *@This()) void {
-            std.debug.print("\n ************************layer*********************", .{});
-            std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
-            std.debug.print("\n \n************input", .{});
-            self.input.printMultidim();
-            std.debug.print("\n \n************weights", .{});
-            self.weights.printMultidim();
-            std.debug.print("\n \n************bias", .{});
-            std.debug.print("\n {any}", .{self.bias.data});
-            std.debug.print("\n \n************output", .{});
-            self.output.printMultidim();
-            std.debug.print("\n \n************outputActivation", .{});
-            self.outputActivation.printMultidim();
-            std.debug.print("\n \n************w_gradients", .{});
-            self.w_gradients.printMultidim();
-            std.debug.print("\n \n************b_gradients", .{});
-            std.debug.print("\n {any}", .{self.b_gradients.data});
+        pub fn printLayer(self: *@This(), choice: u8) void {
+            //MENU choice:
+            // 0 -> full details layer
+            // 1 -> shape schema
+            if (choice == 0) {
+                std.debug.print("\n ************************layer*********************", .{});
+                std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
+                std.debug.print("\n \n************input", .{});
+                self.input.printMultidim();
+                std.debug.print("\n \n************weights", .{});
+                self.weights.printMultidim();
+                std.debug.print("\n \n************bias", .{});
+                std.debug.print("\n {any}", .{self.bias.data});
+                std.debug.print("\n \n************output", .{});
+                self.output.printMultidim();
+                std.debug.print("\n \n************outputActivation", .{});
+                self.outputActivation.printMultidim();
+                std.debug.print("\n \n************w_gradients", .{});
+                self.w_gradients.printMultidim();
+                std.debug.print("\n \n************b_gradients", .{});
+                std.debug.print("\n {any}", .{self.b_gradients.data});
+            }
+            if (choice == 1) {
+                std.debug.print("\n ************************layer*********************", .{});
+                std.debug.print("\n   input       weight   bias  output", .{});
+                std.debug.print("\n [{} x {}] * [{} x {}] + {} = [{} x {}] ", .{ self.input.shape[0], self.input.shape[1], self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.output.shape[0], self.output.shape[1] });
+                std.debug.print("\n ", .{});
+            }
         }
     };
 }
