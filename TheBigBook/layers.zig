@@ -123,35 +123,32 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("\n >>>>>>>>>>> self.weights: ", .{});
             self.weights.info();
 
-            // 4. Check if self.output is already allocated, deallocate if necessary
+            // 1. Check if self.output is already allocated, deallocate if necessary
             if (self.output.data.len > 0) {
                 self.output.deinit();
             }
 
-            // 1. Perform multiplication between inputs and weights (dot product)
+            // 2. Perform multiplication between inputs and weights (dot product)
             self.output = try TensMath.compute_dot_product(T, input, &self.weights);
             //defer dot_product.deinit(); // Defer per liberare il tensor alla fine
 
             std.debug.print("\n >>>>>>>>>>> output pre-bias: ", .{});
-            self.weights.info();
+            self.output.info();
 
-            // 2. Print debug information for dot_product and bias
+            // 3. Print debug information for dot_product and bias
             std.debug.print("\n >>>>>>>>>>> self.bias: ", .{});
             self.bias.info();
 
-            // 3. Add bias to the dot product
+            // 4. Add bias to the dot product
             try TensMath.add_bias(T, &self.output, &self.bias);
 
             std.debug.print("\n >>>>>>>>>>> output post-bias: ", .{});
-            self.weights.info();
+            self.output.info();
 
-            // 5. Allocate memory for self.output with the same shape as dot_product
-            //self.output = try dot_product.copy();
-
-            //copy the output in to outputActivation so to be modified in the activation function
+            //5. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
 
-            // 7. Apply activation function
+            // 6. Apply activation function
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
 
@@ -162,10 +159,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
                 try activation.forward(T, &self.outputActivation);
             }
-
-            // 8. Print information on the final output
-            //self.output.info(); // print output using info()
-            //self.outputActivation.info();
 
             //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
             return self.outputActivation;
