@@ -148,7 +148,6 @@ pub fn Tensor(comptime T: type) type {
         }
 
         pub fn reshape(self: *@This(), shape: []usize) !void {
-            self.shape.len = shape.len;
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
@@ -156,10 +155,13 @@ pub fn Tensor(comptime T: type) type {
             if (total_size != self.size) {
                 return TensorError.InputArrayWrongSize;
             }
-            //use cycle to copy elements of shape
-            for (shape, 0..) |dim, i| {
-                self.shape[i] = dim;
-            }
+
+            self.allocator.free(self.shape);
+            const tensorShape = try self.allocator.alloc(usize, shape.len);
+            // copy elements of shape
+            @memcpy(tensorShape, shape);
+
+            self.shape = tensorShape;
         }
 
         //pay attention, the fill() can also perform a reshape

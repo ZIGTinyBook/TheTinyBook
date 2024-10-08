@@ -20,7 +20,7 @@ pub const TensorMathError = error{
 };
 
 pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
-    // Controlli:
+    // Checks:
     if (tensor.size == 0) {
         return TensorError.EmptyTensor;
     }
@@ -35,32 +35,28 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
         return TensorMathError.InputTensorDimensionMismatch;
     }
 
-    // Alloca un array per i thread, uno per ogni riga del tensore
+    // Allocate an array for threads, one for each row of the tensor
     const allocator = std.heap.page_allocator;
     const num_threads = tensor.size / bias.size;
 
-    var threads = try allocator.alloc(std.Thread, num_threads); // Array per salvare gli handle dei thread
+    var threads = try allocator.alloc(std.Thread, num_threads); //Array to save thread handles
 
     var index: usize = 0;
     var i: usize = 0;
 
-    // Avvia un thread per ogni riga del tensore
+    // Start a thread for each row of the tensor
     while (index < tensor.size) : (i += 1) {
         threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, tensor.data, index, len, bias });
         index += len;
     }
 
-    // Unisce tutti i thread
+    // Merges all threads
     for (threads) |*thread| {
-         thread.join(); // Usa try per catturare eventuali errori
+        thread.join(); // Use try to catch any errors
     }
 
-    // Libera l'array dei thread
+    // Free the thread array
     allocator.free(threads);
-
-    // Stampa informazioni di debug sui dati post-bias
-    // std.debug.print("\nDati post bias: ", .{});
-    // tensor.info();
 }
 
 fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bias: *Tensor(T)) void {
@@ -68,7 +64,6 @@ fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bi
         array[start + i] += bias.data[i];
     }
 }
-
 
 pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
     var res: f32 = 0;
