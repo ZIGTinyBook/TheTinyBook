@@ -29,7 +29,7 @@ pub fn main() !void {
         .allocator = undefined,
         .activation = undefined,
     };
-    try layer1.init(5, 4, &rng, "ReLU");
+    try layer1.init(5, 8, &rng, "ReLU");
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -46,7 +46,7 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 5 neurons
-    try layer2.init(4, 1, &rng, "Sigmoid");
+    try layer2.init(8, 1, &rng, "Sigmoid");
     try model.addLayer(&layer2);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
@@ -81,7 +81,7 @@ pub fn main() !void {
     const labelCol: usize = 5;
     try load.fromCSV(&allocator, file_name, featureCols, labelCol);
 
-    try model.TrainDataLoader(&load, 10);
+    try model.TrainDataLoader(&load, 15);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
