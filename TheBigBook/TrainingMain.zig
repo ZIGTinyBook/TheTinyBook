@@ -29,7 +29,7 @@ pub fn main() !void {
         .allocator = undefined,
         .activation = undefined,
     };
-    try layer1.init(5, 16, &rng, "ReLU");
+    try layer1.init(5, 4, &rng, "ReLU");
     try model.addLayer(&layer1);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -46,25 +46,25 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 5 neurons
-    try layer2.init(16, 32, &rng, "ReLU");
+    try layer2.init(4, 1, &rng, "Sigmoid");
     try model.addLayer(&layer2);
 
-    var layer3 = layer.DenseLayer(f64, &allocator){
-        .weights = undefined,
-        .bias = undefined,
-        .input = undefined,
-        .output = undefined,
-        .outputActivation = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .w_gradients = undefined,
-        .b_gradients = undefined,
-        .allocator = undefined,
-        .activation = undefined,
-    };
-    //layer 2: 2 inputs, 5 neurons
-    try layer3.init(32, 1, &rng, "ReLU");
-    try model.addLayer(&layer3);
+    // var layer3 = layer.DenseLayer(f64, &allocator){
+    //     .weights = undefined,
+    //     .bias = undefined,
+    //     .input = undefined,
+    //     .output = undefined,
+    //     .outputActivation = undefined,
+    //     .n_inputs = 0,
+    //     .n_neurons = 0,
+    //     .w_gradients = undefined,
+    //     .b_gradients = undefined,
+    //     .allocator = undefined,
+    //     .activation = undefined,
+    // };
+    // //layer 2: 2 inputs, 5 neurons
+    // try layer3.init(8, 1, &rng, "ReLU");
+    // try model.addLayer(&layer3);
 
     var load = loader.DataLoader(f64, f64, 100){
         .X = undefined,

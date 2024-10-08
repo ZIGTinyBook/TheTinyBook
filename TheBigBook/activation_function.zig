@@ -49,6 +49,33 @@ pub fn ReLU() type {
     };
 }
 
+pub fn Sigmoid() type {
+    return struct {
+        //it directly modify the input tensor
+        pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+            _ = self;
+            //checks
+            if (input.size <= 0) return TensorError.ZeroSizeTensor;
+
+            //apply Sigmoid
+            for (0..input.size) |i| {
+                input.data[i] = 1.0 / (1.0 + @exp(-input.data[i]));
+            }
+        }
+
+        pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+            _ = self;
+            //checks
+            if (input.size <= 0) return TensorError.ZeroSizeTensor;
+
+            //apply Sigmoid
+            for (0..input.size) |i| {
+                input.data[i] = input.data[i] * (1.0 - input.data[i]);
+            }
+        }
+    };
+}
+
 pub fn Softmax() type {
     return struct {
 
