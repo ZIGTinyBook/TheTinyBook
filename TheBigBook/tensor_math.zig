@@ -57,9 +57,9 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
     }
 
     // Join all threads
-    for (threads) |*thread| {
-        thread.join();
-    }
+    // for (threads) |*thread| {
+    //     thread.join();
+    // }
 
     // std.debug.print("\n data post bias :", .{});
     // tensor.info();

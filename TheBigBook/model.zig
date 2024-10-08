@@ -112,11 +112,16 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
                     var predictions = try self.forward(&load.xTensor);
+                    var shape: [1]usize = [_]usize{100};
+                    try predictions.reshape(&shape);
+                    var pred_cpy = try predictions.copy();
+                    try pred_cpy.reshape(&shape);
+                    pred_cpy.shape.len = 1;
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
                     var loser = Loss.LossFunction(Loss.MSELoss){};
-                    var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+                    var loss = try loser.computeLoss(T, &pred_cpy, &load.yTensor);
                     loss.info();
 
                     //compute accuracy
@@ -124,8 +129,11 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
                     //compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
-                    var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
+                    var grad: tensor.Tensor(T) = try loser.computeGradient(T, &pred_cpy, &load.yTensor);
                     grad.info();
+                    var shape2: [2]usize = [_]usize{ 100, 1 };
+                    grad.shape.len = 2;
+                    try grad.reshape(&shape2);
 
                     //backwarding
                     std.debug.print("\n-------------------------------backwarding", .{});
@@ -133,13 +141,14 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                     //optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
+                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
-                    std.debug.print("Barch Bumber {}", .{step});
+                    std.debug.print("Batch Bumber {}", .{step});
                 }
 
                 load.reset();
+                std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
             }
         }
     };
