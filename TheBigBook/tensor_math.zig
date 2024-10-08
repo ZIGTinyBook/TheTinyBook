@@ -20,57 +20,55 @@ pub const TensorMathError = error{
 };
 
 pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
-
-    //checks:
-    //- empty tensor
-    //- empty bias
-    //- bias shape, so far is always monodimensional
-    //- a bias for each neuron aka: for ech column of tensor
+    // Controlli:
     if (tensor.size == 0) {
         return TensorError.EmptyTensor;
     }
-    if (bias.size == 0) { // I keep it separate so to facilitate the debugging of a poor programmer
+    if (bias.size == 0) {
         return TensorError.EmptyTensor;
     }
-    if (bias.shape.len != 1) { // I keep it separate so to facilitate the debugging of a poor programmer
+    if (bias.shape.len != 1) {
         return TensorMathError.InputTensorsWrongShape;
     }
     const len = bias.shape[0];
-    if (len != tensor.shape[tensor.shape.len - 1]) { // I keep it separate so to facilitate the debugging of a poor programmer
+    if (len != tensor.shape[tensor.shape.len - 1]) {
         return TensorMathError.InputTensorDimensionMismatch;
     }
 
-    //IMPORTANT:
-    //Since all the data are ordered row after row, and the dimension of a row (aka the number of columns/neurons) is the same of the bias, I'll launch
-    //a thread for each row. I directly work on tensor.data, without moving in the tensor using the "location" coordinates.
-    //
+    // Alloca un array per i thread, uno per ogni riga del tensore
     const allocator = std.heap.page_allocator;
     const num_threads = tensor.size / bias.size;
-    var threads = try allocator.alloc(std.Thread, num_threads); // Array to store thread handles
+
+    var threads = try allocator.alloc(std.Thread, num_threads); // Array per salvare gli handle dei thread
 
     var index: usize = 0;
     var i: usize = 0;
 
-    while (index < tensor.size - 1) : (i += 1) {
+    // Avvia un thread per ogni riga del tensore
+    while (index < tensor.size) : (i += 1) {
         threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, tensor.data, index, len, bias });
         index += len;
     }
 
-    // Join all threads
-    // for (threads) |*thread| {
-    //     thread.join();
-    // }
+    // Unisce tutti i thread
+    for (threads) |*thread| {
+         thread.join(); // Usa try per catturare eventuali errori
+    }
 
-    // std.debug.print("\n data post bias :", .{});
+    // Libera l'array dei thread
+    allocator.free(threads);
+
+    // Stampa informazioni di debug sui dati post-bias
+    // std.debug.print("\nDati post bias: ", .{});
     // tensor.info();
 }
 
 fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bias: *Tensor(T)) void {
     for (0..len) |i| {
         array[start + i] += bias.data[i];
-        //std.debug.print("\nthread array[{}] = {}", .{ start + i, array[start + i] });
     }
 }
+
 
 pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
     var res: f32 = 0;
