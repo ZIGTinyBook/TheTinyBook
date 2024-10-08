@@ -26,6 +26,7 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
+        //free all the possible allocation, use it every time you create a new Tensor (defer yourTensor.deinit() )
         pub fn deinit(self: *@This()) void {
             //std.debug.print("\n deinit tensor:\n", .{});
             // Verifica se `data` è valido e non vuoto prima di liberarlo
@@ -42,6 +43,7 @@ pub fn Tensor(comptime T: type) type {
             }
         }
 
+        //from multidimensional array to Tensor
         pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
             //std.debug.print("\n fromArray initialization...", .{});
             var total_size: usize = 1;
@@ -62,10 +64,7 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
-        fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
-            return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
-        }
-
+        //From Tensor to multidimensional array
         pub fn toArray(self: @This(), comptime dimension: usize) !MagicalReturnType(T, dimension) {
             if (dimension == 1) {
                 return self.data;
@@ -73,6 +72,100 @@ pub fn Tensor(comptime T: type) type {
             return constructMultidimensionalArray(self.allocator, T, self.data, self.shape, 0, dimension);
         }
 
+        //copy self and return it in another Tensor
+        pub fn copy(self: *@This()) !Tensor(T) {
+            return try Tensor(T).fromArray(self.allocator, self.data, self.shape);
+        }
+
+        //inizialize and return a all-zero tensor starting from the shape
+        pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+
+            const tensorShape = try allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
+
+            const tensorData = try allocator.alloc(T, total_size);
+            for (tensorData) |*data| {
+                data.* = 0;
+            }
+
+            return @This(){
+                .data = tensorData,
+                .size = total_size,
+                .shape = tensorShape,
+                .allocator = allocator,
+            };
+        }
+
+        //pay attention, the fill() can also perform a reshape
+        pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
+
+            //deinitialize data e shape
+            self.deinit(); //if the Tensor has been just init() this function does nothing
+
+            //than, filling with the new values
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            const tensorShape = try self.allocator.alloc(usize, shape.len);
+            @memcpy(tensorShape, shape);
+
+            const tensorData = try self.allocator.alloc(T, total_size);
+            _ = flattenArray(T, inputArray, tensorData, 0);
+
+            self.data = tensorData;
+            self.size = total_size;
+            self.shape = tensorShape;
+        }
+
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //--------------------------------------------------------------------------getters and setters---------------------------------------------------------------
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+        pub fn setShape(self: *@This(), shape: []usize) !void {
+            var total_size: usize = 1;
+            for (shape) |dim| {
+                total_size *= dim;
+            }
+            self.shape = shape;
+            self.size = total_size;
+        }
+
+        pub fn getSize(self: *@This()) usize {
+            return self.size;
+        }
+
+        pub fn get(self: *const @This(), idx: usize) !T {
+            if (idx >= self.data.len) {
+                return error.IndexOutOfBounds;
+            }
+            return self.data[idx];
+        }
+
+        pub fn set(self: *@This(), idx: usize, value: T) !void {
+            if (idx >= self.data.len) {
+                return error.IndexOutOfBounds;
+            }
+            self.data[idx] = value;
+        }
+
+        pub fn get_at(self: *const @This(), indices: []const usize) !T {
+            const idx = try self.flatten_index(indices);
+            return self.get(idx);
+        }
+
+        pub fn set_at(self: *@This(), indices: []const usize, value: T) !void {
+            const idx = try self.flatten_index(indices);
+            return self.set(idx, value);
+        }
+
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------
+        //-------------------------------------------------------------------------------------utils------------------------------------------------------------------
+        //------------------------------------------------------------------------------------------------------------------------------------------------------------
         fn constructMultidimensionalArray(
             allocator: *const std.mem.Allocator,
             comptime ElementType: type,
@@ -111,6 +204,10 @@ pub fn Tensor(comptime T: type) type {
             return result;
         }
 
+        fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
+            return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
+        }
+
         fn calculateProduct(slice: []usize) usize {
             var product: usize = 1;
             for (slice) |elem| {
@@ -119,34 +216,7 @@ pub fn Tensor(comptime T: type) type {
             return product;
         }
 
-        //copy self and return it in another Tensor
-        pub fn copy(self: *@This()) !Tensor(T) {
-            return try Tensor(T).fromArray(self.allocator, self.data, self.shape);
-        }
-
-        //inizialize and return a all-zero tensor starting from the shape
-        pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
-            var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
-            }
-
-            const tensorShape = try allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
-
-            const tensorData = try allocator.alloc(T, total_size);
-            for (tensorData) |*data| {
-                data.* = 0;
-            }
-
-            return @This(){
-                .data = tensorData,
-                .size = total_size,
-                .shape = tensorShape,
-                .allocator = allocator,
-            };
-        }
-
+        //modify, if possible, the shape of a tensor, use it wisely
         pub fn reshape(self: *@This(), shape: []usize) !void {
             var total_size: usize = 1;
             for (shape) |dim| {
@@ -164,55 +234,7 @@ pub fn Tensor(comptime T: type) type {
             self.shape = tensorShape;
         }
 
-        //pay attention, the fill() can also perform a reshape
-        pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
-
-            //deinitialize data e shape
-            self.deinit(); //if the Tensor has been just init() this function does nothing
-
-            //than, filling with the new values
-            var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
-            }
-            const tensorShape = try self.allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
-
-            const tensorData = try self.allocator.alloc(T, total_size);
-            _ = flattenArray(T, inputArray, tensorData, 0);
-
-            self.data = tensorData;
-            self.size = total_size;
-            self.shape = tensorShape;
-        }
-
-        pub fn setShape(self: *@This(), shape: []usize) !void {
-            var total_size: usize = 1;
-            for (shape) |dim| {
-                total_size *= dim;
-            }
-            self.shape = shape;
-            self.size = total_size;
-        }
-
-        pub fn getSize(self: *@This()) usize {
-            return self.size;
-        }
-
-        pub fn get(self: *const @This(), idx: usize) !T {
-            if (idx >= self.data.len) {
-                return error.IndexOutOfBounds;
-            }
-            return self.data[idx];
-        }
-
-        pub fn set(self: *@This(), idx: usize, value: T) !void {
-            if (idx >= self.data.len) {
-                return error.IndexOutOfBounds;
-            }
-            self.data[idx] = value;
-        }
-
+        //Given the "coordinates" of a multidimensional Tensor returns the correspondant potition in monodimensional self.shape
         pub fn flatten_index(self: *const @This(), indices: []const usize) !usize {
             var idx: usize = 0;
             var stride: usize = 1;
@@ -223,16 +245,8 @@ pub fn Tensor(comptime T: type) type {
             return idx;
         }
 
-        pub fn get_at(self: *const @This(), indices: []const usize) !T {
-            const idx = try self.flatten_index(indices);
-            return self.get(idx);
-        }
-
-        pub fn set_at(self: *@This(), indices: []const usize, value: T) !void {
-            const idx = try self.flatten_index(indices);
-            return self.set(idx, value);
-        }
-
+        //Prints all the possible details of a tensor
+        //Very usefull in debugging
         pub fn info(self: *@This()) void {
             std.debug.print("\ntensor infos: ", .{});
             std.debug.print("\n  data type:{}", .{@TypeOf(self.data[0])});
@@ -245,6 +259,7 @@ pub fn Tensor(comptime T: type) type {
             self.print();
         }
 
+        //prints all the self.data in an array
         pub fn print(self: *@This()) void {
             std.debug.print("\n  tensor data: ", .{});
             for (0..self.size) |i| {
@@ -253,6 +268,7 @@ pub fn Tensor(comptime T: type) type {
             std.debug.print("\n", .{});
         }
 
+        //print the Tensor() in the shape of a matrix
         pub fn printMultidim(self: *@This()) void {
             const dim = self.shape.len;
             for (0..self.shape[dim - 2]) |i| {
@@ -263,6 +279,8 @@ pub fn Tensor(comptime T: type) type {
                 std.debug.print("]", .{});
             }
         }
+
+        //returns self but transpose, does not modify self, but creates a new Tensor
         pub fn transpose2D(self: *@This()) !Tensor(T) {
             if (self.shape.len != 2) {
                 return error.InvalidDimension; // For simplicity, let's focus on 2D for now
