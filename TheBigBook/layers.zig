@@ -11,7 +11,7 @@ pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Rand
     for (matrix) |*row| {
         row.* = try std.heap.page_allocator.alloc(T, n_neurons);
         for (row.*) |*value| {
-            value.* = rng.random().floatNorm(T);
+            value.* = rng.random().floatNorm(T) + 5;
         }
     }
     return matrix;
@@ -185,7 +185,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
 
-            self.printLayer(1);
+            self.printLayer(0);
 
             return &dL_dInput;
         }

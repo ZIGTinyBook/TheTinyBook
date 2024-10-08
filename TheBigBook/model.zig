@@ -90,11 +90,8 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 };
                 try optimizer.step(self);
             }
-        }
 
-        fn get_current_layer_input(self: *@This(), layer_number: usize) *tensor.Tensor(T) {
-            if (layer_number == 0) return &self.input_tensor;
-            return &self.layers[layer_number - 1].outputActivation;
+            std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
         }
     };
 }
@@ -114,6 +111,7 @@ pub fn main() !void {
     var layer1 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
+        .input = undefined,
         .output = undefined,
         .outputActivation = undefined,
         .n_inputs = 0,
@@ -130,6 +128,7 @@ pub fn main() !void {
     var layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
+        .input = undefined,
         .output = undefined,
         .outputActivation = undefined,
         .n_inputs = 0,
@@ -164,9 +163,7 @@ pub fn main() !void {
     var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &shape_target);
 
     //const output = try model.forward(&input_tensor);
-    //std.debug.print("Output finale: {any}\n", .{output});
     try model.train(&input_tensor, &target_tensor, 20);
-    //output.deinit();
     model.deinit();
     input_tensor.deinit();
 }
