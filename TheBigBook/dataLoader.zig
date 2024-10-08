@@ -91,7 +91,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             }
         }
 
-        pub fn fromCSV(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8, featureCols: []const usize, labelCol: usize) !void {
+        pub fn fromCSV(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8, featureCols: []const usize, labelCol: usize) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -248,7 +248,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             return columns.toOwnedSlice();
         }
 
-        fn freeCSVColumns(allocator: *std.mem.Allocator, columns: []const []u8) void {
+        fn freeCSVColumns(allocator: *const std.mem.Allocator, columns: []const []u8) void {
             allocator.free(columns);
         }
 
