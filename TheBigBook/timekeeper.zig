@@ -30,20 +30,3 @@ fn exampleFunction() void {
     }
     std.debug.print("\n sum: {}", .{sum});
 }
-
-pub fn main() void {
-    const allocator = std.heap.page_allocator;
-
-    var inputArray: [2][3]u8 = [_][3]u8{
-        [_]u8{ 1.0, 2.0, 3.0 },
-        [_]u8{ 4.0, 5.0, 6.0 },
-    };
-
-    var shape: [2]usize = [_]usize{ 2, 3 };
-
-    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
-    defer tensor.deinit();
-
-    const duration = timekeeper(@TypeOf(tensor.print()), exampleFunction);
-    std.debug.print("\n duration: {} nanoseconds\n", .{duration});
-}

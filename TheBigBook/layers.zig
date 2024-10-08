@@ -136,6 +136,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
                 try activation.forward(T, &self.outputActivation);
+            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
+                var activation = ActivLib.ActivationFunction(ActivLib.Sigmoid){};
+                try activation.forward(T, &self.outputActivation);
             }
 
             self.printLayer(1);
@@ -153,6 +156,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activ_grad.derivate(T, dValues);
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
+                try activ_grad.derivate(T, dValues);
+            } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
+                var activ_grad = ActivLib.ActivationFunction(ActivLib.Sigmoid){};
                 try activ_grad.derivate(T, dValues);
             }
 
@@ -220,48 +226,4 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
         }
     };
-}
-
-pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
-    var rng = std.Random.Xoshiro256.init(12345);
-
-    const n_inputs: usize = 4;
-    const n_neurons: usize = 2;
-
-    var dense_layer = DenseLayer(f64, &allocator){
-        .weights = undefined,
-        .bias = undefined,
-        .output = undefined,
-        .outputActivation = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .weightShape = undefined,
-        .biasShape = undefined,
-        .w_gradients = undefined,
-        .b_gradients = undefined,
-        .allocator = undefined,
-        .activation = undefined,
-    };
-
-    try dense_layer.init(n_inputs, n_neurons, &rng, "ReLU");
-
-    std.debug.print("Weights and bias initialized\n", .{});
-
-    //std.debug.print("shapes after init main are {} x {} and {} x {}\n", .{ dense_layer.weights.shape[0], dense_layer.weights.shape[1], 1, dense_layer.bias.shape[0] });
-
-    var inputArray: [2][4]f64 = [_][4]f64{
-        [_]f64{ 1.0, 2.0, 3.0, 1 },
-        [_]f64{ 4.0, 5.0, 6.0, 2 },
-    };
-    var shape: [2]usize = [_]usize{ 2, 4 };
-
-    var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
-    defer input_tensor.deinit();
-
-    _ = try dense_layer.forward(&input_tensor);
-    dense_layer.output.info();
-
-    dense_layer.output.deinit();
 }
