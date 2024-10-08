@@ -5,7 +5,6 @@ const Model = @import("model.zig").Model;
 const loader = @import("dataLoader.zig");
 
 pub fn main() !void {
-    std.debug.print("\n     test: Model with multiple layers training test", .{});
     const allocator = std.heap.page_allocator;
 
     var model = Model(f64, &allocator){
