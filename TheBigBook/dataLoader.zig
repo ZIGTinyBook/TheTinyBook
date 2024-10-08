@@ -280,3 +280,31 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
         }
     };
 }
+
+pub fn main() !void {
+    var allocator = std.heap.page_allocator;
+    var loader = DataLoader(f64, f64, 1){
+        .X = undefined,
+        .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
+    };
+
+    const file_name: []const u8 = "dataset_regressione.csv";
+    const features = [_]usize{ 0, 1, 2, 3, 4 };
+    const featureCols: []const usize = &features;
+    const labelCol: usize = 5;
+    var shapeXArr = [_]usize{ 10, 5 };
+    var shapeYArr = [_]usize{10};
+    var shapeX: []usize = &shapeXArr;
+    var shapeY: []usize = &shapeYArr;
+    try loader.fromCSV(&allocator, file_name, featureCols, labelCol);
+    _ = loader.xNextBatch(10);
+    _ = loader.yNextBatch(10);
+    try loader.toTensor(&allocator, &shapeX, &shapeY);
+    const array = loader.xTensor.toArray(2);
+    loader.xTensor.info();
+    std.debug.print("Array extracted from tensor: {any}\n", .{array});
+}
