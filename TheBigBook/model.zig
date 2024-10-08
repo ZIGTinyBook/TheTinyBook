@@ -112,16 +112,15 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
                     var predictions = try self.forward(&load.xTensor);
-                    var shape: [1]usize = [_]usize{100};
-                    try predictions.reshape(&shape);
-                    var pred_cpy = try predictions.copy();
-                    try pred_cpy.reshape(&shape);
-                    pred_cpy.shape.len = 1;
+                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
+                    try predictions.reshape(load.yTensor.shape);
+                    //var pred_cpy = try predictions.copy();
+                    //try pred_cpy.reshape(load.yTensor.shape);
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
                     var loser = Loss.LossFunction(Loss.MSELoss){};
-                    var loss = try loser.computeLoss(T, &pred_cpy, &load.yTensor);
+                    var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
                     loss.info();
 
                     //compute accuracy
@@ -129,11 +128,10 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
                     //compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
-                    var grad: tensor.Tensor(T) = try loser.computeGradient(T, &pred_cpy, &load.yTensor);
+                    var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
                     grad.info();
-                    var shape2: [2]usize = [_]usize{ 100, 1 };
-                    grad.shape.len = 2;
-                    try grad.reshape(&shape2);
+                    //var shape2: [2]usize = [_]usize{ 100, 1 };
+                    try grad.reshape(&shape);
 
                     //backwarding
                     std.debug.print("\n-------------------------------backwarding", .{});

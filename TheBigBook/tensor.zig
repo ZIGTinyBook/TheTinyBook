@@ -148,6 +148,7 @@ pub fn Tensor(comptime T: type) type {
         }
 
         pub fn reshape(self: *@This(), shape: []usize) !void {
+            self.shape.len = shape.len;
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
