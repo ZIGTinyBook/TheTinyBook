@@ -191,7 +191,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
 
-            self.printLayer(0);
+            self.printLayer(1);
 
             return &dL_dInput;
         }
