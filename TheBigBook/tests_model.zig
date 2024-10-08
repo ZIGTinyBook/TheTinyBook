@@ -131,7 +131,7 @@ test "Model with multiple layers training test" {
     var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &targetShape);
     defer target_tensor.deinit();
 
-    try model.train(&input_tensor, &target_tensor, 2);
+    try model.train(&input_tensor, &target_tensor, 100);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
