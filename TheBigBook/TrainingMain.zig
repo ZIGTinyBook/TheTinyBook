@@ -81,7 +81,7 @@ pub fn main() !void {
     const labelCol: usize = 5;
     try load.fromCSV(&allocator, file_name, featureCols, labelCol);
 
-    try model.TrainDataLoader(&load, 100);
+    try model.TrainDataLoader(&load, 10);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
