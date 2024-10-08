@@ -4,6 +4,7 @@ const layer = @import("layers.zig");
 const Loss = @import("lossFunction.zig");
 const TensMath = @import("tensor_math.zig");
 const Optim = @import("optim.zig");
+const loader = @import("dataLoader.zig").DataLoader;
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
@@ -92,6 +93,54 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             }
 
             std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
+        }
+
+        pub fn TrainDataLoader(self: *@This(), load: *loader(f64, f64, 100), ephocs: u32) !void {
+            var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
+            var shapeXArr = [_]usize{ 100, 5 };
+            var shapeYArr = [_]usize{100};
+            var shapeX: []usize = &shapeXArr;
+            var shapeY: []usize = &shapeYArr;
+
+            for (0..ephocs) |i| {
+                std.debug.print("\n\n----------------------epoch:{}", .{i});
+                for (0..10) |step| {
+                    _ = load.xNextBatch(100);
+                    _ = load.yNextBatch(100);
+                    try load.toTensor(allocator, &shapeX, &shapeY);
+
+                    //forwarding
+                    std.debug.print("\n-------------------------------forwarding", .{});
+                    var predictions = try self.forward(&load.xTensor);
+
+                    //compute loss
+                    std.debug.print("\n-------------------------------computing loss", .{});
+                    var loser = Loss.LossFunction(Loss.MSELoss){};
+                    var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+                    loss.info();
+
+                    //compute accuracy
+                    LossMeanRecord[i] = TensMath.mean(T, &loss);
+                    std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
+                    //compute gradient of the loss
+                    std.debug.print("\n-------------------------------computing loss gradient", .{});
+                    var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
+                    grad.info();
+
+                    //backwarding
+                    std.debug.print("\n-------------------------------backwarding", .{});
+                    _ = try self.backward(&grad);
+
+                    //optimizing
+                    std.debug.print("\n-------------------------------Optimizer Step", .{});
+                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
+                    };
+                    try optimizer.step(self);
+                    std.debug.print("Barch Bumber {}", .{step});
+                }
+
+                load.reset();
+            }
         }
     };
 }
