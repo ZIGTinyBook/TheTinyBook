@@ -55,7 +55,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
             return grad;
         }
-
+        //TODO maybe wrap X and Y in dataloader
         pub fn train(self: *@This(), input: *tensor.Tensor(T), targets: *tensor.Tensor(T), epochs: u32) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
 
@@ -70,7 +70,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 std.debug.print("\n-------------------------------computing loss", .{});
                 var loser = Loss.LossFunction(Loss.MSELoss){};
                 var loss = try loser.computeLoss(T, &predictions, targets);
-                loss.info();
 
                 //compute accuracy
                 LossMeanRecord[i] = TensMath.mean(T, &loss);
@@ -79,7 +78,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 //compute gradient of the loss
                 std.debug.print("\n-------------------------------computing loss gradient", .{});
                 var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
-                grad.info();
 
                 //backwarding
                 std.debug.print("\n-------------------------------backwarding", .{});
@@ -95,18 +93,23 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
         }
 
-        pub fn TrainDataLoader(self: *@This(), load: *loader(f64, f64, 100), ephocs: u32) !void {
+        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(f64, f64, batchSize), ephocs: u32) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
-            var shapeXArr = [_]usize{ 100, 5 };
-            var shapeYArr = [_]usize{100};
+            var shapeXArr = [_]usize{ batchSize, features };
+            var shapeYArr = [_]usize{batchSize};
             var shapeX: []usize = &shapeXArr;
             var shapeY: []usize = &shapeYArr;
+            var steps: u16 = 0;
+
+            const len: u16 = @as(u16, @intCast(load.X.len));
+            steps = @divFloor(len, batchSize);
+            std.debug.print("\n\n----------------------len:{}", .{len});
 
             for (0..ephocs) |i| {
                 std.debug.print("\n\n----------------------epoch:{}", .{i});
-                for (0..10) |step| {
-                    _ = load.xNextBatch(100);
-                    _ = load.yNextBatch(100);
+                for (0..steps) |step| {
+                    _ = load.xNextBatch(batchSize);
+                    _ = load.yNextBatch(batchSize);
                     try load.toTensor(allocator, &shapeX, &shapeY);
 
                     //forwarding
@@ -114,14 +117,11 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     var predictions = try self.forward(&load.xTensor);
                     var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
                     try predictions.reshape(load.yTensor.shape);
-                    //var pred_cpy = try predictions.copy();
-                    //try pred_cpy.reshape(load.yTensor.shape);
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
                     var loser = Loss.LossFunction(Loss.MSELoss){};
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
-                    loss.info();
 
                     //compute accuracy
                     LossMeanRecord[i] = TensMath.mean(T, &loss);
@@ -129,8 +129,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     //compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
                     var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
-                    grad.info();
-                    //var shape2: [2]usize = [_]usize{ 100, 1 };
                     try grad.reshape(&shape);
 
                     //backwarding
@@ -139,7 +137,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                     //optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
+                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
                     std.debug.print("Batch Bumber {}", .{step});
@@ -147,6 +145,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                 load.reset();
                 std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
+                std.debug.print("steps:{}", .{steps});
             }
         }
     };
