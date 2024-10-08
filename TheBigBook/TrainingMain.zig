@@ -45,7 +45,7 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 5 neurons
-    try layer2.init(8, 1, &rng, "Sigmoid");
+    try layer2.init(8, 1, &rng, "");
     try model.addLayer(&layer2);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
@@ -80,7 +80,7 @@ pub fn main() !void {
     const labelCol: usize = 5;
     try load.fromCSV(&allocator, file_name, featureCols, labelCol);
 
-    try model.TrainDataLoader(&load, 15);
+    try model.TrainDataLoader(100, 5, &load, 100);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
