@@ -104,6 +104,9 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             const len: u16 = @as(u16, @intCast(load.X.len));
             steps = @divFloor(len, batchSize);
             std.debug.print("\n\n----------------------len:{}", .{len});
+            if (len % batchSize != 0) {
+                steps += 1;
+            }
 
             for (0..ephocs) |i| {
                 std.debug.print("\n\n----------------------epoch:{}", .{i});
