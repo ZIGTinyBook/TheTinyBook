@@ -193,9 +193,9 @@ test "fromCSV test with feature and label extraction" {
     };
 
     const file_name: []const u8 = "test.csv";
-    const features = [_]usize{ 0, 1, 2, 3 };
+    const features = [_]usize{ 0, 1, 2, 3, 4 };
     const featureCols: []const usize = &features;
-    const labelCol: usize = 4;
+    const labelCol: usize = 5;
 
     try loader.fromCSV(&allocator, file_name, featureCols, labelCol);
 
