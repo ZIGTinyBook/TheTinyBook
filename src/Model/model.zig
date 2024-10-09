@@ -1,10 +1,10 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Loss = @import("lossFunction.zig");
-const TensMath = @import("tensor_math.zig");
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Loss = @import("loss");
+const TensMath = @import("tensor_m");
 const Optim = @import("optim.zig");
-const loader = @import("dataLoader.zig").DataLoader;
+const loader = @import("dataloader").DataLoader;
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
@@ -55,7 +55,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
             return grad;
         }
-
+        //TODO maybe wrap X and Y in dataloader
         pub fn train(self: *@This(), input: *tensor.Tensor(T), targets: *tensor.Tensor(T), epochs: u32) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
 
@@ -70,7 +70,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 std.debug.print("\n-------------------------------computing loss", .{});
                 var loser = Loss.LossFunction(Loss.MSELoss){};
                 var loss = try loser.computeLoss(T, &predictions, targets);
-                loss.info();
 
                 //compute accuracy
                 LossMeanRecord[i] = TensMath.mean(T, &loss);
@@ -79,7 +78,6 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                 //compute gradient of the loss
                 std.debug.print("\n-------------------------------computing loss gradient", .{});
                 var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
-                grad.info();
 
                 //backwarding
                 std.debug.print("\n-------------------------------backwarding", .{});
@@ -95,29 +93,38 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
             std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
         }
 
-        pub fn TrainDataLoader(self: *@This(), load: *loader(f64, f64, 100), ephocs: u32) !void {
+        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(f64, f64, batchSize), ephocs: u32) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
-            var shapeXArr = [_]usize{ 100, 5 };
-            var shapeYArr = [_]usize{100};
+            var shapeXArr = [_]usize{ batchSize, features };
+            var shapeYArr = [_]usize{batchSize};
             var shapeX: []usize = &shapeXArr;
             var shapeY: []usize = &shapeYArr;
+            var steps: u16 = 0;
+
+            const len: u16 = @as(u16, @intCast(load.X.len));
+            steps = @divFloor(len, batchSize);
+            std.debug.print("\n\n----------------------len:{}", .{len});
+            if (len % batchSize != 0) {
+                steps += 1;
+            }
 
             for (0..ephocs) |i| {
                 std.debug.print("\n\n----------------------epoch:{}", .{i});
-                for (0..10) |step| {
-                    _ = load.xNextBatch(100);
-                    _ = load.yNextBatch(100);
+                for (0..steps) |step| {
+                    _ = load.xNextBatch(batchSize);
+                    _ = load.yNextBatch(batchSize);
                     try load.toTensor(allocator, &shapeX, &shapeY);
 
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
                     var predictions = try self.forward(&load.xTensor);
+                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
+                    try predictions.reshape(load.yTensor.shape);
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
                     var loser = Loss.LossFunction(Loss.MSELoss){};
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
-                    loss.info();
 
                     //compute accuracy
                     LossMeanRecord[i] = TensMath.mean(T, &loss);
@@ -125,7 +132,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     //compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
                     var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
-                    grad.info();
+                    try grad.reshape(&shape);
 
                     //backwarding
                     std.debug.print("\n-------------------------------backwarding", .{});
@@ -136,83 +143,13 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
                     var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
-                    std.debug.print("Barch Bumber {}", .{step});
+                    std.debug.print("Batch Bumber {}", .{step});
                 }
 
                 load.reset();
+                std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
+                std.debug.print("steps:{}", .{steps});
             }
         }
     };
-}
-
-pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
-    var model = Model(f64, &allocator){
-        .layers = undefined,
-        .allocator = &allocator,
-        .input_tensor = undefined,
-    };
-    try model.init();
-
-    var rng = std.rand.Random.Xoshiro256.init(12345);
-
-    var layer1 = layer.DenseLayer(f64, &allocator){
-        .weights = undefined,
-        .bias = undefined,
-        .input = undefined,
-        .output = undefined,
-        .outputActivation = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .w_gradients = undefined,
-        .b_gradients = undefined,
-        .allocator = undefined,
-        .activation = undefined,
-    };
-    //layer 1: 3 inputs, 2 neurons
-    try layer1.init(4, 3, &rng, "ReLU");
-    try model.addLayer(&layer1);
-
-    var layer2 = layer.DenseLayer(f64, &allocator){
-        .weights = undefined,
-        .bias = undefined,
-        .input = undefined,
-        .output = undefined,
-        .outputActivation = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .w_gradients = undefined,
-        .b_gradients = undefined,
-        .allocator = undefined,
-        .activation = undefined,
-    };
-    //layer 2: 2 inputs, 3 neurons
-    try layer2.init(3, 3, &rng, "ReLU");
-    try model.addLayer(&layer2);
-
-    // Creazione di un input tensor
-    var inputArray: [3][4]f64 = [_][4]f64{
-        [_]f64{ 1.0, 2.0, 3.0, 1 },
-        [_]f64{ 4.0, 5.0, 6.0, 1 },
-        [_]f64{ 4.0, 5.0, 6.0, 1 },
-    };
-    var targetArray: [3][3]f64 = [_][3]f64{
-        [_]f64{ 1.0, 2.0, 3.0 },
-        [_]f64{ 4.0, 5.0, 6.0 },
-        [_]f64{ 4.0, 5.0, 6.0 },
-    };
-    var shape: [2]usize = [_]usize{ 3, 4 };
-    var shape_target: [2]usize = [_]usize{ 3, 3 };
-
-    var input_tensor = try tensor.Tensor(f64).fromArray(&allocator, &inputArray, &shape);
-
-    defer input_tensor.deinit();
-
-    var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &shape_target);
-
-    //const output = try model.forward(&input_tensor);
-    try model.train(&input_tensor, &target_tensor, 20);
-    model.deinit();
-    input_tensor.deinit();
 }

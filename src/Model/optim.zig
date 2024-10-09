@@ -1,7 +1,7 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Model = @import("model.zig");
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Model = @import("../Model/model.zig");
 
 const Optimizers = enum {
     SGD,
@@ -83,48 +83,4 @@ pub fn optimizer_ADAMTEST(T: type, lr: f64, allocator: *const std.mem.Allocator)
             }
         }
     };
-}
-
-pub fn main() !void {
-    const allocator = std.heap.page_allocator; // Constant pointer to the allocator
-
-    var model = Model.Model(f64, &allocator){ // Initialize the model with the correct allocator
-        .layers = undefined,
-        .allocator = &allocator,
-    };
-    try model.init();
-
-    var rng = std.rand.Random.Xoshiro256.init(12345);
-
-    var dense_layer = layer.DenseLayer(f64, &allocator){
-        .weights = undefined,
-        .bias = undefined,
-        .output = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .w_gradients = undefined,
-        .b_gradients = undefined,
-        .weightShape = undefined,
-        .biasShape = undefined,
-        .allocator = &allocator,
-    };
-    try dense_layer.init(3, 2, &rng); // Layer with 3 inputs and 2 neurons
-    try model.addLayer(&dense_layer);
-
-    std.debug.print("Weights before:\n", .{});
-    dense_layer.weights.info();
-
-    // Create an instance of the optimizer_SGD
-
-    // Initialize the Optimizer struct, passing the sgd_optimizer instance
-    var optimizer1 = Optimizer(f64, optimizer_SGD, 0.01, &allocator){ // Here we pass the actual instance of the optimizer
-    };
-
-    std.debug.print("AFTERRRRRR\n", .{});
-    try optimizer1.step(&model);
-
-    std.debug.print("\nWeights after:\n", .{});
-    dense_layer.weights.info();
-
-    model.deinit();
 }

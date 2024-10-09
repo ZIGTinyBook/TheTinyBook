@@ -1,11 +1,19 @@
 const std = @import("std");
+const tensor = @import("tensor");
 
-pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
+//Look at to array to have the x type of custom dimension not just 2 (batch x features)
+
+pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16) type {
     return struct {
         X: [][]Ftype,
         y: []LabelType,
         x_index: usize = 0,
         y_index: usize = 0,
+        xTensor: tensor.Tensor(Ftype),
+        yTensor: tensor.Tensor(LabelType),
+        batchSize: usize = batchSize,
+        XBatch: [][]Ftype,
+        yBatch: []LabelType,
 
         pub fn xNext(self: *@This()) ?[]Ftype {
             const index = self.x_index;
@@ -25,6 +33,11 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             return null;
         }
 
+        pub fn toTensor(self: *@This(), allocator: *const std.mem.Allocator, shapeX: *[]usize, shapeY: *[]usize) !void {
+            self.xTensor = try tensor.Tensor(Ftype).fromArray(allocator, self.XBatch, shapeX.*);
+            self.yTensor = try tensor.Tensor(LabelType).fromArray(allocator, self.yBatch, shapeY.*);
+        }
+
         pub fn reset(self: *@This()) void {
             self.x_index = 0;
             self.y_index = 0;
@@ -38,6 +51,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
             const batch = self.X[start..end];
             self.x_index = end;
+            self.XBatch = batch;
             return batch;
         }
 
@@ -49,12 +63,13 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
 
             const batch = self.y[start..end];
             self.y_index = end;
+            self.yBatch = batch;
             return batch;
         }
 
         //We are using Knuth shuffle algorithm with complexity O(n)
 
-        pub fn shuffle(self: *@This(), rng: *std.rand.DefaultPrng) void {
+        pub fn shuffle(self: *@This(), rng: *std.Random.DefaultPrng) void {
             const len = self.X.len;
 
             if (len <= 1) return;
@@ -76,7 +91,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             }
         }
 
-        pub fn fromCSV(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8, featureCols: []const usize, labelCol: usize) !void {
+        pub fn fromCSV(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8, featureCols: []const usize, labelCol: usize) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -89,7 +104,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
                 if (maybeLine == null) break;
                 numRows += 1;
             }
-            //I really don't like this, pls refactor this shitt later
+            //I really don't like this, pls refactor this shit later
 
             try file.seekTo(0);
 
@@ -233,7 +248,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             return columns.toOwnedSlice();
         }
 
-        fn freeCSVColumns(allocator: *std.mem.Allocator, columns: []const []u8) void {
+        fn freeCSVColumns(allocator: *const std.mem.Allocator, columns: []const []u8) void {
             allocator.free(columns);
         }
 
@@ -262,55 +277,6 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type) type {
             allocator.free(self.X);
 
             allocator.free(self.y);
-        }
-
-        pub fn normalize_X(self: *@This()) void {
-            const rows = self.X.len;
-            if (rows == 0) return;
-
-            const cols = self.X[0].len;
-            if (cols == 0) return;
-
-            var minValue = self.X[0][0];
-            var maxValue = self.X[0][0];
-
-            for (self.X) |row| {
-                for (row) |value| {
-                    if (value < minValue) minValue = value;
-                    if (value > maxValue) maxValue = value;
-                }
-            }
-
-            const range = maxValue - minValue;
-
-            if (range == 0) return;
-
-            for (self.X) |row| {
-                for (row) |*value| {
-                    value.* = (value.* - minValue) / range;
-                }
-            }
-        }
-
-        pub fn normalize_y(self: *@This()) void {
-            const len = self.y.len;
-            if (len == 0) return;
-
-            var minValue = self.y[0];
-            var maxValue = self.y[0];
-
-            for (self.y) |value| {
-                if (value < minValue) minValue = value;
-                if (value > maxValue) maxValue = value;
-            }
-
-            const range = maxValue - minValue;
-
-            if (range == 0) return;
-
-            for (self.y) |*value| {
-                value.* = (value.* - minValue) / range;
-            }
         }
     };
 }
