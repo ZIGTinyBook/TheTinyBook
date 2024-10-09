@@ -316,7 +316,7 @@ pub fn Tensor(comptime T: type) type {
     };
 }
 
-// Funzione ricorsiva per appiattire un array multidimensionale
+// recursive function to flatten a multidimensional array
 fn flattenArray(T: type, arr: anytype, flatArr: []T, startIndex: usize) usize {
     var idx = startIndex;
 

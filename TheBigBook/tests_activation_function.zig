@@ -6,7 +6,7 @@ test "tests description" {
     std.debug.print("\n--- Running activation_function tests\n", .{});
 }
 
-// initialization from activationFunction()------------------------------------------------
+//*********************************************** ReLU ***********************************************
 test "ReLU from ActivationFunction()" {
     std.debug.print("\n     test: ReLU from ActivationFunction()", .{});
 
@@ -29,30 +29,6 @@ test "ReLU from ActivationFunction()" {
     for (t1.data) |*val| {
         try std.testing.expect(0.0 == val.*);
     }
-}
-
-test "Softmax from ActivationFunction()" {
-    std.debug.print("\n     test: Softmax from ActivationFunction()", .{});
-    const allocator = std.heap.page_allocator;
-
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ 0, 0 },
-        [_]f32{ 0, 0 },
-    };
-
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
-
-    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
-    defer t1.deinit();
-
-    var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
-    try soft.forward(f32, &t1);
-    //now data is:
-    //{ 0.2689414,  0.7310586  }
-    //{ 0.2689414,  0.73105854 }
-
-    try std.testing.expect(t1.data[0] == t1.data[1]);
-    try std.testing.expect(t1.data[2] == t1.data[3]);
 }
 
 test "ReLU all negative" {
@@ -102,6 +78,32 @@ test "ReLU all positive" {
     }
 }
 
+//*********************************************** Softmax ***********************************************
+
+test "Softmax from ActivationFunction()" {
+    std.debug.print("\n     test: Softmax from ActivationFunction()", .{});
+    const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ 0, 0 },
+        [_]f32{ 0, 0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t1.deinit();
+
+    var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
+    try soft.forward(f32, &t1);
+    //now data is:
+    //{ 0.2689414,  0.7310586  }
+    //{ 0.2689414,  0.73105854 }
+
+    try std.testing.expect(t1.data[0] == t1.data[1]);
+    try std.testing.expect(t1.data[2] == t1.data[3]);
+}
+
 test "Softmax all positive" {
     std.debug.print("\n     test: Softmax all positive", .{});
 
@@ -147,13 +149,49 @@ test "Softmax all 0" {
 
     var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
     try soft.forward(f32, &t1);
-    //now data is:
-    //{ 0.2689414,  0.7310586  }
-    //{ 0.2689414,  0.73105854 }
+
+    t1.info();
 
     try std.testing.expect(t1.data[0] == t1.data[1]);
     try std.testing.expect(t1.data[2] == t1.data[3]);
 }
+
+test "Softmax derivate" {
+    std.debug.print("\n     test: Softmax all 0", .{});
+
+    const allocator = std.heap.page_allocator;
+
+    var inputArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ 1.0, 2.0 },
+        [_]f32{ 4.0, 5.0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+    defer t1.deinit();
+
+    var soft = ActivFun.ActivationFunction(ActivFun.Softmax){};
+    try soft.forward(f32, &t1);
+    //now data is:
+    //{ 0.2689414,  0.7310586  }
+    //{ 0.2689414,  0.73105854 }
+    t1.info();
+
+    try std.testing.expect(t1.data[0] + t1.data[1] > 0.9);
+    try std.testing.expect(t1.data[0] + t1.data[1] < 1.1);
+
+    try std.testing.expect(t1.data[2] + t1.data[3] > 0.9);
+    try std.testing.expect(t1.data[2] + t1.data[3] < 1.1);
+
+    try soft.derivateWithPrevOutput(f32, &t1, &t1);
+    //now data is:
+    //{0.196, −0.196}
+    //{​−0.196, 0.196​}
+    t1.info();
+}
+
+//*********************************************** Sigmoid ***********************************************
 
 test "Sigmoid forward" {
     std.debug.print("\n     test: Sigmoid forward ", .{});
