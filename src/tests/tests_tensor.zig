@@ -1,5 +1,5 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
+const Tensor = @import("tensor").Tensor;
 
 test "Tensor test description" {
     std.debug.print("\n--- Running tensor tests\n", .{});

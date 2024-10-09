@@ -1,9 +1,10 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
-const Loss = @import("./lossFunction.zig");
-const MSELoss = @import("./lossFunction.zig").MSELoss;
-const CCELoss = @import("./lossFunction.zig").CCELoss;
-const LossError = @import("./lossFunction.zig").LossError;
+const Tensor = @import("tensor").Tensor;
+
+const Loss = @import("loss");
+const MSELoss = @import("loss").MSELoss;
+const CCELoss = @import("loss").CCELoss;
+const LossError = @import("loss").LossError;
 
 test "tests description" {
     std.debug.print("\n--- Running loss_function tests\n", .{});

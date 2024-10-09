@@ -1,8 +1,6 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
-const ActivFun = @import("./activation_function.zig");
-const ReLU = @import("./activation_function.zig").ReLU;
-const Softmax = @import("./activation_function.zig").Softmax;
+const Tensor = @import("tensor").Tensor;
+const ActivFun = @import("../Model/activation_function.zig");
 
 test "tests description" {
     std.debug.print("\n--- Running activation_function tests\n", .{});
@@ -155,4 +153,50 @@ test "Softmax all 0" {
 
     try std.testing.expect(t1.data[0] == t1.data[1]);
     try std.testing.expect(t1.data[2] == t1.data[3]);
+}
+
+test "Sigmoid forward" {
+    std.debug.print("\n     test: Sigmoid forward ", .{});
+
+    const allocator = std.heap.page_allocator;
+
+    const input_data = [_]f64{ 0.0, 2.0, -2.0 }; // input data for the tensor
+    var shape: [1]usize = [_]usize{3};
+    var input_tensor = try Tensor(f64).fromArray(&allocator, &input_data, &shape); // create tensor from input data
+    defer input_tensor.deinit();
+
+    var sigmoid = ActivFun.ActivationFunction(ActivFun.Sigmoid){};
+
+    // Test forward pass
+    try sigmoid.forward(f64, &input_tensor);
+    const expected_forward_output = [_]f64{ 0.5, 0.880797, 0.119203 }; // expected sigmoid output for each input value
+    for (input_tensor.data, 0..) |*data, i| {
+        try std.testing.expect(@abs(data.* - expected_forward_output[i]) < 1e-6);
+    }
+}
+
+test "Sigmoid derivate" {
+    std.debug.print("\n     test: Sigmoid derivate ", .{});
+
+    const allocator = std.heap.page_allocator;
+
+    const input_data = [_]f64{ 0.0, 2.0, -2.0 }; // input data for the tensor
+    var shape: [1]usize = [_]usize{3};
+    var input_tensor = try Tensor(f64).fromArray(&allocator, &input_data, &shape); // create tensor from input data
+    defer input_tensor.deinit();
+
+    var sigmoid = ActivFun.ActivationFunction(ActivFun.Sigmoid){};
+
+    // Test forward pass
+    try sigmoid.forward(f64, &input_tensor);
+    const expected_forward_output = [_]f64{ 0.5, 0.880797, 0.119203 }; // expected sigmoid output for each input value
+    for (input_tensor.data, 0..) |*data, i| {
+        try std.testing.expect(@abs(data.* - expected_forward_output[i]) < 1e-6);
+    }
+    // Test derivative
+    try sigmoid.derivate(f64, &input_tensor);
+    const expected_derivative_output = [_]f64{ 0.25, 0.104994, 0.104994 }; // expected derivative output for each input
+    for (input_tensor.data, 0..) |*data, i| {
+        try std.testing.expect(@abs(data.* - expected_derivative_output[i]) < 1e-6);
+    }
 }
