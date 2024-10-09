@@ -2,24 +2,51 @@ const std = @import("std");
 const Tensor = @import("tensor").Tensor;
 const TensorError = @import("tensor").TensorError;
 
+pub const ActivationType = enum {
+    ReLU,
+    Sigmoid,
+    Softmax,
+};
+
 // activation function Interface
 
-pub fn ActivationFunction(activationFunctionStruct: fn () type) type {
-    const act = activationFunctionStruct(){};
-    return struct {
-        activation: activationFunctionStruct() = act,
+pub fn ActivationFunction(activationType: ActivationType) type {
+    const act = switch (activationType) {
+        ActivationType.ReLU => ReLU(),
+        ActivationType.Sigmoid => Sigmoid(),
+        ActivationType.Softmax => Softmax(),
+    };
 
-        pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
-            try self.activation.forward(T, input);
-        }
+    //const act = activationFunctionStruct(){};
+    return switch (activationType) {
+        ActivationType.Softmax => struct {
 
-        pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
-            try self.activation.derivate(T, input);
-        }
+            // pub fn init(self: *@This()) !void {
+            //     self.activation = act{}; // Initialize the activation struct
+            // }
 
-        pub fn derivateWithPrevOutput(self: *@This(), comptime T: anytype, dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
-            try self.activation.derivateWithPrevOutput(T, dVal, act_forward_out);
-        }
+            pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+                try act.forward(self, T, input);
+            }
+
+            pub fn derivate(self: *@This(), comptime T: anytype, dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
+                try act.derivateWithPrevOutput(self, T, dVal, act_forward_out);
+            }
+        },
+        else => struct {
+
+            // pub fn init(self: *@This()) !void {
+            //     self.activation = act{}; // Initialize the activation struct
+            // }
+
+            pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+                try act.forward(self, T, input);
+            }
+
+            pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+                try act.derivate(self, T, input);
+            }
+        },
     };
 }
 
