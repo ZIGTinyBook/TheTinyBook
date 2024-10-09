@@ -1,10 +1,10 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const TensMath = @import("./tensor_math.zig");
-const Architectures = @import("./architectures.zig").Architectures;
-const TensorError = @import("./tensor_math.zig").TensorError;
-const ArchitectureError = @import("./tensor_math.zig").ArchitectureError;
-const ActivLib = @import("./activation_function.zig");
+const tensor = @import("tensor");
+const TensMath = @import("tensor_m");
+const Architectures = @import("architectures").Architectures;
+const TensorError = @import("tensor_m").TensorError;
+const ArchitectureError = @import("tensor_m").ArchitectureError;
+const ActivLib = @import("activation_function");
 
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);

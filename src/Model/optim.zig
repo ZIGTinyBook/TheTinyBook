@@ -1,7 +1,7 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Model = @import("model.zig");
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Model = @import("../Model/model.zig");
 
 const Optimizers = enum {
     SGD,
