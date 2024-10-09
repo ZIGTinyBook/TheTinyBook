@@ -16,6 +16,10 @@ pub fn ActivationFunction(activationFunctionStruct: fn () type) type {
         pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
             try self.activation.derivate(T, input);
         }
+
+        pub fn derivateWithPrevOutput(self: *@This(), comptime T: anytype, dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
+            try self.activation.derivateWithPrevOutput(T, dVal, act_forward_out);
+        }
     };
 }
 
@@ -78,6 +82,7 @@ pub fn Sigmoid() type {
 
 pub fn Softmax() type {
     return struct {
+        //softmax_output: *type = undefined,
 
         //it directly modify the input tensor
         pub fn forward(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
@@ -92,7 +97,7 @@ pub fn Softmax() type {
                 location[i] = 0;
             }
 
-            return compute_mutidim_softmax(T, input, 0, location);
+            try compute_mutidim_softmax(T, input, 0, location);
         }
 
         fn compute_mutidim_softmax(comptime T: anytype, input: *Tensor(T), current_depth: usize, location: []usize) !void {
@@ -147,10 +152,47 @@ pub fn Softmax() type {
             }
         }
 
-        pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+        pub fn derivateWithPrevOutput(self: *@This(), comptime T: anytype, dL_dX: *Tensor(T), act_forward_out: *Tensor(T)) !void {
             _ = self;
+
+            // softmax_output: The output matrix from the Softmax forward pass.
+            // dL_dS: The gradient of the loss with respect to the Softmax output (this is given to us during backpropagation).
+            // dL_dX: The gradient of the loss with respect to the input matrix (this is what we are computing in the backward pass).
+
             //checks
-            if (input.size <= 0) return TensorError.ZeroSizeTensor;
+            if (dL_dX.size <= 0) return TensorError.ZeroSizeTensor;
+
+            const dim = dL_dX.shape.len;
+            const rows = dL_dX.shape[dim - 2];
+            const cols = dL_dX.shape[dim - 1];
+            var dL_dS = try dL_dX.copy(); //the copy is necessary since we are going to modify dL_dX
+            defer dL_dS.deinit();
+
+            // Loop over each row (assuming we apply Softmax across rows)
+            for (0..rows) |i| {
+                // Loop over each element in the row
+                for (0..cols) |j| {
+                    var dL_dX_ij: T = 0;
+
+                    // Calculate the gradient for input element x_ij
+                    const softmax_j = act_forward_out.data[i * cols + j];
+
+                    // Sum over all elements in the row to compute dL/dX_ij
+                    for (0..cols) |k| {
+                        const softmax_k = act_forward_out.data[i * cols + k];
+                        const dL_dS_k = dL_dS.data[i * cols + k];
+
+                        if (j == k) {
+                            dL_dX_ij += dL_dS_k * softmax_k * (1 - softmax_j);
+                        } else {
+                            dL_dX_ij += dL_dS_k * -softmax_k * softmax_j;
+                        }
+                    }
+
+                    // Store the computed gradient for input x_ij
+                    dL_dX.data[i * cols + j] = dL_dX_ij;
+                }
+            }
         }
     };
 }
