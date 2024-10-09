@@ -1,8 +1,8 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Model = @import("model.zig");
-const Optim = @import("optim.zig");
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Model = @import("model");
+const Optim = @import("optim");
 
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {

@@ -1,6 +1,6 @@
 const std = @import("std");
-const DenseLayer = @import("layers.zig").DenseLayer;
-const tensor = @import("tensor.zig");
+const DenseLayer = @import("layers").DenseLayer;
+const tensor = @import("tensor");
 
 test " DenseLayer forward test" {
     std.debug.print("\n     test: DenseLayer forward test", .{});
