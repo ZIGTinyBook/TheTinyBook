@@ -1,7 +1,7 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
-const TensorMathError = @import("./tensor_math.zig").TensorMathError;
-const Convert = @import("./typeConverter.zig");
+const Tensor = @import("tensor").Tensor;
+const TensorMathError = @import("tensor_m").TensorMathError;
+const Convert = @import("typeC");
 
 pub const LossError = error{
     SizeMismatch,

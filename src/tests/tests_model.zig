@@ -1,7 +1,7 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Model = @import("model.zig").Model;
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Model = @import("model").Model;
 
 test "Model with multiple layers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});

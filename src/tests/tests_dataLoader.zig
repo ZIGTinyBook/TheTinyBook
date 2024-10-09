@@ -1,11 +1,17 @@
 const std = @import("std");
-const DataLoader = @import("./dataLoader.zig").DataLoader;
+const DataLoader = @import("../DataLoader/dataLoader.zig").DataLoader;
 const fs = std.fs;
+
+test "tests description" {
+    std.debug.print("\n--- Running dataLoader tests\n", .{});
+}
+
 test "DataLoader xNext Test" {
     var features = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },
         [_]f64{ 4.0, 5.0, 6.0 },
     };
+    // var allocator = std.testing.allocator;
 
     var labels = [_]u8{ 1, 0 };
 
@@ -14,13 +20,24 @@ test "DataLoader xNext Test" {
     featureSlices[1] = &features[1];
 
     const labelSlice: []u8 = &labels;
-
-    var loader = DataLoader(f64, u8){
+    // var shapeXArr = [_]usize{ 2, 3 };
+    // var shapeYArr = [_]usize{2};
+    // var shapeX: []usize = &shapeXArr;
+    // var shapeY: []usize = &shapeYArr;
+    var loader = DataLoader(f64, u8, 1){
         .X = &featureSlices,
         .y = labelSlice,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
+    std.debug.print("Printing DataLoader Info", .{});
     std.debug.print("Fist Dim is {d}\n", .{loader.X.len});
-
+    // try loader.toTensor(&allocator, &shapeX, &shapeY);
+    // loader.xTensor.info();
+    // loader.xTensor.deinit();
+    // loader.yTensor.deinit();
     const x1 = loader.xNext() orelse unreachable;
     try std.testing.expectEqual(f64, @TypeOf(x1[0]));
     try std.testing.expectEqual(1.0, x1[0]);
@@ -56,7 +73,7 @@ test "splitCSVLine tests" {
     const csvLine = try allocator.alloc(u8, originalLine.len);
     defer allocator.free(csvLine);
     @memcpy(csvLine, originalLine);
-    const loader = DataLoader(f64, u8);
+    const loader = DataLoader(f64, u8, 1);
     const result = try loader.splitCSVLine(csvLine, &allocator);
     defer allocator.free(result);
     std.debug.print("Split result length: {}\n", .{result.len});
@@ -130,7 +147,7 @@ test "splitCSVLine tests" {
 
 test "readCSVLine test with correct file flags" {
     const allocator = std.testing.allocator;
-    const loader = DataLoader(f64, u8);
+    const loader = DataLoader(f64, u8, 1);
 
     const cwd = std.fs.cwd();
 
@@ -166,9 +183,13 @@ test "readCSVLine test with correct file flags" {
 
 test "fromCSV test with feature and label extraction" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(f64, u8){
+    var loader = DataLoader(f64, u8, 1){
         .X = undefined,
         .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
 
     const file_name: []const u8 = "test.csv";
@@ -203,9 +224,13 @@ test "fromCSV test with feature and label extraction" {
 
 test "loadMNISTImages test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8){
+    var loader = DataLoader(u8, u8, 1){
         .X = undefined,
         .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
 
     const file_name: []const u8 = "t10k-images-idx3-ubyte";
@@ -224,9 +249,13 @@ test "loadMNISTImages test" {
 
 test "loadMNISTLabels test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(f64, u8){
+    var loader = DataLoader(f64, u8, 1){
         .X = undefined,
         .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
 
     const file_name: []const u8 = "t10k-labels-idx1-ubyte";
@@ -244,9 +273,13 @@ test "loadMNISTLabels test" {
 
 test "loadMNISTDataParallel test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8){
+    var loader = DataLoader(u8, u8, 1){
         .X = undefined,
         .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
 
     const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
@@ -277,12 +310,16 @@ test "DataLoader shuffle simple test" {
 
     const labelSlice: []u8 = &labels;
 
-    var loader = DataLoader(f64, u8){
+    var loader = DataLoader(f64, u8, 1){
         .X = &featureSlices,
         .y = labelSlice,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
 
-    var rng = std.rand.DefaultPrng.init(12345);
+    var rng = std.Random.DefaultPrng.init(12345);
 
     const original_feature0 = loader.X[0];
     const original_label0 = loader.y[0];
@@ -307,60 +344,38 @@ test "DataLoader shuffle simple test" {
     try std.testing.expectEqual(original_label0, corresponding_label);
 }
 
-test "DataLoader normalization test" {
+test "To Tensor Batch Test" {
     var features = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },
         [_]f64{ 4.0, 5.0, 6.0 },
-        [_]f64{ 7.0, 8.0, 9.0 },
-        [_]f64{ 10.0, 11.0, 12.0 },
     };
+    var allocator = std.testing.allocator;
 
-    var labels = [_]f64{ 1.0, 2.0, 3.0, 4.0 };
+    var labels = [_]u8{ 1, 0 };
 
-    var featureSlices: [4][]f64 = undefined;
+    var featureSlices: [2][]f64 = undefined;
     featureSlices[0] = &features[0];
     featureSlices[1] = &features[1];
-    featureSlices[2] = &features[2];
-    featureSlices[3] = &features[3];
 
-    const labelSlice: []f64 = &labels;
-
-    var loader = DataLoader(f64, f64){
+    const labelSlice: []u8 = &labels;
+    var shapeXArr = [_]usize{ 1, 3 };
+    var shapeYArr = [_]usize{1};
+    var shapeX: []usize = &shapeXArr;
+    var shapeY: []usize = &shapeYArr;
+    var loader = DataLoader(f64, u8, 1){
         .X = &featureSlices,
         .y = labelSlice,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
     };
-
-    const original_min_feature = loader.X[0][0]; // 1.0
-    const original_max_feature = loader.X[3][2]; // 12.0
-    try std.testing.expect(original_min_feature == 1.0);
-    try std.testing.expect(original_max_feature == 12.0);
-
-    const original_min_label = loader.y[0]; // 1.0
-    const original_max_label = loader.y[3]; // 4.0
-    try std.testing.expect(original_min_label == 1.0);
-    try std.testing.expect(original_max_label == 4.0);
-
-    // Normalizziamo i dati X e y
-    loader.normalize_X();
-    loader.normalize_y();
-
-    for (loader.X) |row| {
-        for (row) |value| {
-            try std.testing.expect(value >= 0 and value <= 1);
-        }
-    }
-
-    for (loader.y) |value| {
-        try std.testing.expect(value >= 0 and value <= 1);
-    }
-
-    const min_normalized_feature = loader.X[0][0];
-    const max_normalized_feature = loader.X[3][2];
-    try std.testing.expectEqual(0.0, min_normalized_feature);
-    try std.testing.expectEqual(1.0, max_normalized_feature);
-
-    const min_normalized_label = loader.y[0];
-    const max_normalized_label = loader.y[3];
-    try std.testing.expectEqual(0.0, min_normalized_label);
-    try std.testing.expectEqual(1.0, max_normalized_label);
+    std.debug.print("Printing DataLoader Info", .{});
+    std.debug.print("Fist Dim is {d}\n", .{loader.X.len});
+    _ = loader.xNextBatch(1);
+    _ = loader.yNextBatch(1);
+    try loader.toTensor(&allocator, &shapeX, &shapeY);
+    loader.xTensor.info();
+    loader.xTensor.deinit();
+    loader.yTensor.deinit();
 }

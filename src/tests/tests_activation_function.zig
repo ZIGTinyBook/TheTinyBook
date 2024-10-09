@@ -1,6 +1,6 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
-const ActivFun = @import("./activation_function.zig");
+const Tensor = @import("tensor").Tensor;
+const ActivFun = @import("../Model/activation_function.zig");
 
 test "tests description" {
     std.debug.print("\n--- Running activation_function tests\n", .{});

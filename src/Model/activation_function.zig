@@ -1,6 +1,6 @@
 const std = @import("std");
-const Tensor = @import("./tensor.zig").Tensor;
-const TensorError = @import("./tensor.zig").TensorError;
+const Tensor = @import("tensor").Tensor;
+const TensorError = @import("tensor").TensorError;
 
 // activation function Interface
 
