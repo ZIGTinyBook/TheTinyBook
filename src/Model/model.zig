@@ -1,10 +1,10 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
-const layer = @import("layers.zig");
-const Loss = @import("lossFunction.zig");
-const TensMath = @import("tensor_math.zig");
+const tensor = @import("tensor");
+const layer = @import("layers");
+const Loss = @import("loss");
+const TensMath = @import("tensor_m");
 const Optim = @import("optim.zig");
-const loader = @import("dataLoader.zig").DataLoader;
+const loader = @import("dataloader").DataLoader;
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {

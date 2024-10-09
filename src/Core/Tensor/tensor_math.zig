@@ -1,25 +1,90 @@
 const std = @import("std");
-const Tensor = @import("tensor.zig").Tensor; // Import Tensor type
-const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
+const Tensor = @import("tensor").Tensor; // Import Tensor type
+const TensorError = @import("tensor").TensorError;
+const Architectures = @import("architectures").Architectures; //Import Architectures type
+const Converter = @import("typeC");
 
 pub const ArchitectureError = error{
     UnknownArchitecture,
     UnderDevelopementArchitecture,
 };
 
-pub const TensorError = error{
+pub const TensorMathError = error{
+    MemError,
     InputTensorDifferentSize,
     InputTensorDifferentShape,
     InputTensorsWrongShape, //launched in dot_product
     OutputTensorDifferentSize,
     TooSmallOutputType, //the type dimension of the output Tensor could coause a loss of information
+    InputTensorDimensionMismatch,
 };
 
-pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin), t3: *Tensor(Tout)) !void {
+pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
+    // Controlli:
+    if (tensor.size == 0) {
+        return TensorError.EmptyTensor;
+    }
+    if (bias.size == 0) {
+        return TensorError.EmptyTensor;
+    }
+    if (bias.shape.len != 1) {
+        return TensorMathError.InputTensorsWrongShape;
+    }
+    const len = bias.shape[0];
+    if (len != tensor.shape[tensor.shape.len - 1]) {
+        return TensorMathError.InputTensorDimensionMismatch;
+    }
+
+    // Alloca un array per i thread, uno per ogni riga del tensore
+    const allocator = std.heap.page_allocator;
+    const num_threads = tensor.size / bias.size;
+
+    var threads = try allocator.alloc(std.Thread, num_threads); // Array per salvare gli handle dei thread
+
+    var index: usize = 0;
+    var i: usize = 0;
+
+    // Avvia un thread per ogni riga del tensore
+    while (index < tensor.size) : (i += 1) {
+        threads[i] = try std.Thread.spawn(.{}, add_bias_thread, .{ T, tensor.data, index, len, bias });
+        index += len;
+    }
+
+    // Unisce tutti i thread
+    for (threads) |*thread| {
+        thread.join(); // Usa try per catturare eventuali errori
+    }
+
+    // Libera l'array dei thread
+    allocator.free(threads);
+
+    // Stampa informazioni di debug sui dati post-bias
+    // std.debug.print("\nDati post bias: ", .{});
+    // tensor.info();
+}
+
+fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bias: *Tensor(T)) void {
+    for (0..len) |i| {
+        array[start + i] += bias.data[i];
+    }
+}
+
+pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
+    var res: f32 = 0;
+
+    for (tensor.data) |*d| {
+        res += Converter.convert(T, f32, d.*);
+    }
+    res = res / Converter.convert(usize, f32, tensor.size);
+    return res;
+}
+
+//returns a Tensor with the same shape pf t1 and t2, where each element --> out[location] = t1[location] + t2[location]
+pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
 
     //selecting between all possible architectures
     return switch (arch) {
-        Architectures.CPU => CPU_sum_tensors(Tin, Tout, t1, t2, t3),
+        Architectures.CPU => return CPU_sum_tensors(Tin, Tout, t1, t2),
 
         Architectures.GPU => {
             std.debug.print("{} is under developement \n", .{arch});
@@ -34,14 +99,11 @@ pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime
 }
 
 //return the sum of the tensors inside another Tensor and put into t3
-fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType)) !void {
+fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
 
     //CHECKS :
     // -input size
-    if (t1.size != t2.size) return TensorError.InputTensorDifferentSize;
-
-    // -output size
-    if (t1.size != t3.size) return TensorError.OutputTensorDifferentSize;
+    if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
 
     // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
     // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
@@ -62,10 +124,13 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     // u128 (128 bits)
     // f128 (128 bits)
     if (@bitSizeOf(outputType) <= 16) { //quantized
-        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
+        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
     } else { //non-quant
-        if (@bitSizeOf(outputType) < @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
+        if (@bitSizeOf(outputType) < @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
     }
+
+    //declaring and initializing of the array of sum
+    var out_sum = try t1.allocator.alloc(outputType, t1.size);
 
     var i: usize = 0;
     const unroll_factor: usize = 4;
@@ -73,53 +138,53 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     // loop unrolling
     while (i + unroll_factor <= t1.size) : (i += 4) {
         //since the Type of t3 is higher in number of bits the cast shoudl happen autonomously
-        t3.data[i] = t1.data[i] + t2.data[i];
-        t3.data[i + 1] = t1.data[i + 1] + t2.data[i + 1];
-        t3.data[i + 2] = t1.data[i + 2] + t2.data[i + 2];
-        t3.data[i + 3] = t1.data[i + 3] + t2.data[i + 3];
+        out_sum[i] = t1.data[i] + t2.data[i];
+        out_sum[i + 1] = t1.data[i + 1] + t2.data[i + 1];
+        out_sum[i + 2] = t1.data[i + 2] + t2.data[i + 2];
+        out_sum[i + 3] = t1.data[i + 3] + t2.data[i + 3];
     }
 
     // Handle any remaining elements
     while (i < t1.size) : (i += 1) {
-        t3.data[i] = t1.data[i] + t2.data[i];
+        out_sum[i] = t1.data[i] + t2.data[i];
     }
+
+    const out_tensor = try Tensor(outputType).fromArray(t1.allocator, out_sum, t1.shape);
+
+    return out_tensor;
 }
 
-pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !*Tensor(Tout) {
+pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !Tensor(T) {
+    return try CPU_dot_product_tensors(T, T, input, weights);
+}
 
-    //We can see tensors as an array of arrays ... of matrixes
-    //ex 3D:
-    //      3D_Tensor = {{matr1},{matr2},{matr3}}
-    //      4D_Tensor = { { {matr1},{matr2} } , { {matr3}{matr4} } }
-    //this is important to udersand the code that follows
-
-    //selecting between all possible architectures
+pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
     return switch (arch) {
         Architectures.CPU => return CPU_dot_product_tensors(Tin, Tout, t1, t2),
-
         Architectures.GPU => {
-            std.debug.print("{} is under developement \n", .{arch});
-            return ArchitectureError.UnderDevelopementArchitecture;
+            std.debug.print("{} is under development\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
         },
         Architectures.SP32 => {
-            std.debug.print("{} is under developement \n", .{arch});
-            return ArchitectureError.UnderDevelopementArchitecture;
+            std.debug.print("{} is under development\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
         },
         else => return ArchitectureError.UnknownArchitecture,
     };
 }
 
-pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !*Tensor(outputType) {
+pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
 
     //CHECKS :
-    // -input size
-    if (t1.size != t2.size) return TensorError.InputTensorDifferentSize;
-
     const nDimT1 = t1.shape.len; //number of dimesion of tensor 1
     const nDimT2 = t2.shape.len; //number of dimesion of tensor 2
-    // -imput shape
-    if (nDimT1 != nDimT2) return TensorError.InputTensorDifferentShape;
-    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2] or t1.shape[nDimT1 - 2] != t2.shape[nDimT1 - 1]) return TensorError.InputTensorsWrongShape;
+    // -imput shape:
+    if (nDimT1 != nDimT2) return TensorMathError.InputTensorDifferentShape;
+
+    //-dimensional compatibility:
+    // If you have two matrices A and B, to compute the product A×B, the number of columns in A must be equal to the number of rows in B.
+    // If A is a matrix of dimensions m×n and B is a matrix of dimensions n×p, then the product A×B is defined, and it results in a matrix of dimensions m×p.
+    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2]) return TensorMathError.InputTensorsWrongShape;
 
     // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
     // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
@@ -139,20 +204,18 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     // i128 (128 bits)
     // u128 (128 bits)
     // f128 (128 bits)
-    if (@bitSizeOf(outputType) <= 16) { //quantized
-        if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorError.TooSmallOutputType;
-    } else { //non-quant
-        if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorError.TooSmallOutputType;
+    if (@TypeOf(outputType) == @TypeOf(inputType)) {
+        // Se input e output sono dello stesso tipo, non eseguire il controllo
+        // Evitiamo l'errore in questo caso
+    } else {
+        if (@bitSizeOf(outputType) <= 16) { //quantized
+            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
+        } else { //non-quant
+            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
+        }
     }
 
     //CREATING output_tensor :
-
-    //get the size of the output
-    var size: usize = 1;
-    for (0..(nDimT1 - 2)) |i| {
-        size = size * t1.shape[i];
-    }
-    size = size * t1.shape[nDimT1 - 1] * t1.shape[nDimT1 - 1];
 
     const allocator = std.heap.page_allocator;
     var out_shape = try allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
@@ -163,14 +226,13 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
     out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
 
-    var out_tensor = try Tensor(outputType).init(&allocator, out_shape);
-
+    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
+    try out_tensor.set(0, 0);
     //initialize the current location to all 0
     const location = try allocator.alloc(usize, nDimT1);
     for (location) |*loc| {
         loc.* = 0;
     }
-    try out_tensor.set_at(location, 1);
 
     //call mutidim_mat_mul to handle multidimensionality
     try multidim_multiplication(
@@ -182,19 +244,13 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         0,
         location,
     );
+    //print output tensor shape
+    //std.debug.print("\n output tensor shape: {}", .{out_tensor.shape[0]});
 
-    return &out_tensor;
+    return out_tensor;
 }
 
-pub fn multidim_multiplication(
-    comptime inputType: anytype,
-    comptime outputType: anytype,
-    t1: *Tensor(inputType),
-    t2: *Tensor(inputType),
-    t3: *Tensor(outputType),
-    current_depth: usize,
-    location: []usize,
-) !void {
+fn multidim_multiplication(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), current_depth: usize, location: []usize) !void {
     if (current_depth == (t1.shape.len - 2)) {
 
         //declaring sum
@@ -230,18 +286,18 @@ pub fn multidim_multiplication(
                 location[t1.shape.len - 1] = col; //col on the out tensor matrix
                 location[t1.shape.len - 2] = row; //row on the out tensor matrix
 
-                std.debug.print("\n set at location: [", .{});
-                for (location) |l| {
-                    std.debug.print(" {}", .{l});
-                }
-                std.debug.print("] val: {} ", .{sum});
+                // std.debug.print("\n set at location: [", .{});
+                // for (location) |l| {
+                //     std.debug.print(" {}", .{l});
+                // }
+                //std.debug.print("] val: {} ", .{sum});
                 try t3.set_at(location, sum);
             }
         }
     } else {
         for (0..t1.shape[current_depth]) |element_at_current_depth| {
             //print location:
-            std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
+            //std.debug.print("\n depth: {} element_at_current_depth: {}", .{ current_depth, element_at_current_depth });
             location[current_depth] = element_at_current_depth;
             //otherwise I have to go deeper
             try multidim_multiplication(

@@ -1,5 +1,5 @@
 const std = @import("std");
-const tensor = @import("tensor.zig");
+const tensor = @import("tensor");
 
 //Look at to array to have the x type of custom dimension not just 2 (batch x features)
 
