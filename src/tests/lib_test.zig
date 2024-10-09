@@ -8,6 +8,6 @@ test {
     _ = @import("tests_tensor_math.zig");
     _ = @import("tests_tensor.zig");
     _ = @import("tests_utils.zig");
-    //_ = @import("tests_optim.zig");
+    _ = @import("tests_optim.zig");
     _ = @import("tests_model.zig");
 }

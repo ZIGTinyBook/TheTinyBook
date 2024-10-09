@@ -1,9 +1,9 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
-const TensMath = @import("../Core/Tensor/tensor_math.zig");
-const Architectures = @import("../Core/Tensor/architectures.zig").Architectures;
-const TensorMathError = @import("../Core/Tensor/tensor_math.zig").TensorMathError;
-const ArchitectureError = @import("../Core/Tensor/tensor_math.zig").ArchitectureError;
+const TensMath = @import("tensor_m");
+const Architectures = @import("architectures").Architectures;
+const TensorMathError = @import("tensor_m").TensorMathError;
+const ArchitectureError = @import("architectures").ArchitectureError;
 
 test "tests description" {
     std.debug.print("\n--- Running tensor_math tests\n", .{});

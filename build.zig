@@ -18,6 +18,9 @@ pub fn build(b: *std.Build) void {
     const typeC_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
 
     // Aggiungi solo le dipendenze necessarie senza duplicazioni
+    //
+    //************************************************MODEL DEPENDENCIES************************************************
+
     model_mod.addImport("tensor", tensor_mod);
     model_mod.addImport("layers", layers_mod);
     model_mod.addImport("optim", optim_mod); // Non rimuovere duplicato
@@ -26,25 +29,45 @@ pub fn build(b: *std.Build) void {
     model_mod.addImport("dataloader", dataloader_mod);
     model_mod.addImport("tensor_m", tensor_math_mod);
 
+    //************************************************LAYER DEPENDENCIES************************************************
+
     layers_mod.addImport("tensor", tensor_mod);
     layers_mod.addImport("activation_function", activation_mod);
     layers_mod.addImport("tensor_m", tensor_math_mod);
     layers_mod.addImport("architectures", architectures_mod);
 
+    //************************************************DATA LOADER DEPENDENCIES************************************************
+
     dataloader_mod.addImport("tensor", tensor_mod);
+
+    //************************************************TENSOR DEPENDENCIES************************************************
+
+    tensor_mod.addImport("tensor_m", tensor_math_mod);
+    tensor_mod.addImport("architectures", architectures_mod);
+
+    //************************************************TENSOR MATH DEPENDENCIES************************************************
 
     tensor_math_mod.addImport("tensor", tensor_mod);
     tensor_math_mod.addImport("typeC", typeC_mod);
     tensor_math_mod.addImport("architectures", architectures_mod);
 
+    //************************************************ACTIVATION DEPENDENCIES************************************************
+
     activation_mod.addImport("tensor", tensor_mod);
+
+    //************************************************LOSS DEPENDENCIES************************************************
 
     loss_mod.addImport("tensor", tensor_mod);
     loss_mod.addImport("tensor_m", tensor_math_mod);
     loss_mod.addImport("typeC", typeC_mod);
 
-    optim_mod.addImport("model", model_mod);
+    //************************************************OPTIMIZER DEPENDENCIES************************************************
 
+    optim_mod.addImport("tensor", tensor_mod);
+    optim_mod.addImport("model", model_mod);
+    optim_mod.addImport("layers", layers_mod);
+
+    //>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>MAIN EXE<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     // Definizione dell'eseguibile principale
     const exe = b.addExecutable(.{
         .name = "Main",
@@ -52,6 +75,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    //************************************************EXE DEPENDENCIES************************************************
 
     exe.root_module.addImport("tensor", tensor_mod);
     exe.root_module.addImport("model", model_mod);
@@ -78,12 +103,18 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    // Aggiunta delle dipendenze ai test
+    //************************************************UNIT_TEST DEPENDENCIES************************************************
+
     unit_tests.root_module.addImport("tensor", tensor_mod);
     unit_tests.root_module.addImport("model", model_mod);
     unit_tests.root_module.addImport("layers", layers_mod);
     unit_tests.root_module.addImport("optim", optim_mod); // Aggiungi qui
     unit_tests.root_module.addImport("loss", loss_mod);
+    unit_tests.root_module.addImport("tensor", tensor_mod);
+    unit_tests.root_module.addImport("tensor_m", tensor_math_mod);
+    unit_tests.root_module.addImport("activation_function", activation_mod);
+    unit_tests.root_module.addImport("dataloader", dataloader_mod);
+    unit_tests.root_module.addImport("architectures", architectures_mod);
 
     // Esegui test per modulo `optim`
     const optim_tests = b.addTest(.{
