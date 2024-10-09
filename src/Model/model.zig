@@ -3,7 +3,7 @@ const tensor = @import("tensor");
 const layer = @import("layers");
 const Loss = @import("loss");
 const TensMath = @import("tensor_m");
-const Optim = @import("optim.zig");
+const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {

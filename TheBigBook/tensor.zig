@@ -1,6 +1,6 @@
 const std = @import("std");
-const tMath = @import("tensor_m");
-const Architectures = @import("architectures").Architectures;
+const tMath = @import("./tensor_math.zig");
+const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
 
 pub const TensorError = error{
     TensorNotInitialized,

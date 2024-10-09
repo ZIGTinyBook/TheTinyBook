@@ -1,5 +1,5 @@
 const std = @import("std");
-const DataLoader = @import("../DataLoader/dataLoader.zig").DataLoader;
+const DataLoader = @import("dataloader").DataLoader;
 const fs = std.fs;
 
 test "tests description" {

@@ -1,9 +1,13 @@
 const std = @import("std");
-const Tensor = @import("tensor").Tensor; // Import Tensor type
-const TensorError = @import("tensor").TensorError;
-const Architectures = @import("architectures").Architectures; //Import Architectures type
-const ArchitectureError = @import("architectures").ArchitectureError;
-const Converter = @import("typeC");
+const Tensor = @import("tensor.zig").Tensor; // Import Tensor type
+const TensorError = @import("tensor.zig").TensorError;
+const Architectures = @import("./architectures.zig").Architectures; //Import Architectures type
+const Converter = @import("typeConverter.zig");
+
+pub const ArchitectureError = error{
+    UnknownArchitecture,
+    UnderDevelopementArchitecture,
+};
 
 pub const TensorMathError = error{
     MemError,

@@ -136,7 +136,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
                 try activation.forward(T, &self.outputActivation);
-            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
+            } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
                 var activation = ActivLib.ActivationFunction(ActivLib.Sigmoid){};
                 try activation.forward(T, &self.outputActivation);
             }
