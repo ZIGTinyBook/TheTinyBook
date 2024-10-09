@@ -6,3 +6,8 @@ pub const Architectures = enum {
     SP32,
     WildTarzan,
 };
+
+pub const ArchitectureError = error{
+    UnknownArchitecture,
+    UnderDevelopementArchitecture,
+};
