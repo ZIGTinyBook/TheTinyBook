@@ -152,6 +152,12 @@ pub fn Softmax() type {
             }
         }
 
+        pub fn derivate(self: *@This(), comptime T: anytype, input: *Tensor(T)) !void {
+            _ = self;
+            _ = input;
+            return error.ForSoftmaxUseDerivateWithPrevOutput;
+        }
+
         pub fn derivateWithPrevOutput(self: *@This(), comptime T: anytype, dL_dX: *Tensor(T), act_forward_out: *Tensor(T)) !void {
             _ = self;
 
