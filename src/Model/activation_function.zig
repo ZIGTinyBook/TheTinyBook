@@ -108,8 +108,8 @@ pub fn Sigmoid(comptime T: anytype) type {
 
 pub fn Softmax(comptime T: anytype) type {
     return struct {
-        const Self = @This();
         softmax_output: Tensor(T) = undefined,
+        const Self = @This();
 
         //it directly modify the input tensor
         pub fn forward(self: *Self, input: *Tensor(T)) !void {
@@ -123,11 +123,44 @@ pub fn Softmax(comptime T: anytype) type {
             for (0..input.shape.len) |i| {
                 location[i] = 0;
             }
-            try compute_mutidim_softmax(input, 0, location);
+            // std.debug.print("\n Softmax forward input", .{});
+            // input.info();
 
-            //@This().softmax_output = input.copy();
+            try compute_2D_softmax(input);
+
+            // std.debug.print("\n Softmax forward input compute_2D_softmax", .{});
+            // input.info();
 
             self.softmax_output = try input.copy(); //------------------------------
+            // std.debug.print("\n Softmax forward softmax_output", .{});
+            // self.softmax_output.info();
+        }
+
+        fn compute_2D_softmax(input: *Tensor(T)) !void {
+            const rows = input.shape[0];
+            const cols = input.shape[1];
+
+            var sum_of_exp: T = 0.0;
+            var val: T = undefined;
+
+            // std.debug.print("\n Softmax input inside compute_2D_softmax", .{});
+            // input.info();
+
+            //calculating the value of the exponential for each element
+            for (0..cols) |j| {
+                sum_of_exp = 0.0;
+                for (0..rows) |i| {
+                    val = input.data[i * cols + j];
+                    //std.debug.print("\nval: {}", .{val});
+                    val = @exp(val);
+                    input.data[i * cols + j] = val;
+                    //std.debug.print(" exp: {}", .{val});
+                    sum_of_exp += val;
+                }
+                for (0..rows) |i| {
+                    input.data[i * cols + j] = input.data[i * cols + j] / sum_of_exp;
+                }
+            }
         }
 
         fn compute_mutidim_softmax(input: *Tensor(T), current_depth: usize, location: []usize) !void {
@@ -182,7 +215,8 @@ pub fn Softmax(comptime T: anytype) type {
         }
 
         pub fn derivate(self: *Self, dL_dX: *Tensor(T)) !void {
-
+            std.debug.print("\n forward softmax_output", .{});
+            self.softmax_output.info();
             // softmax_output: The output matrix from the Softmax forward pass.
             // dL_dS: The gradient of the loss with respect to the Softmax output (this is given to us during backpropagation).
             // dL_dX: The gradient of the loss with respect to the input matrix (this is what we are computing in the backward pass).
@@ -193,7 +227,7 @@ pub fn Softmax(comptime T: anytype) type {
             const dim = dL_dX.shape.len;
             const rows = dL_dX.shape[dim - 2];
             const cols = dL_dX.shape[dim - 1];
-            const act_forward_out: Tensor(T) = self.softmax_output;
+            const act_forward_out: Tensor(T) = try self.softmax_output.copy();
             var dL_dS = try dL_dX.copy(); //the copy is necessary since we are going to modify dL_dX
             defer dL_dS.deinit();
 

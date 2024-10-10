@@ -175,6 +175,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 4. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
 
+            std.debug.print("\n >>>>>>>>>>>pre act outputActivation: ", .{});
+            self.outputActivation.info();
+
             // 5. Apply activation function
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
@@ -191,6 +194,9 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 var activation = act_type{};
                 try activation.forward(&self.outputActivation);
             }
+
+            std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
+            self.outputActivation.info();
 
             self.printLayer(1);
 
