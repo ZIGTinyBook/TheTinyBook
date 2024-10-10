@@ -7,7 +7,7 @@ const loader = @import("dataloader");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64, &allocator, 0.05){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,

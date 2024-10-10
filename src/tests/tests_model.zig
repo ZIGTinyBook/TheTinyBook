@@ -7,7 +7,7 @@ test "Model with multiple layers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64, &allocator, 0.05){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -70,7 +70,7 @@ test "Model with multiple layers training test" {
     std.debug.print("\n     test: Model with multiple layers training test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64, &allocator, 0.05){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,

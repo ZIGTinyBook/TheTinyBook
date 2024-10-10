@@ -6,7 +6,7 @@ const TensMath = @import("tensor_m");
 const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
 
-pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
+pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) type {
     return struct {
         layers: []layer.DenseLayer(T, allocator) = undefined,
         allocator: *const std.mem.Allocator,
@@ -85,7 +85,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                 //optimizing
                 std.debug.print("\n-------------------------------Optimizer Step", .{});
-                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.01, allocator){ // Here we pass the actual instance of the optimizer
+                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
                 };
                 try optimizer.step(self);
             }
@@ -140,7 +140,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                     //optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
+                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
                     std.debug.print("Batch Bumber {}", .{step});
