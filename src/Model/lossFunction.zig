@@ -9,11 +9,21 @@ pub const LossError = error{
     InvalidPrediction,
 };
 
+pub const LossType = enum {
+    MSE,
+    CCE,
+};
+
 //LossFunction Interface
-pub fn LossFunction(lossFunctionStruct: fn () type) type {
-    const ls = lossFunctionStruct(){};
+pub fn LossFunction(lossType: LossType) type {
+    const ls = switch (lossType) {
+        LossType.MSE => MSELoss(),
+        LossType.CCE => CCELoss(),
+    };
+
+    //const ls = lossFunctionStruct(){};
     return struct {
-        loss: lossFunctionStruct() = ls,
+        loss: type = ls,
 
         //return a rensor where the smallest element is the result of the loss function for each array of weights
         //ex:
@@ -25,10 +35,10 @@ pub fn LossFunction(lossFunctionStruct: fn () type) type {
         //                [ c, d],
         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
         //
-        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+        pub fn computeLoss(self: *const @This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             return try self.loss.computeLoss(T, predictions, targets);
         }
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+        pub fn computeGradient(self: *const @This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             return try self.loss.computeGradient(T, predictions, targets);
         }
     };
@@ -47,8 +57,7 @@ pub fn MSELoss() type {
         //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
         //         //
         //
-        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
-            _ = self;
+        pub fn computeLoss(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
             //CHECKS :
             // -inputs size
             if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
@@ -146,8 +155,7 @@ pub fn MSELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
-            _ = self;
+        pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
 
             //check on the size of predictions, targets and gradient
             if (predictions.size != targets.size) {
@@ -192,8 +200,7 @@ pub fn CCELoss() type {
         //         //                [ e, f] ] -> 3 x 2 where each letter is the result of the loss function applied to the "vect" of predictions and targets
         //         //
         //
-        pub fn computeLoss(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
-            _ = self;
+        pub fn computeLoss(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
 
             //CHECKS :
             // -inputs size
@@ -300,8 +307,7 @@ pub fn CCELoss() type {
             }
         }
 
-        pub fn computeGradient(self: *@This(), comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
-            _ = self;
+        pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
 
             //check on the size of predictions, targets and gradient
             if (predictions.size != targets.size) {
