@@ -6,6 +6,10 @@ const TensorError = @import("tensor_m").TensorError;
 const ArchitectureError = @import("tensor_m").ArchitectureError;
 const ActivLib = @import("activation_function");
 
+const errors = error{
+    NullLayer,
+};
+
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
@@ -26,6 +30,48 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
         }
     }
     return matrix;
+}
+//------------------------------------------------------------------------------------------------------
+// INTERFACE LAYER
+pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
+    const LayerType = union(enum) {
+        denseLayer: *DenseLayer(T, allocator),
+        null: void,
+
+        pub fn init(self: @This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256, activationFunction: []const u8) !void {
+            switch (self) {
+                .null => return error.NullLayer,
+                inline else => |layer| return layer.init(n_inputs, n_neurons, rng, activationFunction),
+            }
+        }
+        pub fn deinit(self: @This()) void {
+            switch (self) {
+                .null => {},
+                inline else => |layer| return layer.deinit(),
+            }
+        }
+        pub fn forward(self: @This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
+            switch (self) {
+                .null => return error.NullLayer,
+                inline else => |layer| return layer.forward(input),
+            }
+        }
+
+        pub fn backward(self: @This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+            switch (self) {
+                .null => return error.NullLayer,
+                inline else => |layer| return layer.backward(dValues),
+            }
+        }
+
+        pub fn printLayer(self: @This(), choice: u8) void {
+            switch (self) {
+                .null => {},
+                inline else => |layer| return layer.printLayer(choice),
+            }
+        }
+    };
+    return LayerType;
 }
 
 pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
