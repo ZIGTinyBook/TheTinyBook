@@ -1,5 +1,6 @@
 const std = @import("std");
 const DenseLayer = @import("layers").DenseLayer;
+const Layer = @import("layers").Layer;
 const tensor = @import("tensor");
 
 test " DenseLayer forward test" {
@@ -22,9 +23,13 @@ test " DenseLayer forward test" {
         .activation = undefined,
     };
 
+    var layer1 = Layer(f64, allocator){
+        .denseLayer = &dense_layer,
+    };
+
     // n_input = 4, n_neurons= 2
-    try dense_layer.init(4, 2, &rng, "ReLU");
-    defer dense_layer.deinit();
+    try layer1.init(4, 2, &rng, "ReLU");
+    defer layer1.deinit();
 
     //Define an input tensor with 2x4 shape, an input for each neuron
     var inputArray: [5][4]f64 = [_][4]f64{
@@ -39,7 +44,7 @@ test " DenseLayer forward test" {
     var input_tensor = try tensor.Tensor(f64).fromArray(allocator, &inputArray, &shape);
     defer input_tensor.deinit();
 
-    var output_tensor = try dense_layer.forward(&input_tensor);
+    var output_tensor = try layer1.forward(&input_tensor);
 
     // try std.testing.expectEqual(dense_layer.output.shape[0], 2);
     // try std.testing.expectEqual(dense_layer.output.shape[1], 2);

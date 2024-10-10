@@ -8,8 +8,9 @@ const Optim = @import("optim");
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     std.debug.print("\n     test: SGD Optimizer No Update with Zero Gradients (Print Only)", .{});
     const allocator = std.heap.page_allocator;
+    const lr: f64 = 0.05;
 
-    var model = Model.Model(f64, &allocator){
+    var model = Model.Model(f64, &allocator, lr){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -31,14 +32,17 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .allocator = undefined,
         .activation = undefined,
     };
-    try dense_layer.init(3, 2, &rng, "ReLU"); // Layer con 3 input e 2 neuroni
-    try model.addLayer(&dense_layer);
+    var layer1_ = layer.Layer(f64, &allocator){
+        .denseLayer = &dense_layer,
+    };
+    try layer1_.init(3, 2, &rng, "ReLU");
+    try model.addLayer(&layer1_);
 
     // Stampa informazioni iniziali dei pesi
     std.debug.print("Weights before:\n", .{});
     dense_layer.weights.info();
 
-    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.01, &allocator){ // Here we pass the actual instance of the optimizer
+    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, &allocator){ // Here we pass the actual instance of the optimizer
     };
     try optimizer.step(&model);
 
