@@ -82,8 +82,8 @@ pub fn Sigmoid(comptime T: anytype) type {
     return struct {
         const Self = @This();
         //it directly modify the input tensor
-        pub fn forward(input: *Tensor(T)) !void {
-
+        pub fn forward(self: *Self, input: *Tensor(T)) !void {
+            _ = self;
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
 
@@ -93,8 +93,8 @@ pub fn Sigmoid(comptime T: anytype) type {
             }
         }
 
-        pub fn derivate(input: *Tensor(T)) !void {
-
+        pub fn derivate(self: *Self, input: *Tensor(T)) !void {
+            _ = self;
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
 
