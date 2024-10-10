@@ -20,7 +20,7 @@ pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.
     return struct {
         optimizer: func(T, lr, allocator) = optim, // Instantiation of the optimizer (e.g., SGD, Adam)
 
-        pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, allocator, lr)) !void {
             // Directly call the optimizer's step function
             try self.optimizer.step(model);
         }
@@ -34,7 +34,7 @@ pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type
         allocator: *const std.mem.Allocator = allocator,
 
         // Step function to update weights and biases using gradients
-        pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, allocator, lr)) !void {
             var counter: u32 = 0;
             for (model.layers) |*dense_layer| {
                 const weight_gradients = &dense_layer.w_gradients;
