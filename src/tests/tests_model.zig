@@ -7,7 +7,7 @@ test "Model with multiple layers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64, &allocator, 0.05){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -29,8 +29,11 @@ test "Model with multiple layers forward test" {
         .allocator = undefined,
         .activation = undefined,
     };
-    try layer1.init(3, 2, &rng, "ReLU");
-    try model.addLayer(&layer1);
+    var layer1_ = layer.Layer(f64, &allocator){
+        .denseLayer = &layer1,
+    };
+    try layer1_.init(3, 2, &rng, "ReLU");
+    try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
@@ -45,8 +48,11 @@ test "Model with multiple layers forward test" {
         .allocator = undefined,
         .activation = undefined,
     };
-    try layer2.init(2, 3, &rng, "ReLU");
-    try model.addLayer(&layer2);
+    var layer2_ = layer.Layer(f64, &allocator){
+        .denseLayer = &layer2,
+    };
+    try layer2_.init(2, 3, &rng, "ReLU");
+    try model.addLayer(&layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },
@@ -70,7 +76,7 @@ test "Model with multiple layers training test" {
     std.debug.print("\n     test: Model with multiple layers training test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64, &allocator, 0.05){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -93,8 +99,11 @@ test "Model with multiple layers training test" {
         .activation = undefined,
     };
     //layer 1: 3 inputs, 2 neurons
-    try layer1.init(3, 2, &rng, "ReLU");
-    try model.addLayer(&layer1);
+    var layer1_ = layer.Layer(f64, &allocator){
+        .denseLayer = &layer1,
+    };
+    try layer1_.init(3, 2, &rng, "ReLU");
+    try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
@@ -110,8 +119,11 @@ test "Model with multiple layers training test" {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 5 neurons
-    try layer2.init(2, 5, &rng, "ReLU");
-    try model.addLayer(&layer2);
+    var layer2_ = layer.Layer(f64, &allocator){
+        .denseLayer = &layer2,
+    };
+    try layer2_.init(2, 5, &rng, "ReLU");
+    try model.addLayer(&layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },

@@ -7,25 +7,25 @@ const TensMath = @import("tensor_m");
 const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
 
-pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
+pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) type {
     return struct {
-        layers: []layer.DenseLayer(T, allocator) = undefined,
+        layers: []layer.Layer(T, allocator) = undefined,
         allocator: *const std.mem.Allocator,
         input_tensor: tensor.Tensor(T),
 
         pub fn init(self: *@This()) !void {
-            self.layers = try self.allocator.alloc(layer.DenseLayer(T, allocator), 0);
+            self.layers = try self.allocator.alloc(layer.Layer(T, allocator), 0);
             self.input_tensor = undefined;
         }
 
         pub fn deinit(self: *@This()) void {
-            for (self.layers) |*dense_layer| {
-                dense_layer.deinit();
+            for (self.layers) |*layer_| {
+                layer_.deinit();
             }
             self.allocator.free(self.layers);
         }
 
-        pub fn addLayer(self: *@This(), new_layer: *layer.DenseLayer(T, allocator)) !void {
+        pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
             self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
             self.layers[self.layers.len - 1] = new_layer.*;
         }
@@ -33,9 +33,9 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             var output = input.*;
             self.input_tensor = try input.copy();
-            for (self.layers, 0..) |*dense_layer, i| {
+            for (self.layers, 0..) |*layer_, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
-                output = try dense_layer.forward(&output);
+                output = try layer_.forward(&output);
                 // std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
                 // output.info();
             }
@@ -86,7 +86,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                 //optimizing
                 std.debug.print("\n-------------------------------Optimizer Step", .{});
-                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.01, allocator){ // Here we pass the actual instance of the optimizer
+                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
                 };
                 try optimizer.step(self);
             }
@@ -141,7 +141,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator) type {
 
                     //optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.005, allocator){ // Here we pass the actual instance of the optimizer
+                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
                     std.debug.print("Batch Bumber {}", .{step});
