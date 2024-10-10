@@ -9,52 +9,51 @@ pub const ActivationType = enum {
 };
 
 // activation function Interface
-
 pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) type {
-    const act = switch (activationType) {
-        ActivationType.ReLU => ReLU(),
-        ActivationType.Sigmoid => Sigmoid(),
+    //const act =
+    return switch (activationType) {
+        ActivationType.ReLU => ReLU(T),
+        ActivationType.Sigmoid => Sigmoid(T),
         ActivationType.Softmax => Softmax(T),
     };
 
+    //LET THIS COMMENTED, COUL BE USEFULL IN FUTURE
     //const act = activationFunctionStruct(){};
-    return switch (activationType) {
-        ActivationType.Softmax => struct {
+    // return switch (activationType) {
+    //     ActivationType.Softmax => struct {
+    //         pub fn forward(self: *act, input: *Tensor(T)) !void {
+    //             std.debug.print("\n 1111AAAAAAAAAAAAAAAAAAAAAAAA", .{});
 
-            // pub fn init(self: *@This()) !void {
-            //     self.activation = act{}; // Initialize the activation struct
-            // }
+    //             std.debug.print("\n {} \n soft:{any}", .{ @typeInfo(self.*), self });
 
-            pub fn forward(self: *const type, input: *Tensor(T)) !void {
-                try self.forward(self, input);
-            }
+    //             try act.forward(self, input);
+    //             //act.softmax_output = try input.copy();
+    //         }
 
-            pub fn derivate(dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
-                try act.derivateWithPrevOutput(T, dVal, act_forward_out);
-            }
-        },
-        else => struct {
+    //         pub fn derivate(dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
+    //             try act.derivateWithPrevOutput(T, dVal, act_forward_out);
+    //         }
+    //     },
+    //     else => struct {
+    //         pub fn forward(input: *Tensor(T)) !void {
+    //             try act.forward(T, input);
+    //         }
 
-            // pub fn init(self: *@This()) !void {
-            //     self.activation = act{}; // Initialize the activation struct
-            // }
-
-            pub fn forward(input: *Tensor(T)) !void {
-                try act.forward(T, input);
-            }
-
-            pub fn derivate(input: *Tensor(T)) !void {
-                try act.derivate(T, input);
-            }
-        },
-    };
+    //         pub fn derivate(input: *Tensor(T)) !void {
+    //             try act.derivate(T, input);
+    //         }
+    //     },
+    // };
 }
 
-pub fn ReLU() type {
+pub fn ReLU(comptime T: anytype) type {
     return struct {
+        const Self = @This();
         //it directly modify the input tensor
         //threshold is usually set to zero
-        pub fn forward(comptime T: anytype, input: *Tensor(T)) !void {
+        pub fn forward(self: *Self, input: *Tensor(T)) !void {
+            _ = self;
+
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
 
@@ -65,7 +64,8 @@ pub fn ReLU() type {
             }
         }
 
-        pub fn derivate(comptime T: anytype, input: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, input: *Tensor(T)) !void {
+            _ = self;
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
 
@@ -78,10 +78,11 @@ pub fn ReLU() type {
     };
 }
 
-pub fn Sigmoid() type {
+pub fn Sigmoid(comptime T: anytype) type {
     return struct {
+        const Self = @This();
         //it directly modify the input tensor
-        pub fn forward(comptime T: anytype, input: *Tensor(T)) !void {
+        pub fn forward(input: *Tensor(T)) !void {
 
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
@@ -92,7 +93,7 @@ pub fn Sigmoid() type {
             }
         }
 
-        pub fn derivate(comptime T: anytype, input: *Tensor(T)) !void {
+        pub fn derivate(input: *Tensor(T)) !void {
 
             //checks
             if (input.size <= 0) return TensorError.ZeroSizeTensor;
@@ -107,31 +108,26 @@ pub fn Sigmoid() type {
 
 pub fn Softmax(comptime T: anytype) type {
     return struct {
-        softmax_output: Tensor(T),
+        const Self = @This();
+        softmax_output: Tensor(T) = undefined,
 
         //it directly modify the input tensor
-        pub fn forward(self: *const @This(), input: *Tensor(T)) !void {
+        pub fn forward(self: *Self, input: *Tensor(T)) !void {
+            //_ = self;
             const allocator = std.heap.page_allocator;
-
-            std.debug.print("\n AAAAAAAAAAAAAAAAAAAAAAAA", .{});
 
             const location = try allocator.alloc(usize, input.shape.len);
             defer allocator.free(location);
-            std.debug.print("\n AAAAAAAAAAAAAAAAAAAAAAAA", .{});
 
             //fill starting location to all zeros
             for (0..input.shape.len) |i| {
                 location[i] = 0;
             }
-            std.debug.print("\n BBBBBBBBBBBBBBBBBBBBBBBBB", .{});
-
             try compute_mutidim_softmax(input, 0, location);
 
-            std.debug.print("\n CCCCCCCCCCCCCCCCCCCCCCCCCCC", .{});
+            //@This().softmax_output = input.copy();
 
-            self.softmax_output = input.copy();
-
-            std.debug.print("\n DDDDDDDDDDDDDDDDDDDDDDDDd", .{});
+            self.softmax_output = try input.copy(); //------------------------------
         }
 
         fn compute_mutidim_softmax(input: *Tensor(T), current_depth: usize, location: []usize) !void {
@@ -185,7 +181,7 @@ pub fn Softmax(comptime T: anytype) type {
             }
         }
 
-        pub fn derivateWithPrevOutput(dL_dX: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, dL_dX: *Tensor(T)) !void {
 
             // softmax_output: The output matrix from the Softmax forward pass.
             // dL_dS: The gradient of the loss with respect to the Softmax output (this is given to us during backpropagation).
@@ -197,7 +193,7 @@ pub fn Softmax(comptime T: anytype) type {
             const dim = dL_dX.shape.len;
             const rows = dL_dX.shape[dim - 2];
             const cols = dL_dX.shape[dim - 1];
-            const act_forward_out: *Tensor(T) = @This().softmax_output;
+            const act_forward_out: Tensor(T) = self.softmax_output;
             var dL_dS = try dL_dX.copy(); //the copy is necessary since we are going to modify dL_dX
             defer dL_dS.deinit();
 
