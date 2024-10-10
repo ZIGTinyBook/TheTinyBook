@@ -51,7 +51,7 @@ pub fn main() !void {
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(8, 1, &rng, "");
+    try layer2_.init(8, 1, &rng, "Softmax");
     try model.addLayer(&layer2_);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
