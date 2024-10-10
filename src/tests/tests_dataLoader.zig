@@ -379,3 +379,39 @@ test "To Tensor Batch Test" {
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }
+
+test "MNIST batch and to Tensor test" {
+    var allocator = std.testing.allocator;
+    var loader = DataLoader(u8, u8, 1){
+        .X = undefined,
+        .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
+    };
+    defer loader.deinit(&allocator);
+
+    const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
+    const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
+
+    try loader.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
+
+    try std.testing.expectEqual(loader.X.len, 10000);
+    try std.testing.expectEqual(loader.y.len, 10000);
+    var shapeXArr = [_]usize{ 2, 784 };
+    var shapeYArr = [_]usize{2};
+    var shapeX: []usize = &shapeXArr;
+    var shapeY: []usize = &shapeYArr;
+    _ = loader.xNextBatch(2);
+    _ = loader.yNextBatch(2);
+    try loader.toTensor(&allocator, &shapeX, &shapeY);
+    try std.testing.expect(loader.xTensor.shape[0] == 2);
+    try std.testing.expect(loader.xTensor.shape[1] == 784);
+    try std.testing.expect(loader.yTensor.shape[0] == 2);
+
+    loader.xTensor.info();
+    loader.yTensor.info();
+    loader.xTensor.deinit();
+    loader.yTensor.deinit();
+}
