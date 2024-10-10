@@ -28,6 +28,7 @@ pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.
 }
 
 // Define the SGD optimizer
+// NEED TO BE MODIFIED IF NEW LAYERS ARE ADDED
 pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type {
     return struct {
         learning_rate: f64 = lr,
@@ -36,17 +37,25 @@ pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type
         // Step function to update weights and biases using gradients
         pub fn step(self: *@This(), model: *Model.Model(T, allocator, lr)) !void {
             var counter: u32 = 0;
-            for (model.layers) |*dense_layer| {
-                const weight_gradients = &dense_layer.w_gradients;
-                const bias_gradients = &dense_layer.b_gradients;
-                const weight = &dense_layer.weights;
-                const bias = &dense_layer.bias;
+            for (model.layers) |*layer_| {
+                switch (layer_.*) {
+                    .denseLayer => |dense_layer| {
+                        const weight_gradients = &dense_layer.w_gradients;
+                        const bias_gradients = &dense_layer.b_gradients;
+                        const weight = &dense_layer.weights;
+                        const bias = &dense_layer.bias;
 
-                std.debug.print("\n ------ step {}", .{counter});
-                counter += 1;
+                        std.debug.print("\n ------ step {}", .{counter});
+                        counter += 1;
 
-                try self.update_tensor(weight, weight_gradients);
-                try self.update_tensor(bias, bias_gradients);
+                        try self.update_tensor(weight, weight_gradients);
+                        try self.update_tensor(bias, bias_gradients);
+                    },
+
+                    else => {
+                        std.debug.print("\n ------ Layer is null, skipping.", .{});
+                    },
+                }
             }
         }
 

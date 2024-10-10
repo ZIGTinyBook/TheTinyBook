@@ -32,8 +32,11 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .allocator = undefined,
         .activation = undefined,
     };
-    try dense_layer.init(3, 2, &rng, "ReLU"); // Layer con 3 input e 2 neuroni
-    try model.addLayer(&dense_layer);
+    var layer1_ = layer.Layer(f64, &allocator){
+        .denseLayer = &dense_layer,
+    };
+    try layer1_.init(3, 2, &rng, "ReLU");
+    try model.addLayer(&layer1_);
 
     // Stampa informazioni iniziali dei pesi
     std.debug.print("Weights before:\n", .{});
