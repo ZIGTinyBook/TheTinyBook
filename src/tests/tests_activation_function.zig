@@ -23,8 +23,8 @@ test "ReLU from ActivationFunction()" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
-    var relu = ActivFun.newActivation(f32, ActivType.ReLU);
-    // var relu = act_type{};
+    const act_type = ActivFun.ActivationFunction(f32, ActivType.ReLU);
+    var relu = act_type{};
 
     try relu.forward(&t1);
 
@@ -214,8 +214,8 @@ test "Sigmoid forward" {
     var input_tensor = try Tensor(f64).fromArray(&allocator, &input_data, &shape); // create tensor from input data
     defer input_tensor.deinit();
 
-    const sigmoid = ActivFun.ActivationFunction(f64, ActivType.Sigmoid);
-
+    const act_type = ActivFun.ActivationFunction(f64, ActivType.Sigmoid);
+    var sigmoid = act_type{};
     // Test forward pass
     try sigmoid.forward(&input_tensor);
     const expected_forward_output = [_]f64{ 0.5, 0.880797, 0.119203 }; // expected sigmoid output for each input value
@@ -234,7 +234,8 @@ test "Sigmoid derivate" {
     var input_tensor = try Tensor(f64).fromArray(&allocator, &input_data, &shape); // create tensor from input data
     defer input_tensor.deinit();
 
-    const sigmoid = ActivFun.ActivationFunction(f64, ActivType.Sigmoid);
+    const act_type = ActivFun.ActivationFunction(f64, ActivType.Sigmoid);
+    var sigmoid = act_type{};
 
     // Test forward pass
     try sigmoid.forward(&input_tensor);
