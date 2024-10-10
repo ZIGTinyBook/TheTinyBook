@@ -45,7 +45,7 @@ pub fn main() !void {
         .activation = undefined,
     };
     //layer 2: 2 inputs, 5 neurons
-    try layer2.init(8, 1, &rng, "");
+    try layer2.init(8, 1, &rng, "Softmax");
     try model.addLayer(&layer2);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
