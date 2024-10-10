@@ -5,6 +5,7 @@ const Architectures = @import("architectures").Architectures;
 const TensorError = @import("tensor_m").TensorError;
 const ArchitectureError = @import("tensor_m").ArchitectureError;
 const ActivLib = @import("activation_function");
+const ActivationType = @import("activation_function").ActivationType;
 
 const errors = error{
     NullLayer,
@@ -119,6 +120,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             //initializing activation----------------------------------------------------
             self.activation = activationFunction;
+
             //just see sep 7 of forward()
 
             //initializing gradients to all zeros----------------------------------------
@@ -177,14 +179,17 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
             if (std.mem.eql(u8, self.activation, "ReLU")) {
-                var activation = ActivLib.ActivationFunction(ActivLib.ReLU){};
-                try activation.forward(T, &self.outputActivation);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
+                var activation = act_type{};
+                try activation.forward(&self.outputActivation);
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
-                var activation = ActivLib.ActivationFunction(ActivLib.Softmax){};
-                try activation.forward(T, &self.outputActivation);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
+                var activation = act_type{};
+                try activation.forward(&self.outputActivation);
             } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
-                var activation = ActivLib.ActivationFunction(ActivLib.Sigmoid){};
-                try activation.forward(T, &self.outputActivation);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.Sigmoid);
+                var activation = act_type{};
+                try activation.forward(&self.outputActivation);
             }
 
             self.printLayer(1);
@@ -198,14 +203,17 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             // 1. Apply the derivative of the activation function to dValues
             if (std.mem.eql(u8, self.activation, "ReLU")) {
-                var activ_grad = ActivLib.ActivationFunction(ActivLib.ReLU){};
-                try activ_grad.derivate(T, dValues);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
+                var activation = act_type{};
+                try activation.derivate(dValues);
             } else if (std.mem.eql(u8, self.activation, "Softmax")) {
-                var activ_grad = ActivLib.ActivationFunction(ActivLib.Softmax){};
-                try activ_grad.derivate(T, dValues);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
+                var activation = act_type{};
+                try activation.derivate(dValues);
             } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
-                var activ_grad = ActivLib.ActivationFunction(ActivLib.Sigmoid){};
-                try activ_grad.derivate(T, dValues);
+                const act_type = ActivLib.ActivationFunction(T, ActivationType.Sigmoid);
+                var activation = act_type{};
+                try activation.derivate(dValues);
             }
 
             // 2. Compute weight gradients (w_gradients)

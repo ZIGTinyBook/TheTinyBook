@@ -2,6 +2,7 @@ const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layers");
 const Loss = @import("loss");
+const LossType = @import("loss").LossType;
 const TensMath = @import("tensor_m");
 const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
@@ -68,7 +69,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                 //compute loss
                 std.debug.print("\n-------------------------------computing loss", .{});
-                var loser = Loss.LossFunction(Loss.MSELoss){};
+                const loser = Loss.LossFunction(LossType.MSE){};
                 var loss = try loser.computeLoss(T, &predictions, targets);
 
                 //compute accuracy
@@ -123,7 +124,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
-                    var loser = Loss.LossFunction(Loss.MSELoss){};
+                    const loser = Loss.LossFunction(LossType.MSE){};
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
 
                     //compute accuracy
