@@ -225,35 +225,68 @@ pub fn Softmax(comptime T: anytype) type {
             if (dL_dX.size <= 0) return TensorError.ZeroSizeTensor;
 
             const dim = dL_dX.shape.len;
-            const rows = dL_dX.shape[dim - 2];
-            const cols = dL_dX.shape[dim - 1];
-            const act_forward_out: Tensor(T) = try self.softmax_output.copy();
-            var dL_dS = try dL_dX.copy(); //the copy is necessary since we are going to modify dL_dX
-            defer dL_dS.deinit();
 
-            // Loop over each row (assuming we apply Softmax across rows)
-            for (0..rows) |i| {
-                // Loop over each element in the row
-                for (0..cols) |j| {
-                    var dL_dX_ij: T = 0;
+            if (dim == 1) {
+                // Caso monodimensionale: gestione speciale
+                const size = dL_dX.size;
+                const act_forward_out: Tensor(T) = try self.softmax_output.copy();
+                var dL_dS = try dL_dX.copy(); // La copia è necessaria poiché modificheremo dL_dX
+                defer dL_dS.deinit();
 
-                    // Calculate the gradient for input element x_ij
-                    const softmax_j = act_forward_out.data[i * cols + j];
+                // Iteriamo su ogni elemento del vettore monodimensionale
+                for (0..size) |j| {
+                    var dL_dX_j: T = 0;
 
-                    // Sum over all elements in the row to compute dL/dX_ij
-                    for (0..cols) |k| {
-                        const softmax_k = act_forward_out.data[i * cols + k];
-                        const dL_dS_k = dL_dS.data[i * cols + k];
+                    // Calcolo del gradiente per l'elemento x_j
+                    const softmax_j = act_forward_out.data[j];
+
+                    // Sommiamo su tutti gli elementi per calcolare dL/dX_j
+                    for (0..size) |k| {
+                        const softmax_k = act_forward_out.data[k];
+                        const dL_dS_k = dL_dS.data[k];
 
                         if (j == k) {
-                            dL_dX_ij += dL_dS_k * softmax_k * (1 - softmax_j);
+                            dL_dX_j += dL_dS_k * softmax_k * (1 - softmax_j);
                         } else {
-                            dL_dX_ij += dL_dS_k * -softmax_k * softmax_j;
+                            dL_dX_j += dL_dS_k * -softmax_k * softmax_j;
                         }
                     }
 
-                    // Store the computed gradient for input x_ij
-                    dL_dX.data[i * cols + j] = dL_dX_ij;
+                    // Salva il gradiente calcolato per x_j
+                    dL_dX.data[j] = dL_dX_j;
+                }
+            } else {
+                // Caso bidimensionale o superiore
+                const rows = dL_dX.shape[dim - 2];
+                const cols = dL_dX.shape[dim - 1];
+                const act_forward_out: Tensor(T) = try self.softmax_output.copy();
+                var dL_dS = try dL_dX.copy(); // La copia è necessaria poiché modificheremo dL_dX
+                defer dL_dS.deinit();
+
+                // Loop over each row (assuming we apply Softmax across rows)
+                for (0..rows) |i| {
+                    // Loop over each element in the row
+                    for (0..cols) |j| {
+                        var dL_dX_ij: T = 0;
+
+                        // Calculate the gradient for input element x_ij
+                        const softmax_j = act_forward_out.data[i * cols + j];
+
+                        // Sum over all elements in the row to compute dL/dX_ij
+                        for (0..cols) |k| {
+                            const softmax_k = act_forward_out.data[i * cols + k];
+                            const dL_dS_k = dL_dS.data[i * cols + k];
+
+                            if (j == k) {
+                                dL_dX_ij += dL_dS_k * softmax_k * (1 - softmax_j);
+                            } else {
+                                dL_dX_ij += dL_dS_k * -softmax_k * softmax_j;
+                            }
+                        }
+
+                        // Store the computed gradient for input x_ij
+                        dL_dX.data[i * cols + j] = dL_dX_ij;
+                    }
                 }
             }
         }

@@ -9,7 +9,7 @@ const loader = @import("dataloader").DataLoader;
 const NormalizType = @import("dataprocessor").NormalizationType;
 const DataProc = @import("dataprocessor");
 
-pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) type {
+pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, comptime allocator: *const std.mem.Allocator, lr: f64) type {
     return struct {
         layers: []layer.Layer(T, allocator) = undefined,
         allocator: *const std.mem.Allocator,
@@ -33,10 +33,12 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            var output = input.*;
+            var output = try input.copy();
             self.input_tensor = try input.copy();
             for (self.layers, 0..) |*layer_, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
+                try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
+
                 output = try layer_.forward(&output);
                 std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
                 output.info();
@@ -88,7 +90,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                 //optimizing
                 std.debug.print("\n-------------------------------Optimizer Step", .{});
-                var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
+                var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, 0.05, allocator){ // Here we pass the actual instance of the optimizer
                 };
                 try optimizer.step(self);
             }
@@ -96,13 +98,14 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
             std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
         }
 
-        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(f64, f64, batchSize), ephocs: u32) !void {
+        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(T, XType, YType, batchSize), ephocs: u32, classification: bool) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
             var shapeXArr = [_]usize{ batchSize, features };
             var shapeYArr = [_]usize{batchSize};
             var shapeX: []usize = &shapeXArr;
             var shapeY: []usize = &shapeYArr;
             var steps: u16 = 0;
+            var max: T = 0;
 
             const len: u16 = @as(u16, @intCast(load.X.len));
             steps = @divFloor(len, batchSize);
@@ -120,15 +123,28 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
-                    try DataProc.normalize(f64, &load.xTensor, NormalizType.UnityBasedNormalizartion);
-                    try DataProc.normalize(f64, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+                    try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
                     var predictions = try self.forward(&load.xTensor);
-                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
-                    try predictions.reshape(load.yTensor.shape);
+                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
+                    try predictions.reshape(&shape);
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
-                    const loser = Loss.LossFunction(LossType.MSE){};
+                    const loser = Loss.LossFunction(LossType.CCE){};
+                    if (classification) {
+                        //Take the most likely prediction so the one with the highest value from tensor AN PUT IT AS THE PREDICTION
+                        max = predictions.data[0];
+                        var maxIndex: usize = 0;
+                        for (0..predictions.size) |J| {
+                            if (predictions.data[J] > max) {
+                                max = predictions.data[J];
+                                maxIndex = i;
+                            }
+                        }
+                        var maxArray = [1]T{max};
+                        var shape_: [1]usize = [_]usize{1};
+                        try predictions.fill(&maxArray, &shape_);
+                    }
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
 
                     //compute accuracy
@@ -137,7 +153,8 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
                     //compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
                     var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
-                    try grad.reshape(&shape);
+                    var shape_: [1]usize = [_]usize{1};
+                    try grad.reshape(&shape_);
 
                     //backwarding
                     std.debug.print("\n-------------------------------backwarding", .{});
@@ -145,7 +162,7 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                     //optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(f64, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
+                    var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
                     };
                     try optimizer.step(self);
                     std.debug.print("Batch Bumber {}", .{step});

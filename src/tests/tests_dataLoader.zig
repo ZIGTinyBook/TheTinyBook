@@ -7,24 +7,26 @@ test "tests description" {
 }
 
 test "DataLoader xNext Test" {
-    var features = [_][3]f64{
-        [_]f64{ 1.0, 2.0, 3.0 },
-        [_]f64{ 4.0, 5.0, 6.0 },
+    var features = [_][3]f32{
+        [_]f32{ 1.0, 2.0, 3.0 },
+        [_]f32{ 4.0, 5.0, 6.0 },
     };
-    // var allocator = std.testing.allocator;
 
-    var labels = [_]u8{ 1, 0 };
+    const labels = [_]u8{ 1, 0 };
 
-    var featureSlices: [2][]f64 = undefined;
+    // Creazione di un array di etichette coerente con f32 tramite cast esplicito
+    var labelSlices: [2]f32 = undefined;
+    labelSlices[0] = @as(f32, labels[0]);
+    labelSlices[1] = @as(f32, labels[1]);
+
+    var featureSlices: [2][]f32 = undefined;
     featureSlices[0] = &features[0];
     featureSlices[1] = &features[1];
 
-    const labelSlice: []u8 = &labels;
-    // var shapeXArr = [_]usize{ 2, 3 };
-    // var shapeYArr = [_]usize{2};
-    // var shapeX: []usize = &shapeXArr;
-    // var shapeY: []usize = &shapeYArr;
-    var loader = DataLoader(f64, u8, 1){
+    const labelSlice: []f32 = &labelSlices; // Modificato da []u8 a []f32
+
+    // Creazione del DataLoader con tipi coerenti
+    var loader = DataLoader(f32, f32, f32, 1){ // Cambiato u8 a f32 per le etichette
         .X = &featureSlices,
         .y = labelSlice,
         .xTensor = undefined,
@@ -32,20 +34,18 @@ test "DataLoader xNext Test" {
         .XBatch = undefined,
         .yBatch = undefined,
     };
-    std.debug.print("Printing DataLoader Info", .{});
-    std.debug.print("Fist Dim is {d}\n", .{loader.X.len});
-    // try loader.toTensor(&allocator, &shapeX, &shapeY);
-    // loader.xTensor.info();
-    // loader.xTensor.deinit();
-    // loader.yTensor.deinit();
+
+    std.debug.print("Printing DataLoader Info\n", .{});
+    std.debug.print("First Dim is {d}\n", .{loader.X.len});
+
     const x1 = loader.xNext() orelse unreachable;
-    try std.testing.expectEqual(f64, @TypeOf(x1[0]));
+    try std.testing.expectEqual(f32, @TypeOf(x1[0]));
     try std.testing.expectEqual(1.0, x1[0]);
     try std.testing.expectEqual(2.0, x1[1]);
     try std.testing.expectEqual(3.0, x1[2]);
 
     const x2 = loader.xNext() orelse unreachable;
-    try std.testing.expectEqual(f64, @TypeOf(x2[0]));
+    try std.testing.expectEqual(f32, @TypeOf(x2[0]));
     try std.testing.expectEqual(4.0, x2[0]);
     try std.testing.expectEqual(5.0, x2[1]);
     try std.testing.expectEqual(6.0, x2[2]);
@@ -54,12 +54,12 @@ test "DataLoader xNext Test" {
     try std.testing.expectEqual(null, x3);
 
     const y1 = loader.yNext() orelse unreachable;
-    try std.testing.expectEqual(u8, @TypeOf(y1));
-    try std.testing.expectEqual(1, y1);
+    try std.testing.expectEqual(f32, @TypeOf(y1)); // Cambiato da u8 a f32
+    try std.testing.expectEqual(1.0, y1);
 
     const y2 = loader.yNext() orelse unreachable;
-    try std.testing.expectEqual(u8, @TypeOf(y2));
-    try std.testing.expectEqual(0, y2);
+    try std.testing.expectEqual(f32, @TypeOf(y2)); // Cambiato da u8 a f32
+    try std.testing.expectEqual(0.0, y2);
 
     const y3 = loader.yNext();
     try std.testing.expectEqual(null, y3);
@@ -73,7 +73,7 @@ test "splitCSVLine tests" {
     const csvLine = try allocator.alloc(u8, originalLine.len);
     defer allocator.free(csvLine);
     @memcpy(csvLine, originalLine);
-    const loader = DataLoader(f64, u8, 1);
+    const loader = DataLoader(f64, f64, u8, 1);
     const result = try loader.splitCSVLine(csvLine, &allocator);
     defer allocator.free(result);
     std.debug.print("Split result length: {}\n", .{result.len});
@@ -147,7 +147,7 @@ test "splitCSVLine tests" {
 
 test "readCSVLine test with correct file flags" {
     const allocator = std.testing.allocator;
-    const loader = DataLoader(f64, u8, 1);
+    const loader = DataLoader(f64, f64, u8, 1);
 
     const cwd = std.fs.cwd();
 
@@ -183,7 +183,7 @@ test "readCSVLine test with correct file flags" {
 
 test "fromCSV test with feature and label extraction" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(f64, u8, 1){
+    var loader = DataLoader(f64, f64, u8, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -224,7 +224,7 @@ test "fromCSV test with feature and label extraction" {
 
 test "loadMNISTImages test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -249,7 +249,7 @@ test "loadMNISTImages test" {
 
 test "loadMNISTLabels test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(f64, u8, 1){
+    var loader = DataLoader(f64, f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -273,7 +273,7 @@ test "loadMNISTLabels test" {
 
 test "loadMNISTDataParallel test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -300,7 +300,14 @@ test "DataLoader shuffle simple test" {
         [_]f64{ 10.0, 11.0, 12.0 },
     };
 
-    var labels = [_]u8{ 1, 0, 1, 0 };
+    const labels = [_]u8{ 1, 0, 1, 0 };
+
+    // Effettua il cast esplicito da u8 a f64 per ogni elemento delle etichette
+    var labelSlices: [4]f64 = undefined;
+    labelSlices[0] = @as(f64, labels[0]);
+    labelSlices[1] = @as(f64, labels[1]);
+    labelSlices[2] = @as(f64, labels[2]);
+    labelSlices[3] = @as(f64, labels[3]);
 
     var featureSlices: [4][]f64 = undefined;
     featureSlices[0] = &features[0];
@@ -308,9 +315,10 @@ test "DataLoader shuffle simple test" {
     featureSlices[2] = &features[2];
     featureSlices[3] = &features[3];
 
-    const labelSlice: []u8 = &labels;
+    const labelSlice: []f64 = &labelSlices; // Modificato da `[]u8` a `[]f64` per coerenza con i tipi del DataLoader
 
-    var loader = DataLoader(f64, u8, 1){
+    // Modifica del DataLoader per supportare `f64` come tipo per le etichette
+    var loader = DataLoader(f64, f64, f64, 1){ // Cambiato `u8` a `f64` per le etichette
         .X = &featureSlices,
         .y = labelSlice,
         .xTensor = undefined,
@@ -351,18 +359,23 @@ test "To Tensor Batch Test" {
     };
     var allocator = std.testing.allocator;
 
-    var labels = [_]u8{ 1, 0 };
+    const labels = [_]u8{ 1, 0 };
+
+    // Creazione di un array di etichette coerente con f32 tramite cast esplicito
+    var labelSlices: [2]f64 = undefined;
+    labelSlices[0] = @as(f64, labels[0]);
+    labelSlices[1] = @as(f64, labels[1]);
 
     var featureSlices: [2][]f64 = undefined;
     featureSlices[0] = &features[0];
     featureSlices[1] = &features[1];
+    const labelSlice: []f64 = &labelSlices; // Modificato da []u8 a []f32
 
-    const labelSlice: []u8 = &labels;
     var shapeXArr = [_]usize{ 1, 3 };
     var shapeYArr = [_]usize{1};
     var shapeX: []usize = &shapeXArr;
     var shapeY: []usize = &shapeYArr;
-    var loader = DataLoader(f64, u8, 1){
+    var loader = DataLoader(f64, f64, u8, 1){
         .X = &featureSlices,
         .y = labelSlice,
         .xTensor = undefined,
@@ -382,7 +395,7 @@ test "To Tensor Batch Test" {
 
 test "MNIST batch and to Tensor test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,

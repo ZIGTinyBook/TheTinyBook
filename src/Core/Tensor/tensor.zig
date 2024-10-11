@@ -45,17 +45,26 @@ pub fn Tensor(comptime T: type) type {
 
         //from multidimensional array to Tensor
         pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
-            //std.debug.print("\n fromArray initialization...", .{});
+            // Print the type of inputArray at runtime
+            std.debug.print("Input array type: {}\n", .{@TypeOf(inputArray)});
+
+            // Calculate total size based on shape
             var total_size: usize = 1;
             for (shape) |dim| {
                 total_size *= dim;
             }
+
+            // Allocate memory for tensor shape
             const tensorShape = try allocator.alloc(usize, shape.len);
             @memcpy(tensorShape, shape);
 
+            // Allocate memory for tensor data
             const tensorData = try allocator.alloc(T, total_size);
+
+            // Flatten the input array into tensor data
             _ = flattenArray(T, inputArray, tensorData, 0);
 
+            // Return the new tensor
             return @This(){
                 .data = tensorData,
                 .size = total_size,
@@ -317,18 +326,29 @@ pub fn Tensor(comptime T: type) type {
 }
 
 // recursive function to flatten a multidimensional array
-fn flattenArray(T: type, arr: anytype, flatArr: []T, startIndex: usize) usize {
+fn flattenArray(comptime T: type, arr: anytype, flatArr: []T, startIndex: usize) usize {
     var idx = startIndex;
 
-    if (@TypeOf(arr[0]) == T) {
-        for (arr) |val| {
-            flatArr[idx] = val;
-            idx += 1;
+    const arrTypeInfo = @typeInfo(@TypeOf(arr));
+
+    // Check if arr is an Array or a Slice
+    if (arrTypeInfo == .Array or arrTypeInfo == .Pointer) {
+        if (@TypeOf(arr[0]) == T) {
+            // If arr is a 1D array or slice
+            for (arr) |val| {
+                flatArr[idx] = val;
+                idx += 1;
+            }
+        } else {
+            // If arr is multidimensional, recursively flatten
+            for (arr) |subArray| {
+                idx = flattenArray(T, subArray, flatArr, idx);
+            }
         }
     } else {
-        for (arr) |subArray| {
-            idx = flattenArray(T, subArray, flatArr, idx);
-        }
+        std.debug.print("The type of `arr` is not compatible with the required type. Type found: {}\n", .{@TypeOf(arr)});
+        @panic("The type of `arr` is not compatible with the required type.");
     }
+
     return idx;
 }

@@ -15,12 +15,12 @@ const errors = error{
 };
 
 // Define the Optimizer struct with the optimizer function, learning rate, and allocator
-pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.Allocator) type, lr: f64, allocator: *const std.mem.Allocator) type {
-    const optim = func(T, lr, allocator){};
+pub fn Optimizer(comptime T: type, comptime Xtype: type, comptime YType: type, func: fn (comptime type, comptime type, comptime type, f64, *const std.mem.Allocator) type, lr: f64, allocator: *const std.mem.Allocator) type {
+    const optim = func(T, Xtype, YType, lr, allocator){};
     return struct {
-        optimizer: func(T, lr, allocator) = optim, // Instantiation of the optimizer (e.g., SGD, Adam)
+        optimizer: func(T, Xtype, YType, lr, allocator) = optim, // Instantiation of the optimizer (e.g., SGD, Adam)
 
-        pub fn step(self: *@This(), model: *Model.Model(T, allocator, lr)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, Xtype, YType, allocator, lr)) !void {
             // Directly call the optimizer's step function
             try self.optimizer.step(model);
         }
@@ -29,13 +29,13 @@ pub fn Optimizer(comptime T: type, func: fn (comptime type, f64, *const std.mem.
 
 // Define the SGD optimizer
 // NEED TO BE MODIFIED IF NEW LAYERS ARE ADDED
-pub fn optimizer_SGD(T: type, lr: f64, allocator: *const std.mem.Allocator) type {
+pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *const std.mem.Allocator) type {
     return struct {
         learning_rate: f64 = lr,
         allocator: *const std.mem.Allocator = allocator,
 
         // Step function to update weights and biases using gradients
-        pub fn step(self: *@This(), model: *Model.Model(T, allocator, lr)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, XType, YType, allocator, lr)) !void {
             var counter: u32 = 0;
             for (model.layers) |*layer_| {
                 switch (layer_.*) {
