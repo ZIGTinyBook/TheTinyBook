@@ -2,17 +2,17 @@ const std = @import("std");
 const tensor = @import("tensor");
 
 //Look at to array to have the x type of custom dimension not just 2 (batch x features)
-pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16) type {
+pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelType: type, batchSize: i16) type {
     return struct {
-        X: [][]Ftype,
-        y: []LabelType,
+        X: [][]OutType,
+        y: []OutType,
         x_index: usize = 0,
         y_index: usize = 0,
-        xTensor: tensor.Tensor(Ftype),
-        yTensor: tensor.Tensor(LabelType),
+        xTensor: tensor.Tensor(OutType),
+        yTensor: tensor.Tensor(OutType),
         batchSize: usize = batchSize,
-        XBatch: [][]Ftype,
-        yBatch: []LabelType,
+        XBatch: [][]OutType,
+        yBatch: []OutType,
 
         pub fn xNext(self: *@This()) ?[]Ftype {
             const index = self.x_index;
@@ -33,8 +33,8 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
         }
 
         pub fn toTensor(self: *@This(), allocator: *const std.mem.Allocator, shapeX: *[]usize, shapeY: *[]usize) !void {
-            self.xTensor = try tensor.Tensor(Ftype).fromArray(allocator, self.XBatch, shapeX.*);
-            self.yTensor = try tensor.Tensor(LabelType).fromArray(allocator, self.yBatch, shapeY.*);
+            self.xTensor = try tensor.Tensor(OutType).fromArray(allocator, self.XBatch, shapeX.*);
+            self.yTensor = try tensor.Tensor(OutType).fromArray(allocator, self.yBatch, shapeY.*);
         }
 
         pub fn reset(self: *@This()) void {
@@ -42,7 +42,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             self.y_index = 0;
         }
         //Maybe do batch size as a "attribute of the struct"
-        pub fn xNextBatch(self: *@This(), batch_size: usize) ?[][]Ftype {
+        pub fn xNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
             const start = self.x_index;
             const end = @min(start + batch_size, self.X.len);
 
@@ -54,7 +54,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             return batch;
         }
 
-        pub fn yNextBatch(self: *@This(), batch_size: usize) ?[]LabelType {
+        pub fn yNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
             const start = self.y_index;
             const end = @min(start + batch_size, self.y.len);
 
@@ -97,18 +97,20 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             const lineBuf = try allocator.alloc(u8, 1024);
             defer allocator.free(lineBuf);
 
+            // Conta il numero di righe
             var numRows: usize = 0;
             while (true) {
                 const maybeLine = try readCSVLine(&reader, lineBuf);
                 if (maybeLine == null) break;
                 numRows += 1;
             }
-            //I really don't like this, pls refactor this shit later
 
+            // Ripristina il puntatore al file
             try file.seekTo(0);
 
-            self.X = try allocator.alloc([]Ftype, numRows);
-            self.y = try allocator.alloc(LabelType, numRows);
+            // Alloca lo spazio per i dati di X e y
+            self.X = try allocator.alloc([]OutType, numRows);
+            self.y = try allocator.alloc(OutType, numRows);
 
             var rowIndex: usize = 0;
             while (true) {
@@ -119,18 +121,39 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
                 const columns = try splitCSVLine(line, allocator);
                 defer freeCSVColumns(allocator, columns);
 
+                // Alloca la memoria per le feature di ogni riga
                 self.X[rowIndex] = try allocator.alloc(Ftype, featureCols.len);
 
+                // Itera attraverso le colonne delle feature
                 for (featureCols, 0..) |colIndex, i| {
-                    self.X[rowIndex][i] = try parseXType(Ftype, columns[colIndex]);
+                    const valueStr = columns[colIndex];
+                    const parsedIntValue = try parseXType(OutType, valueStr); // Parse the value as an integer first
+
+                    if (@TypeOf(Ftype) == f32 or @TypeOf(Ftype) == f64) {
+                        // Se Ftype è float, usa @floatFromInt per la conversione
+                        self.X[rowIndex][i] = @as(OutType, (parsedIntValue));
+                    } else {
+                        // Altrimenti, effettua il cast al tipo di output specificato
+                        self.X[rowIndex][i] = @as(OutType, (parsedIntValue));
+                    }
                 }
 
-                self.y[rowIndex] = try parseYType(LabelType, columns[labelCol]);
+                // Gestione della colonna etichetta
+                const labelValueStr = columns[labelCol];
+                const parsedLabelIntValue = try parseYType(OutType, labelValueStr);
+
+                if (@TypeOf(LabelType) == f32 or @TypeOf(LabelType) == f64) {
+                    // Se LabelType è float, usa @floatFromInt per la conversione
+                    self.y[rowIndex] = @as(OutType, @floatFromInt(parsedLabelIntValue));
+                } else {
+                    // Altrimenti, effettua il cast al tipo di output specificato
+                    self.y[rowIndex] = @as(OutType, parsedLabelIntValue);
+                }
 
                 rowIndex += 1;
             }
         }
-        pub fn loadMNISTImages(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+        pub fn loadMNISTImages(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -156,13 +179,13 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
                 return error.InvalidImageDimensions;
             }
 
-            self.X = try allocator.alloc([]Ftype, numImages);
+            self.X = try allocator.alloc([]OutType, numImages);
 
             const imageSize = numRows * numCols;
             var i: usize = 0;
 
             while (i < numImages) {
-                self.X[i] = try allocator.alloc(Ftype, imageSize);
+                self.X[i] = try allocator.alloc(OutType, imageSize);
 
                 const pixels = try allocator.alloc(u8, imageSize);
                 defer allocator.free(pixels);
@@ -171,7 +194,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
 
                 var j: usize = 0;
                 while (j < imageSize) {
-                    self.X[i][j] = pixels[j];
+                    self.X[i][j] = @as(OutType, @floatFromInt(pixels[j]));
                     j += 1;
                 }
 
@@ -179,7 +202,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             }
         }
 
-        pub fn loadMNISTLabels(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+        pub fn loadMNISTLabels(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -194,17 +217,17 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             // Number of labels (4 byte, big-endian)
             const numLabels = try reader.readInt(u32, .big);
 
-            self.y = try allocator.alloc(LabelType, numLabels);
+            self.y = try allocator.alloc(OutType, numLabels);
 
             var i: usize = 0;
             while (i < numLabels) {
-                const label = try reader.readByte();
+                const label = @as(OutType, @floatFromInt(try reader.readByte()));
                 self.y[i] = label;
                 i += 1;
             }
         }
 
-        pub fn loadMNISTDataParallel(self: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
+        pub fn loadMNISTDataParallel(self: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
             const image_thread = try std.Thread.spawn(.{}, loadImages, .{ self, allocator, imageFilePath });
             defer image_thread.join();
 
@@ -212,11 +235,11 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             defer label_thread.join();
         }
 
-        fn loadImages(loader: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8) !void {
+        fn loadImages(loader: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8) !void {
             try loader.loadMNISTImages(allocator, imageFilePath);
         }
 
-        fn loadLabels(loader: *@This(), allocator: *std.mem.Allocator, labelFilePath: []const u8) !void {
+        fn loadLabels(loader: *@This(), allocator: *const std.mem.Allocator, labelFilePath: []const u8) !void {
             try loader.loadMNISTLabels(allocator, labelFilePath);
         }
 
