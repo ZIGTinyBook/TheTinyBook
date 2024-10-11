@@ -33,10 +33,12 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            var output = input.*;
+            var output = try input.copy();
             self.input_tensor = try input.copy();
             for (self.layers, 0..) |*layer_, i| {
                 std.debug.print("\n----------------------------------------output layer {}", .{i});
+                try DataProc.normalize(f64, &output, NormalizType.UnityBasedNormalizartion);
+
                 output = try layer_.forward(&output);
                 std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
                 output.info();
@@ -121,10 +123,9 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
                     try DataProc.normalize(f64, &load.xTensor, NormalizType.UnityBasedNormalizartion);
-                    try DataProc.normalize(f64, &load.yTensor, NormalizType.UnityBasedNormalizartion);
                     var predictions = try self.forward(&load.xTensor);
-                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
-                    try predictions.reshape(load.yTensor.shape);
+                    var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
+                    try predictions.reshape(&shape);
 
                     //compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
