@@ -29,6 +29,7 @@ pub fn build(b: *std.Build) void {
     model_mod.addImport("typeC", typeC_mod);
     model_mod.addImport("dataloader", dataloader_mod);
     model_mod.addImport("tensor_m", tensor_math_mod);
+    model_mod.addImport("dataprocessor", dataProcessor_mod);
 
     //************************************************LAYER DEPENDENCIES************************************************
 

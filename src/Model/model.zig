@@ -6,6 +6,8 @@ const LossType = @import("loss").LossType;
 const TensMath = @import("tensor_m");
 const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
+const NormalizType = @import("dataprocessor").NormalizationType;
+const DataProc = @import("dataprocessor");
 
 pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) type {
     return struct {
@@ -118,6 +120,8 @@ pub fn Model(comptime T: type, allocator: *const std.mem.Allocator, lr: f64) typ
 
                     //forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
+                    try DataProc.normalize(f64, &load.xTensor, NormalizType.UnityBasedNormalizartion);
+                    try DataProc.normalize(f64, &load.yTensor, NormalizType.UnityBasedNormalizartion);
                     var predictions = try self.forward(&load.xTensor);
                     var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 1 };
                     try predictions.reshape(load.yTensor.shape);
