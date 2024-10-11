@@ -246,7 +246,7 @@ pub fn CCELoss() type {
         fn multidim_CCE(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T), out_tensor: *Tensor(T), current_depth: usize, location: []usize) !void {
             if (current_depth == (predictions.shape.len - 1)) {
                 //declaring res as the result of the sum of the MSE
-                var res: f32 = 0.0;
+                var res: f64 = 0.0;
                 const allocator = std.heap.page_allocator;
 
                 const get_location = try allocator.alloc(usize, location.len);
@@ -266,7 +266,7 @@ pub fn CCELoss() type {
                     get_location[current_depth] = i; //for each element of predictions vect and target vect
                     const target = try targets.get_at(get_location);
                     const prediction = try predictions.get_at(get_location);
-                    const log = std.math.log(f32, std.math.e, prediction);
+                    const log = std.math.log(f64, std.math.e, prediction);
                     res -= (target * log);
                     //std.debug.print("\n CCE get_at pred:{} trg:{} log:{} at: ", .{ prediction, target, log });
                     // for (get_location) |*val| {
@@ -281,7 +281,7 @@ pub fn CCELoss() type {
                     out_location[i] = location[i];
                 }
 
-                const out_res: T = Convert.convert(f32, T, res);
+                const out_res: T = Convert.convert(f64, T, res);
                 //set the loss value into out_tensortry
                 //std.debug.print("\n CCE set val {} at: ", .{out_res});
                 // for (out_location) |*val| {
