@@ -130,7 +130,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
                 rowIndex += 1;
             }
         }
-        pub fn loadMNISTImages(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+        pub fn loadMNISTImages(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -171,7 +171,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
 
                 var j: usize = 0;
                 while (j < imageSize) {
-                    self.X[i][j] = pixels[j];
+                    self.X[i][j] = @as(f64, @floatFromInt(pixels[j]));
                     j += 1;
                 }
 
@@ -179,7 +179,7 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             }
         }
 
-        pub fn loadMNISTLabels(self: *@This(), allocator: *std.mem.Allocator, filePath: []const u8) !void {
+        pub fn loadMNISTLabels(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
             defer file.close();
             var reader = file.reader();
@@ -194,17 +194,17 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             // Number of labels (4 byte, big-endian)
             const numLabels = try reader.readInt(u32, .big);
 
-            self.y = try allocator.alloc(LabelType, numLabels);
+            self.y = try allocator.alloc(f64, numLabels);
 
             var i: usize = 0;
             while (i < numLabels) {
-                const label = try reader.readByte();
+                const label = @as(f64, @floatFromInt(try reader.readByte()));
                 self.y[i] = label;
                 i += 1;
             }
         }
 
-        pub fn loadMNISTDataParallel(self: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
+        pub fn loadMNISTDataParallel(self: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
             const image_thread = try std.Thread.spawn(.{}, loadImages, .{ self, allocator, imageFilePath });
             defer image_thread.join();
 
@@ -212,11 +212,11 @@ pub fn DataLoader(comptime Ftype: type, comptime LabelType: type, batchSize: i16
             defer label_thread.join();
         }
 
-        fn loadImages(loader: *@This(), allocator: *std.mem.Allocator, imageFilePath: []const u8) !void {
+        fn loadImages(loader: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8) !void {
             try loader.loadMNISTImages(allocator, imageFilePath);
         }
 
-        fn loadLabels(loader: *@This(), allocator: *std.mem.Allocator, labelFilePath: []const u8) !void {
+        fn loadLabels(loader: *@This(), allocator: *const std.mem.Allocator, labelFilePath: []const u8) !void {
             try loader.loadMNISTLabels(allocator, labelFilePath);
         }
 

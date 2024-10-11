@@ -31,7 +31,7 @@ pub fn main() !void {
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(5, 8, &rng, "ReLU");
+    try layer1_.init(784, 8, &rng, "ReLU");
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -51,7 +51,7 @@ pub fn main() !void {
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(8, 1, &rng, "Softmax");
+    try layer2_.init(8, 10, &rng, "Softmax");
     try model.addLayer(&layer2_);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
@@ -71,7 +71,7 @@ pub fn main() !void {
     // try layer3.init(8, 1, &rng, "ReLU");
     // try model.addLayer(&layer3);
 
-    var load = loader.DataLoader(f64, f64, 100){
+    var load = loader.DataLoader(f64, f64, 10){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -80,13 +80,18 @@ pub fn main() !void {
         .yBatch = undefined,
     };
 
-    const file_name: []const u8 = "dataset_regressione.csv";
-    const features = [_]usize{ 0, 1, 2, 3, 4 };
-    const featureCols: []const usize = &features;
-    const labelCol: usize = 5;
-    try load.fromCSV(&allocator, file_name, featureCols, labelCol);
+    // const file_name: []const u8 = "dataset_regressione.csv";
+    // const features = [_]usize{ 0, 1, 2, 3, 4 };
+    // const featureCols: []const usize = &features;
+    // const labelCol: usize = 5;
+    // try load.fromCSV(&allocator, file_name, featureCols, labelCol);
 
-    try model.TrainDataLoader(100, 5, &load, 100);
+    const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
+    const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
+
+    try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
+
+    try model.TrainDataLoader(10, 784, &load, 100);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});

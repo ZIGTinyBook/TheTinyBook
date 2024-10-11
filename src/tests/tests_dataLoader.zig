@@ -224,7 +224,7 @@ test "fromCSV test with feature and label extraction" {
 
 test "loadMNISTImages test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -249,7 +249,7 @@ test "loadMNISTImages test" {
 
 test "loadMNISTLabels test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(f64, u8, 1){
+    var loader = DataLoader(f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -273,7 +273,7 @@ test "loadMNISTLabels test" {
 
 test "loadMNISTDataParallel test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -382,7 +382,7 @@ test "To Tensor Batch Test" {
 
 test "MNIST batch and to Tensor test" {
     var allocator = std.testing.allocator;
-    var loader = DataLoader(u8, u8, 1){
+    var loader = DataLoader(f64, f64, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
