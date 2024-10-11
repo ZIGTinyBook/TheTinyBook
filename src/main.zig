@@ -7,7 +7,7 @@ const loader = @import("dataloader");
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, &allocator, 0.05){
+    var model = Model(f64, u8, u8, &allocator, 0.5){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -71,7 +71,7 @@ pub fn main() !void {
     // try layer3.init(8, 1, &rng, "ReLU");
     // try model.addLayer(&layer3);
 
-    var load = loader.DataLoader(f64, f64, 10){
+    var load = loader.DataLoader(f64, u8, u8, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -91,7 +91,7 @@ pub fn main() !void {
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try model.TrainDataLoader(10, 784, &load, 100);
+    try model.TrainDataLoader(1, 784, &load, 100, true);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
