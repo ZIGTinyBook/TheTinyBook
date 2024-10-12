@@ -185,7 +185,7 @@ test "Softmax derivate" {
     try std.testing.expect(t1.data[1] + t1.data[3] > 0.9);
     try std.testing.expect(t1.data[1] + t1.data[3] < 1.1);
 
-    try soft.derivate(&t1);
+    try soft.derivate(&t1, &t1);
     //now data is:
     //{0.196, −0.196}
     //{​−0.196, 0.196​}

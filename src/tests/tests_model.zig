@@ -2,6 +2,7 @@ const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model").Model;
+const ActivationType = @import("activation_function").ActivationType;
 
 test "Model with multiple layers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
@@ -27,12 +28,12 @@ test "Model with multiple layers forward test" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(3, 2, &rng, "ReLU");
+    try layer1_.init(3, 2, &rng);
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -46,12 +47,12 @@ test "Model with multiple layers forward test" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(2, 3, &rng, "ReLU");
+    try layer2_.init(2, 3, &rng);
     try model.addLayer(&layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
@@ -96,13 +97,13 @@ test "Model with multiple layers training test" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     //layer 1: 3 inputs, 2 neurons
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(3, 2, &rng, "ReLU");
+    try layer1_.init(3, 2, &rng);
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -116,13 +117,13 @@ test "Model with multiple layers training test" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     //layer 2: 2 inputs, 5 neurons
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(2, 5, &rng, "ReLU");
+    try layer2_.init(2, 5, &rng);
     try model.addLayer(&layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
@@ -143,7 +144,7 @@ test "Model with multiple layers training test" {
     var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &targetShape);
     defer target_tensor.deinit();
 
-    try model.train(&input_tensor, &target_tensor, 100);
+    try model.train(&input_tensor, &target_tensor, 50);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});

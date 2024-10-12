@@ -30,6 +30,7 @@ pub fn build(b: *std.Build) void {
     model_mod.addImport("dataloader", dataloader_mod);
     model_mod.addImport("tensor_m", tensor_math_mod);
     model_mod.addImport("dataprocessor", dataProcessor_mod);
+    model_mod.addImport("activation_function", activation_mod);
 
     //************************************************LAYER DEPENDENCIES************************************************
 
@@ -89,6 +90,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("layers", layers_mod);
     exe.root_module.addImport("dataloader", dataloader_mod);
     exe.root_module.addImport("dataprocessor", dataProcessor_mod);
+    exe.root_module.addImport("activation_function", activation_mod);
 
     // Installation of the executable
     b.installArtifact(exe);

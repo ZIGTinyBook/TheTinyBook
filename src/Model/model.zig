@@ -35,12 +35,13 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             var output = try input.copy();
             self.input_tensor = try input.copy();
-            for (self.layers, 0..) |*layer_, i| {
-                std.debug.print("\n----------------------------------------output layer {}", .{i});
+            for (0..self.layers.len) |i| {
+                std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
                 try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
+                std.debug.print("\n-------------------------------post-norm layer {}", .{i});
 
-                output = try layer_.forward(&output);
-                std.debug.print("\n >>>>>>>>>>> output post-activation: ", .{});
+                output = try self.layers[i].forward(&output);
+                std.debug.print("\n-------------------------------output layer {}", .{i});
                 output.info();
             }
             return output;
@@ -83,6 +84,8 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
                 //compute gradient of the loss
                 std.debug.print("\n-------------------------------computing loss gradient", .{});
                 var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
+                std.debug.print("\n     gradient:", .{});
+                grad.info();
 
                 //backwarding
                 std.debug.print("\n-------------------------------backwarding", .{});

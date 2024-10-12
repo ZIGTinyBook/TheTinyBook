@@ -3,6 +3,7 @@ const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model");
 const Optim = @import("optim");
+const ActivationType = @import("activation_function").ActivationType;
 
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
@@ -30,12 +31,12 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &dense_layer,
     };
-    try layer1_.init(3, 2, &rng, "ReLU");
+    try layer1_.init(3, 2, &rng);
     try model.addLayer(&layer1_);
 
     // Stampa informazioni iniziali dei pesi
