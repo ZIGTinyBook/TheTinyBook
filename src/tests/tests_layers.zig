@@ -2,6 +2,7 @@ const std = @import("std");
 const DenseLayer = @import("layers").DenseLayer;
 const Layer = @import("layers").Layer;
 const tensor = @import("tensor");
+const ActivationType = @import("activation_function").ActivationType;
 
 test " DenseLayer forward test" {
     std.debug.print("\n     test: DenseLayer forward test", .{});
@@ -20,7 +21,7 @@ test " DenseLayer forward test" {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = allocator,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
 
     var layer1 = Layer(f64, allocator){
@@ -28,7 +29,7 @@ test " DenseLayer forward test" {
     };
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(4, 2, &rng, "ReLU");
+    try layer1.init(4, 2, &rng);
     defer layer1.deinit();
 
     //Define an input tensor with 2x4 shape, an input for each neuron
