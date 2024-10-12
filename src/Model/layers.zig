@@ -65,7 +65,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
             switch (self) {
                 .null => return error.NullLayer,
                 inline else => |layer| {
-                    layer.weights.info();
+                    // layer.weights.info();
                     return layer.forward(input);
                 },
             }
@@ -168,18 +168,13 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             //this copy is necessary for the backward
             self.input = try input.copy();
-            std.debug.print("\n >>>>>>input ", .{});
-            input.info();
-            std.debug.print("\n >>>>>>self.input ", .{});
-            self.input.info();
 
-            self.weights.info();
+            //self.weights.info();
 
             // 1. Check if self.output is already allocated, deallocate if necessary
             // if (self.output.data.len > 0) {
             //     self.output.deinit();
             // }
-            std.debug.print("\n >>>>>>>>>>>>>>>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: ", .{});
 
             // 2. Perform multiplication between inputs and weights (dot product)
             self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
@@ -187,18 +182,12 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 3. Add bias to the dot product
             try TensMath.add_bias(T, &self.output, &self.bias);
 
-            std.debug.print("\n >>>>>>>>>>>>>>>BBBBBBBBBBBBBBBBBBBBBBBBBBBBB: ", .{});
-
             // 4. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
-
-            std.debug.print("\n >>>>>>>>>>>pre act outputActivation: ", .{});
-            self.outputActivation.info();
 
             // 5. Apply activation function
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
-
             if (self.activationFunction == ActivationType.ReLU) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
                 var activation = act_type{};
@@ -213,8 +202,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.forward(&self.outputActivation);
             }
 
-            std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
-            self.outputActivation.info();
+            // std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
+            // self.outputActivation.info();
 
             self.printLayer(1);
 

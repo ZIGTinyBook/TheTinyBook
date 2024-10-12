@@ -46,7 +46,7 @@ pub fn Tensor(comptime T: type) type {
         //from multidimensional array to Tensor
         pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
             // Print the type of inputArray at runtime
-            std.debug.print("Input array type: {}\n", .{@TypeOf(inputArray)});
+            //std.debug.print("Input array type: {}\n", .{@TypeOf(inputArray)});
 
             // Calculate total size based on shape
             var total_size: usize = 1;
