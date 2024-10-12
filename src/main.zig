@@ -3,6 +3,7 @@ const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model").Model;
 const loader = @import("dataloader");
+const ActivationType = @import("activation_function").ActivationType;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
@@ -26,12 +27,12 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.ReLU,
     };
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(784, 8, &rng, "ReLU");
+    try layer1_.init(784, 8, &rng);
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -45,13 +46,13 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activation = undefined,
+        .activationFunction = ActivationType.Softmax,
     };
     //layer 2: 2 inputs, 5 neurons
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(8, 10, &rng, "Softmax");
+    try layer2_.init(8, 10, &rng);
     try model.addLayer(&layer2_);
 
     // var layer3 = layer.DenseLayer(f64, &allocator){
