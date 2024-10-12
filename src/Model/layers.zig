@@ -7,8 +7,14 @@ const ArchitectureError = @import("tensor_m").ArchitectureError;
 const ActivLib = @import("activation_function");
 const ActivationType = @import("activation_function").ActivationType;
 
-const errors = error{
+pub const errors = error{
     NullLayer,
+};
+
+pub const LayerTypes = enum {
+    DenseLayer,
+    DefaultLayer,
+    null,
 };
 
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
@@ -32,6 +38,7 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     }
     return matrix;
 }
+
 //------------------------------------------------------------------------------------------------------
 // INTERFACE LAYER
 pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
@@ -39,10 +46,13 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
         denseLayer: *DenseLayer(T, allocator),
         null: void,
 
-        pub fn init(self: @This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256, activationFunction: []const u8) !void {
+        pub fn init(self: @This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
             switch (self) {
                 .null => return error.NullLayer,
-                inline else => |layer| return layer.init(n_inputs, n_neurons, rng, activationFunction),
+                inline else => |layer| {
+                    try layer.init(n_inputs, n_neurons, rng);
+                    return;
+                },
             }
         }
         pub fn deinit(self: @This()) void {
@@ -54,7 +64,10 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
         pub fn forward(self: @This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             switch (self) {
                 .null => return error.NullLayer,
-                inline else => |layer| return layer.forward(input),
+                inline else => |layer| {
+                    layer.weights.info();
+                    return layer.forward(input);
+                },
             }
         }
 
@@ -88,16 +101,16 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //layer shape --------------------
         n_inputs: usize,
         n_neurons: usize,
-        //activation function-------------
-        activation: []const u8,
+        //activation function-----------------------
+        activationFunction: ActivationType,
         //gradients-----------------------
         w_gradients: tensor.Tensor(T),
         b_gradients: tensor.Tensor(T),
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256, activationFunction: []const u8) !void {
-            //std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
+        pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
+            std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
             if (n_inputs <= 0 or n_neurons <= 0) return error.InvalidParameters;
@@ -117,11 +130,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             //initializing weights and biases--------------------------------------------
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);
             self.bias = try tensor.Tensor(T).fromArray(alloc, bias_matrix, &bias_shape);
-
-            //initializing activation----------------------------------------------------
-            self.activation = activationFunction;
-
-            //just see sep 7 of forward()
 
             //initializing gradients to all zeros----------------------------------------
             self.w_gradients = try tensor.Tensor(T).fromShape(self.allocator, &weight_shape);
@@ -157,20 +165,29 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            // std.debug.print("\n >>>>>>>>>>> input: ", .{});
-            // input.info();
+
+            //this copy is necessary for the backward
             self.input = try input.copy();
+            std.debug.print("\n >>>>>>input ", .{});
+            input.info();
+            std.debug.print("\n >>>>>>self.input ", .{});
+            self.input.info();
+
+            self.weights.info();
 
             // 1. Check if self.output is already allocated, deallocate if necessary
-            if (self.output.data.len > 0) {
-                self.output.deinit();
-            }
+            // if (self.output.data.len > 0) {
+            //     self.output.deinit();
+            // }
+            std.debug.print("\n >>>>>>>>>>>>>>>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: ", .{});
 
             // 2. Perform multiplication between inputs and weights (dot product)
             self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
 
             // 3. Add bias to the dot product
             try TensMath.add_bias(T, &self.output, &self.bias);
+
+            std.debug.print("\n >>>>>>>>>>>>>>>BBBBBBBBBBBBBBBBBBBBBBBBBBBBB: ", .{});
 
             // 4. copy the output in to outputActivation so to be modified in the activation function
             self.outputActivation = try self.output.copy();
@@ -181,15 +198,16 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             // 5. Apply activation function
             // I was gettig crazy with this.activation initialization since ActivLib.ActivationFunction( something ) is
             //dynamic and we are trying to do everything at comtime, no excuses
-            if (std.mem.eql(u8, self.activation, "ReLU")) {
+
+            if (self.activationFunction == ActivationType.ReLU) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
                 var activation = act_type{};
                 try activation.forward(&self.outputActivation);
-            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
+            } else if (self.activationFunction == ActivationType.Softmax) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
                 var activation = act_type{};
                 try activation.forward(&self.outputActivation);
-            } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
+            } else if (self.activationFunction == ActivationType.Sigmoid) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Sigmoid);
                 var activation = act_type{};
                 try activation.forward(&self.outputActivation);
@@ -208,15 +226,15 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             //---- Key Steps: -----
 
             // 1. Apply the derivative of the activation function to dValues
-            if (std.mem.eql(u8, self.activation, "ReLU")) {
+            if (self.activationFunction == ActivationType.ReLU) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
                 var activation = act_type{};
                 try activation.derivate(dValues);
-            } else if (std.mem.eql(u8, self.activation, "Softmax")) {
+            } else if (self.activationFunction == ActivationType.Softmax) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
                 var activation = act_type{};
-                try activation.derivate(dValues);
-            } else if (std.mem.eql(u8, self.activation, "Sigmoid")) {
+                try activation.derivate(dValues, &self.outputActivation);
+            } else if (self.activationFunction == ActivationType.Sigmoid) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Sigmoid);
                 var activation = act_type{};
                 try activation.derivate(dValues);
@@ -265,6 +283,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
                 std.debug.print("\n \n************input", .{});
                 self.input.printMultidim();
+
                 std.debug.print("\n \n************weights", .{});
                 self.weights.printMultidim();
                 std.debug.print("\n \n************bias", .{});
@@ -281,8 +300,20 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             if (choice == 1) {
                 std.debug.print("\n ************************layer*********************", .{});
                 std.debug.print("\n   input       weight   bias  output", .{});
-                std.debug.print("\n [{} x {}] * [{} x {}] + {} = [{} x {}] ", .{ self.input.shape[0], self.input.shape[1], self.weights.shape[0], self.weights.shape[1], self.bias.shape[0], self.output.shape[0], self.output.shape[1] });
+                std.debug.print("\n [{} x {}] * [{} x {}] + {} = [{} x {}] ", .{
+                    self.input.shape[0],
+                    self.input.shape[1],
+                    self.weights.shape[0],
+                    self.weights.shape[1],
+                    self.bias.shape[0],
+                    self.output.shape[0],
+                    self.output.shape[1],
+                });
                 std.debug.print("\n ", .{});
+            }
+            if (choice == 10) {
+                std.debug.print("\n ************************layer*********************", .{});
+                std.debug.print("\n                     yes, I exist                   \n", .{});
             }
         }
     };
