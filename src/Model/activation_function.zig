@@ -6,6 +6,7 @@ pub const ActivationType = enum {
     ReLU,
     Sigmoid,
     Softmax,
+    None,
 };
 
 // activation function Interface
@@ -15,6 +16,7 @@ pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) t
         ActivationType.ReLU => ReLU(T),
         ActivationType.Sigmoid => Sigmoid(T),
         ActivationType.Softmax => Softmax(T),
+        ActivationType.None => None(),
     };
 
     //LET THIS COMMENTED, COUL BE USEFULL IN FUTURE
@@ -45,6 +47,7 @@ pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) t
     //     },
     // };
 }
+pub fn None() type {}
 
 pub fn ReLU(comptime T: anytype) type {
     return struct {
@@ -72,7 +75,7 @@ pub fn ReLU(comptime T: anytype) type {
             //apply ReLU
             //OSS: can be improved, see how did I parallelized CPU Tensor Sum
             for (0..(input.size - 1)) |i| {
-                if (input.data[i] <= 0) input.data[i] = 0;
+                input.data[i] = if (input.data[i] <= 0) 0 else 1;
             }
         }
     };
