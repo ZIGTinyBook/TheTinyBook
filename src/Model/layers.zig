@@ -110,7 +110,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         allocator: *const std.mem.Allocator,
 
         pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
-            std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
+            std.debug.print("\n Init DenseLayer: n_inputs = {}, n_neurons = {}", .{ n_inputs, n_neurons });
 
             //check on parameters
             if (n_inputs <= 0 or n_neurons <= 0) return error.InvalidParameters;

@@ -8,6 +8,8 @@ const Optim = @import("optim");
 const loader = @import("dataloader").DataLoader;
 const NormalizType = @import("dataprocessor").NormalizationType;
 const DataProc = @import("dataprocessor");
+const LayerTypes = @import("layers").LayerTypes;
+const ActivationType = @import("activation_function").ActivationType;
 
 pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, comptime allocator: *const std.mem.Allocator, lr: f64) type {
     return struct {
@@ -21,29 +23,93 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
         }
 
         pub fn deinit(self: *@This()) void {
-            for (self.layers) |*layer_| {
+            for (self.layers) |layer_| {
                 layer_.deinit();
             }
             self.allocator.free(self.layers);
         }
 
-        pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
+        // pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
+        //     self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
+        //     self.layers[self.layers.len - 1] = new_layer.*;
+        // }
+
+        pub fn addLayer(self: *@This(), layerType: LayerTypes, n_inputs: usize, n_neurons: usize, activationType: ActivationType) !void {
+            var rng = std.Random.Xoshiro256.init(12345);
+
+            var newLayerStruct = switch (layerType) {
+                LayerTypes.DenseLayer => layer.DenseLayer(T, allocator){
+                    .weights = undefined,
+                    .bias = undefined,
+                    .input = undefined,
+                    .output = undefined,
+                    .outputActivation = undefined,
+                    .n_inputs = 0,
+                    .n_neurons = 0,
+                    .w_gradients = undefined,
+                    .b_gradients = undefined,
+                    .allocator = undefined,
+                    .activationFunction = activationType,
+                },
+                LayerTypes.DefaultLayer => layer.DenseLayer(T, allocator){
+                    .weights = undefined,
+                    .bias = undefined,
+                    .input = undefined,
+                    .output = undefined,
+                    .outputActivation = undefined,
+                    .n_inputs = 0,
+                    .n_neurons = 0,
+                    .w_gradients = undefined,
+                    .b_gradients = undefined,
+                    .allocator = undefined,
+                    .activationFunction = activationType,
+                },
+                else => layer.DenseLayer(T, allocator){
+                    .weights = undefined,
+                    .bias = undefined,
+                    .input = undefined,
+                    .output = undefined,
+                    .outputActivation = undefined,
+                    .n_inputs = 0,
+                    .n_neurons = 0,
+                    .w_gradients = undefined,
+                    .b_gradients = undefined,
+                    .allocator = undefined,
+                    .activationFunction = activationType,
+                },
+            };
+
             self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
-            self.layers[self.layers.len - 1] = new_layer.*;
+            self.layers[self.layers.len - 1] = switch (layerType) {
+                LayerTypes.DenseLayer => layer.Layer(T, allocator){
+                    .denseLayer = &newLayerStruct,
+                },
+                else => layer.Layer(T, allocator){
+                    .denseLayer = &newLayerStruct,
+                },
+            };
+
+            try self.layers[self.layers.len - 1].init(n_inputs, n_neurons, &rng);
+
+            self.layers[self.layers.len - 1].printLayer(10);
+            // self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
+            // self.layers[self.layers.len - 1] = &newLayer;
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             var output = try input.copy();
             self.input_tensor = try input.copy();
             for (0..self.layers.len) |i| {
-                std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
-                try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
-                std.debug.print("\n-------------------------------post-norm layer {}", .{i});
+                self.layers[i].printLayer(1);
+                // std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
+                // try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
+                // std.debug.print("\n-------------------------------post-norm layer {}", .{i});
 
-                output = try self.layers[i].forward(&output);
-                std.debug.print("\n-------------------------------output layer {}", .{i});
-                output.info();
+                // output = try self.layers[i].forward(&output);
+                // std.debug.print("\n-------------------------------output layer {}", .{i});
+                // output.info();
             }
+            output.info();
             return output;
         }
 
