@@ -3,12 +3,13 @@ const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model").Model;
 const ActivationType = @import("activation_function").ActivationType;
+const Trainer = @import("trainer");
 
 test "Model with multiple layers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, f64, f64, &allocator, 0.05){
+    var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -77,7 +78,7 @@ test "Model with multiple layers training test" {
     std.debug.print("\n     test: Model with multiple layers training test", .{});
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, f64, f64, &allocator, 0.05){
+    var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -86,6 +87,7 @@ test "Model with multiple layers training test" {
 
     var rng = std.Random.Xoshiro256.init(12345);
 
+    //layer 1: 3 inputs, 2 neurons
     var layer1 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -99,13 +101,13 @@ test "Model with multiple layers training test" {
         .allocator = undefined,
         .activationFunction = ActivationType.ReLU,
     };
-    //layer 1: 3 inputs, 2 neurons
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
     try layer1_.init(3, 2, &rng);
     try model.addLayer(&layer1_);
 
+    //layer 2: 2 inputs, 5 neurons
     var layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -119,7 +121,6 @@ test "Model with multiple layers training test" {
         .allocator = undefined,
         .activationFunction = ActivationType.ReLU,
     };
-    //layer 2: 2 inputs, 5 neurons
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
@@ -144,7 +145,7 @@ test "Model with multiple layers training test" {
     var target_tensor = try tensor.Tensor(f64).fromArray(&allocator, &targetArray, &targetShape);
     defer target_tensor.deinit();
 
-    try model.train(&input_tensor, &target_tensor, 50);
+    try Trainer.trainTensors(f64, &allocator, &model, &input_tensor, &target_tensor, 50, 0.005);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});

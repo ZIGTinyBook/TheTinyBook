@@ -122,6 +122,8 @@ pub fn MSELoss() type {
                     res += diff * diff;
                 }
                 const divisor: T = Convert.convert(usize, T, predictions.shape[current_depth]);
+                std.debug.print("\n MSE {}/{} ", .{ res, divisor });
+
                 switch (@typeInfo(T)) {
                     .Int => res = @divFloor(res, divisor),
                     else => res = res / divisor,

@@ -11,7 +11,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     const allocator = std.heap.page_allocator;
     const lr: f64 = 0.05;
 
-    var model = Model.Model(f64, f64, f64, &allocator, lr){
+    var model = Model.Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -43,7 +43,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     std.debug.print("Weights before:\n", .{});
     dense_layer.weights.info();
 
-    var optimizer = Optim.Optimizer(f64, f64, f64, Optim.optimizer_SGD, 0.05, &allocator){ // Here we pass the actual instance of the optimizer
+    var optimizer = Optim.Optimizer(f64, f64, f64, Optim.optimizer_SGD, lr, &allocator){ // Here we pass the actual instance of the optimizer
     };
     try optimizer.step(&model);
 

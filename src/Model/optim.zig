@@ -3,7 +3,7 @@ const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model");
 
-const Optimizers = enum {
+pub const Optimizers = enum {
     SGD,
     Adam,
     RMSprop,
@@ -20,7 +20,7 @@ pub fn Optimizer(comptime T: type, comptime Xtype: type, comptime YType: type, f
     return struct {
         optimizer: func(T, Xtype, YType, lr, allocator) = optim, // Instantiation of the optimizer (e.g., SGD, Adam)
 
-        pub fn step(self: *@This(), model: *Model.Model(T, Xtype, YType, allocator, lr)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             // Directly call the optimizer's step function
             try self.optimizer.step(model);
         }
@@ -30,12 +30,16 @@ pub fn Optimizer(comptime T: type, comptime Xtype: type, comptime YType: type, f
 // Define the SGD optimizer
 // NEED TO BE MODIFIED IF NEW LAYERS ARE ADDED
 pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *const std.mem.Allocator) type {
+    //Are XType and YType really necessary?
+    _ = XType;
+    _ = YType;
+
     return struct {
         learning_rate: f64 = lr,
         allocator: *const std.mem.Allocator = allocator,
 
         // Step function to update weights and biases using gradients
-        pub fn step(self: *@This(), model: *Model.Model(T, XType, YType, allocator, lr)) !void {
+        pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             var counter: u32 = 0;
             for (model.layers) |*layer_| {
                 switch (layer_.*) {
