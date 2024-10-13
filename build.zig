@@ -103,6 +103,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("dataprocessor", dataProcessor_mod);
     exe.root_module.addImport("activation_function", activation_mod);
     exe.root_module.addImport("loss", loss_mod);
+    exe.root_module.addImport("trainer", trainer_mod);
 
     // Installation of the executable
     b.installArtifact(exe);

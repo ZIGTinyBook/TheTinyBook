@@ -24,7 +24,7 @@ pub fn TrainDataLoader(
     comptime allocator: *const std.mem.Allocator,
     comptime batchSize: i16,
     features: usize,
-    model: *Model(T, XType, YType, allocator),
+    model: *Model(T, allocator),
     load: *DataLoader(T, XType, YType, batchSize),
     ephocs: u32,
     classification: bool,
