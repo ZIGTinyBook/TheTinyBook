@@ -5,11 +5,12 @@ const Model = @import("model").Model;
 const loader = @import("dataloader");
 const ActivationType = @import("activation_function").ActivationType;
 const LossType = @import("loss").LossType;
+const Trainer = @import("trainer");
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var model = Model(f64, u8, u8, &allocator, 0.5){
+    var model = Model(f64, &allocator){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -76,7 +77,7 @@ pub fn main() !void {
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try model.TrainDataLoader(1, 784, &load, 100, true, LossType.CCE);
+    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 100, true, LossType.CCE, 0.5);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
