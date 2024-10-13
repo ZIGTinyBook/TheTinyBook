@@ -12,8 +12,9 @@ pub fn build(b: *std.Build) void {
     const model_mod = b.createModule(.{ .root_source_file = b.path("src/Model/model.zig") });
     const layers_mod = b.createModule(.{ .root_source_file = b.path("src/Model/layers.zig") });
     const optim_mod = b.createModule(.{ .root_source_file = b.path("src/Model/optim.zig") });
-    const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataLoader/dataLoader.zig") });
-    const dataProcessor_mod = b.createModule(.{ .root_source_file = b.path("src/DataLoader/dataProcessor.zig") });
+    const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
+    const dataProcessor_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataProcessor.zig") });
+    const trainer_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/trainer.zig") });
     const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
     const activation_mod = b.createModule(.{ .root_source_file = b.path("src/Model/activation_function.zig") });
     const typeC_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
@@ -46,6 +47,16 @@ pub fn build(b: *std.Build) void {
     //************************************************DATA PROCESSOR DEPENDENCIES************************************************
 
     dataProcessor_mod.addImport("tensor", tensor_mod);
+
+    //************************************************TRAINER DEPENDENCIES************************************************
+    trainer_mod.addImport("tensor", tensor_mod);
+    trainer_mod.addImport("tensor_m", tensor_math_mod);
+    trainer_mod.addImport("model", model_mod);
+    trainer_mod.addImport("loss", loss_mod);
+    trainer_mod.addImport("optim", optim_mod);
+    trainer_mod.addImport("dataloader", dataloader_mod);
+    trainer_mod.addImport("dataprocessor", dataProcessor_mod);
+    trainer_mod.addImport("loss", loss_mod);
 
     //************************************************TENSOR DEPENDENCIES************************************************
 
@@ -91,6 +102,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("dataloader", dataloader_mod);
     exe.root_module.addImport("dataprocessor", dataProcessor_mod);
     exe.root_module.addImport("activation_function", activation_mod);
+    exe.root_module.addImport("loss", loss_mod);
 
     // Installation of the executable
     b.installArtifact(exe);
@@ -125,6 +137,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("dataloader", dataloader_mod);
     unit_tests.root_module.addImport("dataprocessor", dataProcessor_mod);
     unit_tests.root_module.addImport("architectures", architectures_mod);
+    unit_tests.root_module.addImport("trainer", trainer_mod);
 
     // Run tests for module `optim`s
     const optim_tests = b.addTest(.{
