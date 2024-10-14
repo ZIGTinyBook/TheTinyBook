@@ -37,6 +37,8 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             self.input_tensor = try input.copy();
             for (0..self.layers.len) |i| {
                 std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
+                std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
+                output.info();
                 try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
                 std.debug.print("\n-------------------------------post-norm layer {}", .{i});
                 std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});

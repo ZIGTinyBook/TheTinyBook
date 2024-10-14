@@ -40,7 +40,7 @@ fn normalizeUnityBased2D(comptime T: anytype, tensor: *Tensor(T)) !void {
 
         // Update tensor for 1D normalization
         for (0..rows) |i| {
-            tensor.data[i] = if (delta == 0) ((tensor.data[i] - min)) else ((tensor.data[i] - min) / delta);
+            tensor.data[i] = if (delta == 0) ((tensor.data[i] - min)) else @divExact((tensor.data[i] - min), delta);
         }
     } else {
         // 2D tensor case
@@ -53,12 +53,17 @@ fn normalizeUnityBased2D(comptime T: anytype, tensor: *Tensor(T)) !void {
                 if (tensor.data[i * cols + j] < min) min = tensor.data[i * cols + j];
             }
             delta = max - min;
-            //std.debug.print("\n 2D min:{} max:{} delta:{}", .{ min, max, delta });
+            std.debug.print("\n 2D min:{} max:{} delta:{}", .{ min, max, delta });
 
             // Update tensor for 2D normalization
             for (0..cols) |j| {
                 std.debug.print("\n {}-{} / {}", .{ tensor.data[i * cols + j], min, delta });
-                tensor.data[i * cols + j] = if (delta == 0) ((tensor.data[i] - min)) else ((tensor.data[i] - min) / delta);
+                if (delta == 0) {
+                    tensor.data[i * cols + j] = (tensor.data[i * cols + j] - min);
+                } else {
+                    tensor.data[i * cols + j] = (tensor.data[i * cols + j] - min) / delta;
+                }
+                std.debug.print(" = {} ", .{tensor.data[i * cols + j]});
             }
         }
     }
