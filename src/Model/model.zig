@@ -103,6 +103,7 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
 
         pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(T, XType, YType, batchSize), epochs: u32) !void {
             var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
+            var AccuracyRecord: []f32 = try allocator.alloc(f32, epochs); // Array per l'accuratezza
             var shapeXArr = [_]usize{ batchSize, features };
             var shapeYArr = [_]usize{ batchSize, 10 }; // Ora la forma di y è batchSize x 10
             var shapeX: []usize = &shapeXArr;
@@ -118,6 +119,8 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
 
             for (0..epochs) |i| {
                 std.debug.print("\n\n----------------------epoch:{}", .{i});
+                var totalCorrect: u16 = 0; // Per il calcolo dell'accuratezza
+                var totalSamples: u16 = 0;
                 for (0..steps) |step| {
                     _ = load.xNextBatch(batchSize);
                     _ = load.yNextBatch(batchSize);
@@ -143,8 +146,14 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
 
                     // Compute accuracy
+                    const correctPredictions: u16 = try self.computeAccuracy(&predictions, &load.yTensor);
+                    totalCorrect += correctPredictions;
+                    totalSamples += batchSize;
+
                     LossMeanRecord[i] = TensMath.mean(T, &loss);
-                    std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
+                    // Converti totalCorrect e totalSamples in f32 per evitare errori di tipo
+                    AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
+                    std.debug.print("\n     loss:{} accuracy:{}%", .{ LossMeanRecord[i], AccuracyRecord[i] });
 
                     // Compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
@@ -166,6 +175,46 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
                 std.debug.print("steps:{}", .{steps});
             }
         }
+
+        fn computeAccuracy(self: *@This(), predictions: *tensor.Tensor(T), targets: *tensor.Tensor(T)) !u16 {
+            _ = self;
+            var correct: u16 = 0;
+            const rows = predictions.shape[0];
+            const cols = predictions.shape[1];
+
+            for (0..rows) |i| {
+                var predictedLabel: usize = 0;
+                var maxVal: T = predictions.data[i * cols];
+
+                // Trova la classe con il valore massimo nelle predizioni
+                for (1..cols) |j| {
+                    const val = predictions.data[i * cols + j];
+                    if (val > maxVal) {
+                        maxVal = val;
+                        predictedLabel = j;
+                    }
+                }
+
+                // Trova l'etichetta vera
+                var actualLabel: usize = 0;
+                var maxTargetVal: T = targets.data[i * cols];
+                for (1..cols) |j| {
+                    const val = targets.data[i * cols + j];
+                    if (val > maxTargetVal) {
+                        maxTargetVal = val;
+                        actualLabel = j;
+                    }
+                }
+
+                // Se la predizione è corretta
+                if (predictedLabel == actualLabel) {
+                    correct += 1;
+                }
+            }
+
+            return correct;
+        }
+
         fn convertToOneHot(batchSize: i16, yBatch: *tensor.Tensor(T)) !void {
             // Numero di classi
             const numClasses = 10;
