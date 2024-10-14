@@ -29,12 +29,12 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
+        .activationFunction = ActivationType.None,
     };
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(784, 8, &rng);
+    try layer1_.init(784, 32, &rng);
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -48,16 +48,35 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.Softmax,
+        .activationFunction = ActivationType.None,
     };
     //layer 2: 2 inputs, 5 neurons
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(8, 10, &rng);
+    try layer2_.init(32, 32, &rng);
     try model.addLayer(&layer2_);
 
-    var load = loader.DataLoader(f64, u8, u8, 1){
+    var layer3 = layer.DenseLayer(f64, &allocator){
+        .weights = undefined,
+        .bias = undefined,
+        .input = undefined,
+        .output = undefined,
+        .outputActivation = undefined,
+        .n_inputs = 0,
+        .n_neurons = 0,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
+        .allocator = undefined,
+        .activationFunction = ActivationType.Softmax,
+    };
+    var layer3_ = layer.Layer(f64, &allocator){
+        .denseLayer = &layer3,
+    };
+    try layer3_.init(32, 10, &rng);
+    try model.addLayer(&layer3_);
+
+    var load = loader.DataLoader(f64, u8, u8, 16){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -77,7 +96,7 @@ pub fn main() !void {
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 100, LossType.CCE, 0.5);
+    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 16, 784, &model, &load, 100, LossType.CCE, 0.05);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
