@@ -57,7 +57,7 @@ pub fn TrainDataLoader(
 
             //forwarding
             std.debug.print("\n-------------------------------forwarding", .{});
-            try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
+            //try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
             var predictions = try model.forward(&load.xTensor);
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
@@ -91,7 +91,7 @@ pub fn TrainDataLoader(
             var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
             };
             try optimizer.step(model);
-            std.debug.print("Batch Bumber {}", .{step});
+            std.debug.print("\n Batch Bumber {}\n", .{step});
         }
 
         load.reset();
