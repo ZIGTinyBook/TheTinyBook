@@ -18,34 +18,6 @@ pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) t
         ActivationType.Softmax => Softmax(T),
         ActivationType.None => None(),
     };
-
-    //LET THIS COMMENTED, COUL BE USEFULL IN FUTURE
-    //const act = activationFunctionStruct(){};
-    // return switch (activationType) {
-    //     ActivationType.Softmax => struct {
-    //         pub fn forward(self: *act, input: *Tensor(T)) !void {
-    //             std.debug.print("\n 1111AAAAAAAAAAAAAAAAAAAAAAAA", .{});
-
-    //             std.debug.print("\n {} \n soft:{any}", .{ @typeInfo(self.*), self });
-
-    //             try act.forward(self, input);
-    //             //act.softmax_output = try input.copy();
-    //         }
-
-    //         pub fn derivate(dVal: *Tensor(T), act_forward_out: *Tensor(T)) !void {
-    //             try act.derivateWithPrevOutput(T, dVal, act_forward_out);
-    //         }
-    //     },
-    //     else => struct {
-    //         pub fn forward(input: *Tensor(T)) !void {
-    //             try act.forward(T, input);
-    //         }
-
-    //         pub fn derivate(input: *Tensor(T)) !void {
-    //             try act.derivate(T, input);
-    //         }
-    //     },
-    // };
 }
 pub fn None() type {}
 

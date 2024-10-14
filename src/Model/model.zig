@@ -39,9 +39,10 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
                 std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
                 try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
                 std.debug.print("\n-------------------------------post-norm layer {}", .{i});
-
+                std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
+                output.info();
                 output = try self.layers[i].forward(&output);
-                std.debug.print("\n-------------------------------output layer {}", .{i});
+                std.debug.print("\n>>>>>>>>>>>>>  output layer {}  <<<<<<<<<<<<", .{i});
                 output.info();
             }
             return output;
