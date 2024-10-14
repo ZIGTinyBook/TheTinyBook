@@ -8,6 +8,7 @@ pub const TensorError = error{
     InputArrayWrongSize,
     EmptyTensor,
     ZeroSizeTensor,
+    InvalidShape,
 };
 
 pub fn Tensor(comptime T: type) type {

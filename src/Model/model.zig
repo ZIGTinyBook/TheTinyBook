@@ -101,14 +101,13 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
             std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
         }
 
-        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(T, XType, YType, batchSize), ephocs: u32, classification: bool) !void {
-            var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
+        pub fn TrainDataLoader(self: *@This(), comptime batchSize: i16, features: usize, load: *loader(T, XType, YType, batchSize), epochs: u32) !void {
+            var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
             var shapeXArr = [_]usize{ batchSize, features };
-            var shapeYArr = [_]usize{batchSize};
+            var shapeYArr = [_]usize{ batchSize, 10 }; // Ora la forma di y è batchSize x 10
             var shapeX: []usize = &shapeXArr;
             var shapeY: []usize = &shapeYArr;
             var steps: u16 = 0;
-            var max: T = 0;
 
             const len: u16 = @as(u16, @intCast(load.X.len));
             steps = @divFloor(len, batchSize);
@@ -117,64 +116,85 @@ pub fn Model(comptime T: type, comptime XType: type, comptime YType: type, compt
                 steps += 1;
             }
 
-            for (0..ephocs) |i| {
+            for (0..epochs) |i| {
                 std.debug.print("\n\n----------------------epoch:{}", .{i});
                 for (0..steps) |step| {
                     _ = load.xNextBatch(batchSize);
                     _ = load.yNextBatch(batchSize);
+
+                    // Converti y in formato "one-hot encoded"
+
+                    // Carica in tensori
                     try load.toTensor(allocator, &shapeX, &shapeY);
 
-                    //forwarding
+                    try convertToOneHot(batchSize, &load.yTensor);
+
+                    // Forwarding
                     std.debug.print("\n-------------------------------forwarding", .{});
                     try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
                     var predictions = try self.forward(&load.xTensor);
                     var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
                     try predictions.reshape(&shape);
 
-                    //compute loss
+                    // Compute loss
                     std.debug.print("\n-------------------------------computing loss", .{});
                     const loser = Loss.LossFunction(LossType.CCE){};
-                    if (classification) {
-                        //Take the most likely prediction so the one with the highest value from tensor AN PUT IT AS THE PREDICTION
-                        max = predictions.data[0];
-                        var maxIndex: usize = 0;
-                        for (0..predictions.size) |J| {
-                            if (predictions.data[J] > max) {
-                                max = predictions.data[J];
-                                maxIndex = i;
-                            }
-                        }
-                        var maxArray = [1]T{max};
-                        var shape_: [1]usize = [_]usize{1};
-                        try predictions.fill(&maxArray, &shape_);
-                    }
+                    try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
                     var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
 
-                    //compute accuracy
+                    // Compute accuracy
                     LossMeanRecord[i] = TensMath.mean(T, &loss);
                     std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
-                    //compute gradient of the loss
+
+                    // Compute gradient of the loss
                     std.debug.print("\n-------------------------------computing loss gradient", .{});
                     var grad: tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
-                    var shape_: [1]usize = [_]usize{1};
-                    try grad.reshape(&shape_);
 
-                    //backwarding
+                    // Backwarding
                     std.debug.print("\n-------------------------------backwarding", .{});
                     _ = try self.backward(&grad);
 
-                    //optimizing
+                    // Optimizing
                     std.debug.print("\n-------------------------------Optimizer Step", .{});
-                    var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){ // Here we pass the actual instance of the optimizer
-                    };
+                    var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){};
                     try optimizer.step(self);
-                    std.debug.print("Batch Bumber {}", .{step});
+                    std.debug.print("Batch Number {}", .{step});
                 }
 
                 load.reset();
                 std.debug.print("\n>>>>>>>>>>>> loss record:{any}", .{LossMeanRecord});
                 std.debug.print("steps:{}", .{steps});
             }
+        }
+        fn convertToOneHot(batchSize: i16, yBatch: *tensor.Tensor(T)) !void {
+            // Numero di classi
+            const numClasses = 10;
+
+            // Crea una forma per il tensore one-hot: batchSize x numClasses
+            var shapeYArr = [_]usize{ @intCast(batchSize), numClasses };
+            const oneHotShape = &shapeYArr;
+
+            // Crea un nuovo tensore per yBatch in formato one-hot
+            var oneHotYBatch = try tensor.Tensor(T).fromShape(yBatch.allocator, oneHotShape);
+
+            // Per ogni esempio nel batch
+            for (0..@intCast(batchSize)) |i| {
+                // Ottieni l'etichetta corrente come f64 e convertila a usize
+                const label: usize = (@intFromFloat(yBatch.data[i]));
+
+                // Crea un vettore one-hot con 10 posizioni
+                for (0..numClasses) |j| {
+                    if (j == label) {
+                        oneHotYBatch.data[i * numClasses + j] = 1;
+                    } else {
+                        oneHotYBatch.data[i * numClasses + j] = 0;
+                    }
+                }
+            }
+
+            // Dealloca il vecchio yBatch e sostituiscilo con il nuovo tensore one-hot
+            yBatch.deinit();
+            yBatch.* = oneHotYBatch;
         }
     };
 }
