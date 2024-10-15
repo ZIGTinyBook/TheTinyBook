@@ -147,7 +147,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    optim_tests.root_module.addImport("optim", optim_mod); // Import `optim` in tests
+    optim_tests.root_module.addImport("optim", optim_mod);
     const run_optim_tests = b.addRunArtifact(optim_tests);
     const test_optim_step = b.step("test_optim", "Test for Optim");
     test_optim_step.dependOn(&run_optim_tests.step);
@@ -157,3 +157,5 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test_all", "Unit tests");
     test_step.dependOn(&run_unit_tests.step);
 }
+
+fn 
