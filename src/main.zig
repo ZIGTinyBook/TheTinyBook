@@ -76,7 +76,7 @@ pub fn main() !void {
     try layer3_.init(32, 10, &rng);
     try model.addLayer(&layer3_);
 
-    var load = loader.DataLoader(f64, u8, u8, 16){
+    var load = loader.DataLoader(f64, u8, u8, 1){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -97,7 +97,6 @@ pub fn main() !void {
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
     try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 1, LossType.CCE, 0.5);
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 16, 784, &model, &load, 100, LossType.CCE, 0.05);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
