@@ -1,3 +1,8 @@
+//! Tensor math contains all the functions to perform operations on tensors,
+//! when we will pass to
+//! GPU or STM32 we will have to implement the same functions for
+//! those architectures usally these are called kernels
+//!
 const std = @import("std");
 const Tensor = @import("tensor").Tensor; // Import Tensor type
 const TensorError = @import("tensor").TensorError;
@@ -14,7 +19,7 @@ pub const TensorMathError = error{
     TooSmallOutputType, //the type dimension of the output Tensor could coause a loss of information
     InputTensorDimensionMismatch,
 };
-
+/// Function that add the bias for all the features in the tensor
 pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
     // Checks:
     if (tensor.size == 0) {
@@ -60,7 +65,7 @@ fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bi
         array[start + i] += bias.data[i];
     }
 }
-
+/// Performs the mean of a given tensor. It is a reduction operation, collapsing the whole tenosr into a single value.
 pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
     var res: f32 = 0;
 
@@ -71,7 +76,7 @@ pub fn mean(comptime T: anytype, tensor: *Tensor(T)) f32 {
     return res;
 }
 
-//returns a Tensor with the same shape pf t1 and t2, where each element --> out[location] = t1[location] + t2[location]
+///Returns a Tensor with the same shape pf t1 and t2, where each element --> out[location] = t1[location] + t2[location]
 pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
 
     //selecting between all possible architectures
@@ -90,46 +95,26 @@ pub fn sum_tensors(comptime arch: Architectures, comptime Tin: anytype, comptime
     };
 }
 
-//return the sum of the tensors inside another Tensor and put into t3
+//Return the sum of the tensors inside another Tensor (t3)
 fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
-
-    //CHECKS :
-    // -input size
+    // CHECKS:
     if (t1.size != t2.size) return TensorMathError.InputTensorDifferentSize;
 
-    // -this check is necassary to avoid loss of information/ overflow when working with quantized tensors
-    // usually quantization reduce to a maximum of 16bit, to the next check is divided between quant and non-quant data
-    //bool (1 bit)
-    // u1 (1 bit)
-    // i8 (8 bits)
-    // u8 (8 bits)
-    // i16 (16 bits)
-    // u16 (16 bits)
-    // f16 (16 bits)
-    // i32 (32 bits)
-    // u32 (32 bits)
-    // f32 (32 bits)
-    // i64 (64 bits)
-    // u64 (64 bits)
-    // f64 (64 bits)
-    // i128 (128 bits)
-    // u128 (128 bits)
-    // f128 (128 bits)
-    if (@bitSizeOf(outputType) <= 16) { //quantized
+    if (@bitSizeOf(outputType) <= 16) { // quantized
         if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
-    } else { //non-quant
+    } else { // non-quant
         if (@bitSizeOf(outputType) < @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
     }
 
-    //declaring and initializing of the array of sum
+    // Allocating the array for the sum
     var out_sum = try t1.allocator.alloc(outputType, t1.size);
+    defer t1.allocator.free(out_sum); // Ensure out_sum gets freed in case of error
 
     var i: usize = 0;
     const unroll_factor: usize = 4;
 
-    // loop unrolling
+    // Loop unrolling
     while (i + unroll_factor <= t1.size) : (i += 4) {
-        //since the Type of t3 is higher in number of bits the cast shoudl happen autonomously
         out_sum[i] = t1.data[i] + t2.data[i];
         out_sum[i + 1] = t1.data[i + 1] + t2.data[i + 1];
         out_sum[i + 2] = t1.data[i + 2] + t2.data[i + 2];
@@ -141,15 +126,20 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
         out_sum[i] = t1.data[i] + t2.data[i];
     }
 
+    // Create output tensor
     const out_tensor = try Tensor(outputType).fromArray(t1.allocator, out_sum, t1.shape);
 
+    // Remove the defer since the tensor will manage its own memory after creation
     return out_tensor;
 }
 
+/// Returns the dot product of two tensors. The dot product is the sum of the products of the corresponding entries of the two sequences of numbers.
+/// Deprecated: use dot_product_tensor instead
 pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !Tensor(T) {
     return try CPU_dot_product_tensors(T, T, input, weights);
 }
 
+/// Returns the dot product of two tensors. The dot product is the sum of the products of the corresponding entries of the two sequences of numbers.
 pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, t1: *Tensor(Tin), t2: *Tensor(Tin)) !Tensor(Tout) {
     return switch (arch) {
         Architectures.CPU => return CPU_dot_product_tensors(Tin, Tout, t1, t2),
@@ -164,7 +154,7 @@ pub fn dot_product_tensor(comptime arch: Architectures, comptime Tin: anytype, c
         else => return ArchitectureError.UnknownArchitecture,
     };
 }
-
+/// Implementation of dot product for CPU architecture still not parallelized
 pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType)) !Tensor(outputType) {
 
     //CHECKS :
@@ -241,7 +231,7 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
 
     return out_tensor;
 }
-
+/// Function that performs the multiplication of two tensors used in a recursive way to handle multidimensional tensors
 fn multidim_multiplication(comptime inputType: anytype, comptime outputType: anytype, t1: *Tensor(inputType), t2: *Tensor(inputType), t3: *Tensor(outputType), current_depth: usize, location: []usize) !void {
     if (current_depth == (t1.shape.len - 2)) {
 
