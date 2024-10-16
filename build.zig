@@ -31,7 +31,7 @@ pub fn build(b: *std.Build) void {
     // Create modules for utility and model functions.
     const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
     const activation_mod = b.createModule(.{ .root_source_file = b.path("src/Model/activation_function.zig") });
-    const typeC_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
+    const typeConv_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
 
     //************************************************MODEL DEPENDENCIES************************************************
 
@@ -40,7 +40,7 @@ pub fn build(b: *std.Build) void {
     model_mod.addImport("layers", layers_mod);
     model_mod.addImport("optim", optim_mod); // Do not remove duplicate
     model_mod.addImport("loss", loss_mod);
-    model_mod.addImport("typeC", typeC_mod);
+    model_mod.addImport("typeC", typeConv_mod);
     model_mod.addImport("dataloader", dataloader_mod);
     model_mod.addImport("tensor_m", tensor_math_mod);
     model_mod.addImport("dataprocessor", dataProcessor_mod);
@@ -85,7 +85,7 @@ pub fn build(b: *std.Build) void {
 
     // Add necessary imports for the tensor math module.
     tensor_math_mod.addImport("tensor", tensor_mod);
-    tensor_math_mod.addImport("typeC", typeC_mod);
+    tensor_math_mod.addImport("typeC", typeConv_mod);
     tensor_math_mod.addImport("architectures", architectures_mod);
 
     //************************************************ACTIVATION DEPENDENCIES************************************************
@@ -98,7 +98,7 @@ pub fn build(b: *std.Build) void {
     // Add necessary imports for the loss function module.
     loss_mod.addImport("tensor", tensor_mod);
     loss_mod.addImport("tensor_m", tensor_math_mod);
-    loss_mod.addImport("typeC", typeC_mod);
+    loss_mod.addImport("typeC", typeConv_mod);
 
     //************************************************OPTIMIZER DEPENDENCIES************************************************
 
@@ -166,6 +166,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("dataprocessor", dataProcessor_mod);
     unit_tests.root_module.addImport("architectures", architectures_mod);
     unit_tests.root_module.addImport("trainer", trainer_mod);
+    unit_tests.root_module.addImport("typeConverter", typeConv_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{

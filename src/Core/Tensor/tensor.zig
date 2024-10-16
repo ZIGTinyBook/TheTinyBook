@@ -222,6 +222,7 @@ pub fn Tensor(comptime T: type) type {
 
             // defer allocator.free(result); ??????????? MARCO : era già commentata, ci va o meno la .free()? non credo vada liberato perchè è lui stesso l'array multidim.
             // non andrebbe però creato un metodo freeMultidimensionalArray() che fa la stessa cosa ma librando spazio?
+            // AGGIORANEMENTO: nei tests_tensor mi è bastato fare: line 197 -> defer allocator.free(array_from_tensor);
 
             var offset: usize = 0;
             const sub_array_size = calculateProduct(shape[(depth + 1)..]);

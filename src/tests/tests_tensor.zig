@@ -241,8 +241,6 @@ test "transpose" {
 
     var tensor_transposed = try tensor.transpose2D();
     defer tensor_transposed.deinit();
-    //tensor.info();
-    //tensor_transposed.info();
 
     try std.testing.expect(tensor_transposed.data[0] == 1);
     try std.testing.expect(tensor_transposed.data[1] == 4);

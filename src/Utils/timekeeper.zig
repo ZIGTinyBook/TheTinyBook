@@ -1,7 +1,7 @@
 const std = @import("std");
 const Tensor = @import("../Core/Tensor/tensor.zig").Tensor;
 
-//returns the duration of inputFunction's execution
+/// Returns the duration of inputFunction's execution
 pub fn timekeeper(comptime T: type, inputFunction: T) i128 {
     const start: i128 = std.time.nanoTimestamp();
     std.debug.print("\n     start: {}", .{start});
