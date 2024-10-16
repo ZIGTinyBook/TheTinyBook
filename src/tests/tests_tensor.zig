@@ -194,6 +194,7 @@ test "to array " {
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
     const array_from_tensor = try tensor.toArray(shape.len);
+    defer allocator.free(array_from_tensor);
 
     try expect(array_from_tensor.len == 2);
     try expect(array_from_tensor[0].len == 3);
@@ -240,8 +241,8 @@ test "transpose" {
 
     var tensor_transposed = try tensor.transpose2D();
     defer tensor_transposed.deinit();
-    tensor.info();
-    tensor_transposed.info();
+    //tensor.info();
+    //tensor_transposed.info();
 
     try std.testing.expect(tensor_transposed.data[0] == 1);
     try std.testing.expect(tensor_transposed.data[1] == 4);

@@ -82,8 +82,9 @@ pub fn Tensor(comptime T: type) type {
             };
         }
 
-        ///Given the Tensor (self) returns the equivalent multidimensional array.
+        /// Given the Tensor (self) returns the equivalent multidimensional array.
         /// See constructMultidimensionalArray() in this file.
+        /// IMPORTANT: Remember to cal yourAllocator.free(yourMultidimArray) otherwise it generates a memory leak!
         pub fn toArray(self: @This(), comptime dimension: usize) !MagicalReturnType(T, dimension) {
             if (dimension == 1) {
                 return self.data;
