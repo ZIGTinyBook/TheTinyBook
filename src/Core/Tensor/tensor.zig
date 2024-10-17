@@ -14,6 +14,7 @@ pub const TensorError = error{
     InputArrayWrongSize,
     EmptyTensor,
     ZeroSizeTensor,
+    NotOneHotEncoded,
 };
 
 ///Class Tensor.
@@ -296,6 +297,7 @@ pub fn Tensor(comptime T: type) type {
                 std.debug.print("{} ", .{self.shape[i]});
             }
             std.debug.print("] ", .{});
+            self.print();
         }
 
         /// Prints all the array self.data in an array.
@@ -352,6 +354,29 @@ pub fn Tensor(comptime T: type) type {
                 .shape = tensorShape,
                 .allocator = allocator,
             };
+        }
+
+        /// Returns true if the Tensor is one-hot encoded
+        fn isOneHot(self: *@This()) !bool {
+            const elems_row = self.shape[self.shape.len - 1];
+            if (elems_row == 0) {
+                return TensorError.EmptyTensor;
+            }
+            const numb_rows = self.size / elems_row;
+            if (numb_rows == 0) {
+                return TensorError.ZeroSizeTensor;
+            }
+
+            for (0..numb_rows) |row| {
+                var oneHotFound = false;
+                for (0..self.shape[self.shape.len - 1]) |i| {
+                    if (self.data[row * elems_row + i] == 1 and !oneHotFound) {
+                        if (!oneHotFound) oneHotFound = true else return TensorError.NotOneHotEncoded;
+                    }
+                }
+            }
+
+            return true;
         }
     };
 }
