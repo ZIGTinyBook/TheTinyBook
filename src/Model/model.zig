@@ -59,7 +59,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
                 grad = try self.layers[counter].backward(&grad_duplicate);
                 grad_duplicate = try grad.copy();
-                if (counter == 0) break;
+                if (counter == 0) break; //I really don't like this
             }
 
             return grad;
