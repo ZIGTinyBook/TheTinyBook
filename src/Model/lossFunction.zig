@@ -1,5 +1,6 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
+const TensorError = @import("tensor").TensorError;
 const TensorMathError = @import("tensor_m").TensorMathError;
 const Convert = @import("typeC");
 
@@ -54,9 +55,11 @@ pub fn LossFunction(lossType: LossType) type {
 pub fn MSELoss() type {
     return struct {
         pub fn computeLoss(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            try basicChecks(T, predictions);
+            try basicChecks(T, targets);
 
             //CHECKS :
-            //   -inputs size
+            //   -size matching
             if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
 
             //create the shape of the output tensor,
@@ -159,6 +162,8 @@ pub fn MSELoss() type {
         }
 
         pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            try basicChecks(T, predictions);
+            try basicChecks(T, targets);
 
             //check on the size of predictions, targets and gradient
             if (predictions.size != targets.size) {
@@ -200,9 +205,11 @@ pub fn CCELoss() type {
         //         //
         //
         pub fn computeLoss(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            try basicChecks(T, predictions);
+            try basicChecks(T, targets);
 
             //CHECKS :
-            // -inputs size
+            // - size matching
             if (predictions.size != targets.size) return TensorMathError.InputTensorDifferentSize;
 
             //create the shape of the output tensor,
@@ -291,6 +298,8 @@ pub fn CCELoss() type {
         }
 
         pub fn computeGradient(comptime T: type, predictions: *Tensor(T), targets: *Tensor(T)) !Tensor(T) {
+            try basicChecks(T, predictions);
+            try basicChecks(T, targets);
 
             //check on the size of predictions, targets and gradient
             if (predictions.size != targets.size) {
@@ -318,4 +327,22 @@ pub fn CCELoss() type {
             return gradient;
         }
     };
+}
+
+fn basicChecks(comptime T: anytype, tensor: *Tensor(T)) !void {
+
+    //not empty data
+    if (tensor.data.len == 0 or std.math.isNan(tensor.data.len)) {
+        return TensorError.EmptyTensor;
+    }
+
+    //not zero shape
+    if (tensor.shape.len == 0 or std.math.isNan(tensor.data.len)) {
+        return TensorError.EmptyTensor;
+    }
+
+    //real size
+    if (tensor.size == 0 or std.math.isNan(tensor.size)) {
+        return TensorError.ZeroSizeTensor;
+    }
 }

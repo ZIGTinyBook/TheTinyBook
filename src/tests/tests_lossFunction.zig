@@ -1,5 +1,7 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
+const TensorError = @import("tensor").TensorError;
+const TensMath = @import("tensor_m");
 
 const Loss = @import("loss");
 const LossType = @import("loss").LossType;
@@ -33,7 +35,6 @@ test " Loss Function MSE using Interface, target==predictor" {
     const mse = Loss.LossFunction(LossType.MSE){};
     var loss: Tensor(f32) = try mse.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
-    //loss.info();
 
     for (0..loss.size) |i| {
         try std.testing.expect(0.0 == loss.data[i]);
@@ -59,9 +60,13 @@ test " Loss Function CCE using Interface, target==predictor" {
     const cce = Loss.LossFunction(LossType.CCE){};
     var loss: Tensor(f32) = try cce.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
+
+    for (0..loss.size) |i| {
+        try std.testing.expect(0.0 != loss.data[i]);
+    }
 }
 
-// // LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
+// LOSS FUNCTION TESTS--------------------------------------------------------------------------------------------------
 
 test " MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
@@ -174,13 +179,13 @@ test " MSE target!=predictor, 2 x 3 X 2" {
     }
 }
 
-test " CCE target==predictor, 2 x 2" {
+test " CCE target==predictor, 2 x 2 all 1" {
     std.debug.print("\n     test:CCE target==predictor, 2 x 2", .{});
     const allocator = std.testing.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ 1.0, 2.0 },
-        [_]f32{ 4.0, 5.0 },
+        [_]f32{ 1.0, 1.0 },
+        [_]f32{ 1.0, 1.0 },
     };
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
@@ -193,10 +198,11 @@ test " CCE target==predictor, 2 x 2" {
     const cce = Loss.LossFunction(LossType.CCE){};
     var loss: Tensor(f32) = try cce.computeLoss(f32, &t2_PREDICTION, &t1_TARGET);
     defer loss.deinit();
+
     //loss.info();
 }
 
-// // GRADIENT TESTS-------------------------------------------------------------------------------------------------------
+// GRADIENT TESTS-------------------------------------------------------------------------------------------------------
 
 test " GRADIENT MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: GRADIENT MSE target==predictor, 2 x 2 ", .{});
@@ -301,4 +307,24 @@ test " GRADIENT CCE error on shape (len)" {
 
     //gradient SHOULD RESULT ALL ZEROS
     try std.testing.expectError(LossError.ShapeMismatch, cce.computeGradient(f32, &t2_PREDICTION, &t1_TARGET));
+}
+
+//LIMIT CASES--------------------------------------------------
+
+test "empty vector" {
+    std.debug.print("\n     test: GRADIENT CCE error on shape (len)", .{});
+    const allocator = std.testing.allocator;
+
+    var t1_TARGET = try Tensor(f32).init(&allocator);
+    defer t1_TARGET.deinit();
+
+    var t2_PREDICTION = try Tensor(f32).init(&allocator);
+    defer t2_PREDICTION.deinit();
+
+    var t3_GRAD = try Tensor(f64).init(&allocator);
+    defer t3_GRAD.deinit();
+
+    const cce = Loss.LossFunction(LossType.CCE){};
+
+    try std.testing.expectError(TensorError.EmptyTensor, cce.computeGradient(f32, &t2_PREDICTION, &t1_TARGET));
 }
