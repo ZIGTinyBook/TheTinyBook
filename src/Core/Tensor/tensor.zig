@@ -15,6 +15,10 @@ pub const TensorError = error{
     EmptyTensor,
     ZeroSizeTensor,
     NotOneHotEncoded,
+    NanValue,
+    NotFiniteValue,
+    NegativeInfValue,
+    PositiveInfValue,
 };
 
 ///Class Tensor.
@@ -377,6 +381,28 @@ pub fn Tensor(comptime T: type) type {
             }
 
             return true;
+        }
+
+        /// Returns true only if all the values of shape and data are valid numbers
+        pub fn isSafe(self: *@This()) !void {
+            switch (@typeInfo(T)) {
+                .Float => {
+                    // Loop over tensor data
+                    for (self.data) |*value| {
+                        if (std.math.isNan(value.*)) return TensorError.NanValue;
+                        if (!std.math.isFinite(value.*)) return TensorError.NotFiniteValue;
+                    }
+
+                    // Loop over tensor shape
+                    for (self.shape) |*value| {
+                        if (std.math.isNan(value.*)) return TensorError.NanValue;
+                    }
+                },
+                else => {
+                    // If T is not Float, skip isSafe checks
+                    return;
+                },
+            }
         }
     };
 }

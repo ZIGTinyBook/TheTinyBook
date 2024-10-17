@@ -1,5 +1,7 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
+const TensorError = @import("tensor").TensorError;
+
 const expect = std.testing.expect;
 
 test "Tensor test description" {
@@ -248,4 +250,62 @@ test "transpose" {
     try std.testing.expect(tensor_transposed.data[3] == 5);
     try std.testing.expect(tensor_transposed.data[4] == 3);
     try std.testing.expect(tensor_transposed.data[5] == 6);
+}
+
+test "tests isSafe() method" {
+    std.debug.print("\n     test: isSafe() method ", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    defer tensor.deinit();
+
+    try tensor.isSafe();
+}
+
+test "tests isSafe() -> TensorError.NotFiniteValue " {
+    std.debug.print("\n     test: isSafe()-> TensorError.NotFiniteValue", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]f64 = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, 8.0, 6.0 },
+    };
+    const zero: f64 = 1.0;
+    inputArray[1][1] = inputArray[1][1] / (zero - 1.0); //NaN here
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensore = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    defer tensore.deinit();
+    try std.testing.expect(std.math.isNan(inputArray[1][1]) == false);
+    try std.testing.expect(std.math.isFinite(inputArray[1][1]) == false);
+    try std.testing.expectError(TensorError.NotFiniteValue, tensore.isSafe());
+}
+
+test "tests isSafe() -> TensorError.NanValue " {
+    std.debug.print("\n     test: isSafe()-> TensorError.NanValue", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]f64 = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, std.math.nan(f64), 6.0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensore = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    defer tensore.deinit();
+    try std.testing.expect(std.math.isNan(inputArray[1][1]) == true);
+    try std.testing.expectError(TensorError.NanValue, tensore.isSafe());
 }
