@@ -34,32 +34,41 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             var output = try input.copy();
+            defer output.deinit(); // Deallochiamo la copia alla fine del forward
+
             self.input_tensor = try input.copy();
+            defer self.input_tensor.deinit(); // Dealloca self.input_tensor alla fine
+
             for (0..self.layers.len) |i| {
                 std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
                 std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
                 output.info();
+
                 try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
+
                 std.debug.print("\n-------------------------------post-norm layer {}", .{i});
                 std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
                 output.info();
-                output = try self.layers[i].forward(&output);
-                std.debug.print("\n>>>>>>>>>>>>>  output layer {}  <<<<<<<<<<<<", .{i});
-                output.info();
+
+                var next_output = try self.layers[i].forward(&output);
+                defer next_output.deinit(); // Dealloca la memoria dopo l'uso
+                output = try next_output.copy(); // Copia il risultato per il prossimo layer
             }
-            return output;
+
+            return output.copy(); // Ritorniamo una copia sicura di output
         }
 
         pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-            //grad is always equal to dot(grad, weights)
             var grad = gradient;
             var grad_duplicate = try grad.copy();
+            defer grad_duplicate.deinit(); // Assicura che grad_duplicate venga deallocato
+
             var counter = (self.layers.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
                 grad = try self.layers[counter].backward(&grad_duplicate);
                 grad_duplicate = try grad.copy();
-                if (counter == 0) break; //I really don't like this
+                if (counter == 0) break; // Uscita forzata quando si raggiunge il primo layer
             }
 
             return grad;
