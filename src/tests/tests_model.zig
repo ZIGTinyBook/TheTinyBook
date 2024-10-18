@@ -76,7 +76,7 @@ test "Model with multiple layers forward test" {
 
 test "Model with multiple layers training test" {
     std.debug.print("\n     test: Model with multiple layers training test", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var model = Model(f64, &allocator){
         .layers = undefined,
@@ -146,9 +146,6 @@ test "Model with multiple layers training test" {
     defer target_tensor.deinit();
 
     try Trainer.trainTensors(f64, &allocator, &model, &input_tensor, &target_tensor, 100, 0.05);
-
-    //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
-    //std.debug.print("Output tensor data: {any}\n", .{output.data});
 
     model.deinit();
 }

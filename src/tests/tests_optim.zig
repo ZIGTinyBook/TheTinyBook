@@ -39,17 +39,9 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     try layer1_.init(3, 2, &rng);
     try model.addLayer(&layer1_);
 
-    // Stampa informazioni iniziali dei pesi
-    std.debug.print("Weights before:\n", .{});
-    dense_layer.weights.info();
-
     var optimizer = Optim.Optimizer(f64, f64, f64, Optim.optimizer_SGD, lr, &allocator){ // Here we pass the actual instance of the optimizer
     };
     try optimizer.step(&model);
-
-    // Stampa i pesi dopo l'aggiornamento
-    std.debug.print("\nWeights After:\n", .{});
-    dense_layer.weights.info();
 
     model.deinit();
 }

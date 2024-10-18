@@ -96,7 +96,7 @@ pub fn main() !void {
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 1, LossType.CCE, 0.5);
+    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 1, LossType.CCE, 0.005);
 
     //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
     //std.debug.print("Output tensor data: {any}\n", .{output.data});
