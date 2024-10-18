@@ -9,7 +9,8 @@ pub const ActivationType = enum {
     None,
 };
 
-// activation function Interface
+/// Activation function Interface, used to instantiate a Loss Function struct
+/// depending on the ActivationType passed by argument.
 pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) type {
     //const act =
     return switch (activationType) {
@@ -19,8 +20,12 @@ pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) t
         ActivationType.None => None(),
     };
 }
+
+/// Used when no activation functio is needed
 pub fn None() type {}
 
+/// ReLU (Rectified Linear Unit).
+/// It outputs the input directly if it's positive, but returns zero for any negative input.
 pub fn ReLU(comptime T: anytype) type {
     return struct {
         const Self = @This();
@@ -53,6 +58,10 @@ pub fn ReLU(comptime T: anytype) type {
     };
 }
 
+/// The Sigmoid activation function is a smooth, S-shaped function that maps any input
+/// to a value between 0 and 1.
+/// it can suffer from vanishing gradients, especially for large positive or negative
+/// inputs, slowing down training in deep networks.
 pub fn Sigmoid(comptime T: anytype) type {
     return struct {
         const Self = @This();
@@ -81,6 +90,9 @@ pub fn Sigmoid(comptime T: anytype) type {
     };
 }
 
+/// The Softmax activation function is used in multi-class classification tasks to convert
+/// logits (raw output values) into probabilities that sum to 1.
+/// Ideal for output layers in multi-class neural networks.
 pub fn Softmax(comptime T: anytype) type {
     return struct {
         const Self = @This();
@@ -96,11 +108,9 @@ pub fn Softmax(comptime T: anytype) type {
             for (0..input.shape.len) |i| {
                 location[i] = 0;
             }
-            // std.debug.print("\n Softmax forward input", .{});
-            // input.info();
 
+            //try compute_mutidim_softmax(input, 0, location);
             try compute_2D_softmax(input);
-
             // std.debug.print("\n >>>>>>>>>>>>>>Softmax forward input post compute_2D_softmax", .{});
             input.info();
         }
@@ -132,6 +142,7 @@ pub fn Softmax(comptime T: anytype) type {
             }
         }
 
+        //TODO: now scan the rows of the matrix, it must scan the columns
         fn compute_mutidim_softmax(input: *Tensor(T), current_depth: usize, location: []usize) !void {
             if (current_depth == (input.shape.len - 1)) {
                 //declaring res as the result of the sum of the MSE
