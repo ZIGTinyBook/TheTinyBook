@@ -25,6 +25,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
                 layer_.deinit();
             }
             self.allocator.free(self.layers);
+            self.input_tensor.deinit(); // pay attention! input_tensor is initialised only if forward() is run at leas once. Sess self.forward()
         }
 
         pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
@@ -33,29 +34,23 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            var output = try input.copy();
-            defer output.deinit(); // Deallochiamo la copia alla fine del forward
-
+            // var output = try input.copy();
+            // defer output.deinit();
             self.input_tensor = try input.copy();
-            defer self.input_tensor.deinit(); // Dealloca self.input_tensor alla fine
-
             for (0..self.layers.len) |i| {
-                std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
-                std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
-                output.info();
+                // std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
+                // std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
+                // //input.info(); //-----
+                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                // std.debug.print("\n-------------------------------post-norm layer {}", .{i});
+                // std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
+                // input.info();
+                _ = try self.layers[i].forward(try self.getPrevOut(i));
 
-                try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
-
-                std.debug.print("\n-------------------------------post-norm layer {}", .{i});
-                std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
-                output.info();
-
-                var next_output = try self.layers[i].forward(&output);
-                defer next_output.deinit(); // Dealloca la memoria dopo l'uso
-                output = try next_output.copy(); // Copia il risultato per il prossimo layer
+                std.debug.print("\n>>>>>>>>>>>>>  output layer {}  <<<<<<<<<<<<", .{i});
+                //input.info();
             }
-
-            return output.copy(); // Ritorniamo una copia sicura di output
+            return (try self.getPrevOut(self.layers.len)).*;
         }
 
         pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
@@ -72,6 +67,14 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             }
 
             return grad;
+        }
+
+        fn getPrevOut(self: *@This(), layer_numb: usize) !*tensor.Tensor(T) {
+            if (layer_numb == 0) {
+                return &self.input_tensor;
+            } else {
+                return &self.layers[layer_numb - 1].denseLayer.outputActivation;
+            }
         }
     };
 }

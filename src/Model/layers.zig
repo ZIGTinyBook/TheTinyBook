@@ -30,7 +30,7 @@ pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Rand
     for (matrix) |*row| {
         row.* = try std.heap.page_allocator.alloc(T, n_neurons);
         for (row.*) |*value| {
-            value.* = rng.random().floatNorm(T) + 5;
+            value.* = rng.random().floatNorm(T) + 1; // fix me!! why +1 ??
         }
     }
     return matrix;

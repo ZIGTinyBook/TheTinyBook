@@ -126,9 +126,9 @@ pub fn Softmax(comptime T: anytype) type {
             // input.info();
 
             //calculating the value of the exponential for each element
-            for (0..cols) |j| {
+            for (0..rows) |i| {
                 sum_of_exp = 0.0;
-                for (0..rows) |i| {
+                for (0..cols) |j| {
                     val = input.data[i * cols + j];
                     //std.debug.print("\nval: {}", .{val});
                     val = @exp(val);
@@ -136,7 +136,7 @@ pub fn Softmax(comptime T: anytype) type {
                     //std.debug.print(" exp: {}", .{val});
                     sum_of_exp += val;
                 }
-                for (0..rows) |i| {
+                for (0..cols) |j| {
                     input.data[i * cols + j] = input.data[i * cols + j] / sum_of_exp;
                 }
             }
