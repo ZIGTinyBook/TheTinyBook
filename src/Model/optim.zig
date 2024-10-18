@@ -66,7 +66,7 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *con
         // Helper function to update tensors
         fn update_tensor(self: *@This(), t: *tensor.Tensor(T), gradients: *tensor.Tensor(T)) !void {
             if (t.size != gradients.size) return errors.InputTensorDifferentSize;
-
+            //we move in the opposite direction of the gradient
             for (t.data, 0..) |*value, i| {
                 value.* -= gradients.data[i] * self.learning_rate;
             }
