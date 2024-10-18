@@ -124,11 +124,11 @@ test "Softmax all positive" {
 
     t1.info();
 
-    try std.testing.expect(t1.data[0] + t1.data[2] > 0.9);
-    try std.testing.expect(t1.data[0] + t1.data[2] < 1.1);
+    try std.testing.expect(t1.data[0] + t1.data[1] > 0.9);
+    try std.testing.expect(t1.data[0] + t1.data[1] < 1.1);
 
-    try std.testing.expect(t1.data[1] + t1.data[3] > 0.9);
-    try std.testing.expect(t1.data[1] + t1.data[3] < 1.1);
+    try std.testing.expect(t1.data[2] + t1.data[3] > 0.9);
+    try std.testing.expect(t1.data[2] + t1.data[3] < 1.1);
 }
 
 test "Softmax all 0" {
@@ -177,11 +177,11 @@ test "Softmax derivate" {
     //{ 0.2689414,  0.73105854 }
     //t1.info();
 
-    try std.testing.expect(t1.data[0] + t1.data[2] > 0.9);
-    try std.testing.expect(t1.data[0] + t1.data[2] < 1.1);
+    try std.testing.expect(t1.data[0] + t1.data[1] > 0.9);
+    try std.testing.expect(t1.data[0] + t1.data[1] < 1.1);
 
-    try std.testing.expect(t1.data[1] + t1.data[3] > 0.9);
-    try std.testing.expect(t1.data[1] + t1.data[3] < 1.1);
+    try std.testing.expect(t1.data[2] + t1.data[3] > 0.9);
+    try std.testing.expect(t1.data[2] + t1.data[3] < 1.1);
 
     try soft.derivate(&t1, &t1);
     //now data is:
