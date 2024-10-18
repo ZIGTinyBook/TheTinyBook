@@ -38,8 +38,6 @@ test "normalize float all different" {
 
     try DataProc.normalize(f32, &t1, NormalizType.UnityBasedNormalizartion);
 
-    t1.info();
-
     try std.testing.expect(1.0 == t1.data[3]);
     try std.testing.expect(1.0 == t1.data[5]);
 
