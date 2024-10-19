@@ -178,13 +178,16 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 self.input.deinit();
             }
 
-            std.debug.print("DenseLayer resources deallocated.\n", .{});
+            std.debug.print("\nDenseLayer resources deallocated.", .{});
         }
         ///Forward pass of the layer if present it applies the activation function
         /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
 
             //this copy is necessary for the backward
+            if (self.input.data.len > 0) {
+                self.input.deinit();
+            }
             self.input = try input.copy();
 
             //self.weights.info();

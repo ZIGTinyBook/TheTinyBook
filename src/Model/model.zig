@@ -17,15 +17,19 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
 
         pub fn init(self: *@This()) !void {
             self.layers = try self.allocator.alloc(layer.Layer(T, allocator), 0);
-            self.input_tensor = undefined;
+            self.input_tensor = try tensor.Tensor(T).init(self.allocator);
         }
 
         pub fn deinit(self: *@This()) void {
-            for (self.layers) |*layer_| {
+            for (self.layers, 0..) |*layer_, i| {
                 layer_.deinit();
+                std.debug.print("\n -.-.-> dense layer {} deinitialized", .{i});
             }
             self.allocator.free(self.layers);
+            std.debug.print("\n -.-.-> model layers deinitialized", .{});
+
             self.input_tensor.deinit(); // pay attention! input_tensor is initialised only if forward() is run at leas once. Sess self.forward()
+            std.debug.print("\n -.-.-> model input_tensor deinitialized", .{});
         }
 
         pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
@@ -36,7 +40,10 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             // var output = try input.copy();
             // defer output.deinit();
-            self.input_tensor = try input.copy();
+            if (self.input_tensor.size == 0) {
+                self.input_tensor.deinit();
+                self.input_tensor = try input.copy();
+            }
             for (0..self.layers.len) |i| {
                 // std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
                 // std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
