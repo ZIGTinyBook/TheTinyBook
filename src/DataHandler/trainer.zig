@@ -183,6 +183,7 @@ pub fn trainTensors(
     comptime lr: f64,
 ) !void {
     var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(LossMeanRecord);
 
     for (0..epochs) |i| {
         std.debug.print("\n\n----------------------epoch:{}", .{i});
@@ -190,12 +191,14 @@ pub fn trainTensors(
         //forwarding
         std.debug.print("\n-------------------------------forwarding", .{});
         var predictions = try model.forward(input);
+        predictions.info();
         defer predictions.deinit();
 
         //compute loss
         std.debug.print("\n-------------------------------computing loss", .{});
         const loser = Loss.LossFunction(LossType.MSE){};
         var loss = try loser.computeLoss(T, &predictions, targets);
+        defer loss.deinit();
 
         //compute accuracy
         LossMeanRecord[i] = TensMath.mean(T, &loss);
