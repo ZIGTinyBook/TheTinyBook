@@ -85,21 +85,12 @@ pub fn main() !void {
         .yBatch = undefined,
     };
 
-    // const file_name: []const u8 = "dataset_regressione.csv";
-    // const features = [_]usize{ 0, 1, 2, 3, 4 };
-    // const featureCols: []const usize = &features;
-    // const labelCol: usize = 5;
-    // try load.fromCSV(&allocator, file_name, featureCols, labelCol);
-
     const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
     const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
     try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 100, 784, &model, &load, 10, LossType.CCE, 0.005);
-
-    //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
-    //std.debug.print("Output tensor data: {any}\n", .{output.data});
 
     model.deinit();
 }

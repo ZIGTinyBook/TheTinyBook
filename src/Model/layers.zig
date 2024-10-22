@@ -185,7 +185,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
 
             //this copy is necessary for the backward
-            if (self.input.data.len > 0) {
+            if (self.input.data.len >= 0) {
                 self.input.deinit();
             }
             self.input = try input.copy();
@@ -222,11 +222,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 var activation = act_type{};
                 try activation.forward(&self.outputActivation);
             }
-
-            // std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
-            // self.outputActivation.info();
-
-            self.printLayer(1);
 
             //PAY ATTENTION: here we return the outputActivation, so the already activated output
             return self.outputActivation;
@@ -279,8 +274,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
 
-            self.printLayer(1);
-
             return &dL_dInput;
         }
         ///Print the layer used for debug purposes it has 2 different verbosity levels
@@ -320,10 +313,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                     self.output.shape[1],
                 });
                 std.debug.print("\n ", .{});
-            }
-            if (choice == 10) {
-                std.debug.print("\n ************************layer*********************", .{});
-                std.debug.print("\n                     yes, I exist                   \n", .{});
             }
         }
     };

@@ -71,13 +71,15 @@ pub fn TrainDataLoader(
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
             var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
-            //compute accuracy
+
+            //add the mean of the losses to the loss_record
+            LossMeanRecord[i] = TensMath.mean(T, &loss);
+
             // Compute accuracy
             const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
             totalCorrect += correctPredictions;
             totalSamples += batchSize;
 
-            LossMeanRecord[i] = TensMath.mean(T, &loss);
             // Converti totalCorrect e totalSamples in f32 per evitare errori di tipo
             AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
             std.debug.print("\n     loss:{} accuracy:{}%", .{ LossMeanRecord[i], AccuracyRecord[i] });
@@ -104,6 +106,8 @@ pub fn TrainDataLoader(
     }
 }
 
+/// Function to compute the accuracy of a prediction.
+/// Accuracy represents the percentage of correct predictions made by the model out of all predictions
 fn computeAccuracy(comptime T: type, predictions: *Tensor.Tensor(T), targets: *Tensor.Tensor(T)) !u16 {
     var correct: u16 = 0;
     const rows = predictions.shape[0];
