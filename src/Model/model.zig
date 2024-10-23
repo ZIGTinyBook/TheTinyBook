@@ -38,24 +38,12 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            // var output = try input.copy();
-            // defer output.deinit();
-            if (self.input_tensor.size == 0) {
-                self.input_tensor.deinit();
-                self.input_tensor = try input.copy();
-            }
-            for (0..self.layers.len) |i| {
-                // std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
-                // std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
-                // //input.info(); //-----
-                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
-                // std.debug.print("\n-------------------------------post-norm layer {}", .{i});
-                // std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
-                // input.info();
-                _ = try self.layers[i].forward(try self.getPrevOut(i));
+            self.input_tensor.deinit(); //Why this?! it is ok since in each epooch the input tensor must be initialized with the new incomming batch
+            self.input_tensor = try input.copy();
 
-                std.debug.print("\n>>>>>>>>>>>>>  output layer {}  <<<<<<<<<<<<", .{i});
-                //input.info();
+            for (0..self.layers.len) |i| {
+                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                _ = try self.layers[i].forward(try self.getPrevOut(i));
             }
             return (try self.getPrevOut(self.layers.len)).*;
         }

@@ -148,6 +148,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.w_gradients = try tensor.Tensor(T).fromShape(self.allocator, &weight_shape);
             self.b_gradients = try tensor.Tensor(T).fromShape(self.allocator, &bias_shape);
         }
+
         ///Deallocate the layer
         pub fn deinit(self: *@This()) void {
             //std.debug.print("Deallocating DenseLayer resources...\n", .{});
@@ -180,17 +181,16 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             std.debug.print("\nDenseLayer resources deallocated.", .{});
         }
+
         ///Forward pass of the layer if present it applies the activation function
         /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
 
             //this copy is necessary for the backward
-            if (self.input.data.len > 0) {
+            if (self.input.data.len >= 0) {
                 self.input.deinit();
             }
             self.input = try input.copy();
-
-            //self.weights.info();
 
             // 1. Check if self.output is already allocated, deallocate if necessary
             // if (self.output.data.len > 0) {
@@ -223,14 +223,10 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.forward(&self.outputActivation);
             }
 
-            // std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
-            // self.outputActivation.info();
-
-            self.printLayer(1);
-
             //PAY ATTENTION: here we return the outputActivation, so the already activated output
             return self.outputActivation;
         }
+
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
         pub fn backward(self: *@This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             //---- Key Steps: -----
@@ -283,6 +279,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             return &dL_dInput;
         }
+
         ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(self: *@This(), choice: u8) void {
             //MENU choice:
@@ -320,10 +317,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                     self.output.shape[1],
                 });
                 std.debug.print("\n ", .{});
-            }
-            if (choice == 10) {
-                std.debug.print("\n ************************layer*********************", .{});
-                std.debug.print("\n                     yes, I exist                   \n", .{});
             }
         }
     };

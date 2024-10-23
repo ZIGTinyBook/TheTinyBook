@@ -111,8 +111,6 @@ pub fn Softmax(comptime T: anytype) type {
 
             //try compute_mutidim_softmax(input, 0, location);
             try compute_2D_softmax(input);
-            // std.debug.print("\n >>>>>>>>>>>>>>Softmax forward input post compute_2D_softmax", .{});
-            input.info();
         }
 
         fn compute_2D_softmax(input: *Tensor(T)) !void {
@@ -121,9 +119,6 @@ pub fn Softmax(comptime T: anytype) type {
 
             var sum_of_exp: T = 0.0;
             var val: T = undefined;
-
-            // std.debug.print("\n Softmax input inside compute_2D_softmax", .{});
-            // input.info();
 
             //calculating the value of the exponential for each element
             for (0..rows) |i| {
