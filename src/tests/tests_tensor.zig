@@ -1,23 +1,29 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
+const TensorError = @import("tensor").TensorError;
+
+const expect = std.testing.expect;
 
 test "Tensor test description" {
     std.debug.print("\n--- Running tensor tests\n", .{});
 }
 
-test "Sizetest" {
-    std.debug.print("\n     test: Size ", .{});
-    const allocator = std.heap.page_allocator;
+test "init() test" {
+    std.debug.print("\n     test: init() ", .{});
+    const allocator = std.testing.allocator;
     var tensor = try Tensor(f64).init(&allocator);
+    defer tensor.deinit();
     const size = tensor.getSize();
     try std.testing.expect(size == 0);
+    try std.testing.expect(&allocator == tensor.allocator);
 }
 
 test "initialization fromShape" {
     std.debug.print("\n     test:initialization fromShape", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
     var shape: [2]usize = [_]usize{ 2, 3 };
     var tensor = try Tensor(f64).fromShape(&allocator, &shape);
+    defer tensor.deinit();
     const size = tensor.getSize();
     try std.testing.expect(size == 6);
     for (0..tensor.size) |i| {
@@ -28,7 +34,7 @@ test "initialization fromShape" {
 
 test "Get_Set_Test" {
     std.debug.print("\n     test:Get_Set_Test", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -46,7 +52,7 @@ test "Get_Set_Test" {
 
 test "Flatten Index Test" {
     std.debug.print("\n     test:Flatten Index Test", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -69,7 +75,7 @@ test "Flatten Index Test" {
 
 test "Get_at Set_at Test" {
     std.debug.print("\n     test:Get_at Set_at Test", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -78,18 +84,16 @@ test "Get_at Set_at Test" {
     var shape: [2]usize = [_]usize{ 2, 3 };
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
+
     var indices = [_]usize{ 1, 1 };
     var value = try tensor.get_at(&indices);
     try std.testing.expect(value == 5.0);
-    //try tensor.set_at(&indices, 1.0);
-    //tensor.info();
 
     for (0..2) |i| {
         for (0..3) |j| {
             indices[0] = i;
             indices[1] = j;
             value = try tensor.get_at(&indices);
-            //std.debug.print(" ({},{}):{} ", .{ i, j, value });
             try std.testing.expect(value == i * 3 + j + 1);
         }
     }
@@ -101,7 +105,8 @@ test "Get_at Set_at Test" {
 
 test "init than fill " {
     std.debug.print("\n     test:init than fill ", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
+
     var tensor = try Tensor(u8).init(&allocator);
     defer tensor.deinit();
 
@@ -123,7 +128,7 @@ test "init than fill " {
 
 test "fromArray than fill " {
     std.debug.print("\n     test:fromArray than fill ", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 10, 20, 30 },
@@ -155,7 +160,7 @@ test "fromArray than fill " {
 
 test " copy() method" {
     std.debug.print("\n     test:copy() method ", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 10, 20, 30 },
@@ -175,17 +180,13 @@ test " copy() method" {
     for (0..tensor.shape.len) |i| {
         try std.testing.expect(tensor.shape[i] == tensorCopy.shape[i]);
     }
-
-    // tensorCopy.info();
-    // tensor.info();
 }
 
 test "to array " {
     std.debug.print("\n     test:to array ", .{});
 
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
-    // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
         [_]u8{ 4, 5, 6 },
@@ -194,16 +195,16 @@ test "to array " {
 
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
-    std.debug.print("Tensor 1 Info:\n", .{});
-    tensor.info();
-    std.debug.print("\nTesting toArray on Tensor 1:\n", .{});
-    const array_from_tensor = tensor.toArray(2);
-    std.debug.print("Array extracted from tensor: {any}\n", .{array_from_tensor});
+    const array_from_tensor = try tensor.toArray(shape.len);
+    defer allocator.free(array_from_tensor);
+
+    try expect(array_from_tensor.len == 2);
+    try expect(array_from_tensor[0].len == 3);
 }
 
 test "Reshape" {
     std.debug.print("\n     test: Reshape ", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -214,17 +215,21 @@ test "Reshape" {
 
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
-    std.debug.print("Tensor 1 Info:\n", .{});
-    tensor.info();
+
+    const old_size = tensor.size;
+
     var new_shape: [2]usize = [_]usize{ 3, 2 };
+
     try tensor.reshape(&new_shape);
-    std.debug.print("Tensor 1 Info after reshape:\n", .{});
-    tensor.info();
+
+    try expect(old_size == tensor.size);
+    try expect(tensor.shape[0] == 3);
+    try expect(tensor.shape[1] == 2);
 }
 
 test "transpose" {
     std.debug.print("\n     test: transpose ", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -238,8 +243,6 @@ test "transpose" {
 
     var tensor_transposed = try tensor.transpose2D();
     defer tensor_transposed.deinit();
-    tensor.info();
-    tensor_transposed.info();
 
     try std.testing.expect(tensor_transposed.data[0] == 1);
     try std.testing.expect(tensor_transposed.data[1] == 4);
@@ -247,4 +250,62 @@ test "transpose" {
     try std.testing.expect(tensor_transposed.data[3] == 5);
     try std.testing.expect(tensor_transposed.data[4] == 3);
     try std.testing.expect(tensor_transposed.data[5] == 6);
+}
+
+test "tests isSafe() method" {
+    std.debug.print("\n     test: isSafe() method ", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]u8 = [_][3]u8{
+        [_]u8{ 1, 2, 3 },
+        [_]u8{ 4, 5, 6 },
+    };
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
+    defer tensor.deinit();
+
+    try tensor.isSafe();
+}
+
+test "tests isSafe() -> TensorError.NotFiniteValue " {
+    std.debug.print("\n     test: isSafe()-> TensorError.NotFiniteValue", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]f64 = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, 8.0, 6.0 },
+    };
+    const zero: f64 = 1.0;
+    inputArray[1][1] = inputArray[1][1] / (zero - 1.0); //NaN here
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensore = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    defer tensore.deinit();
+    try std.testing.expect(std.math.isNan(inputArray[1][1]) == false);
+    try std.testing.expect(std.math.isFinite(inputArray[1][1]) == false);
+    try std.testing.expectError(TensorError.NotFiniteValue, tensore.isSafe());
+}
+
+test "tests isSafe() -> TensorError.NanValue " {
+    std.debug.print("\n     test: isSafe()-> TensorError.NanValue", .{});
+
+    const allocator = std.testing.allocator;
+
+    // Inizializzazione degli array di input
+    var inputArray: [2][3]f64 = [_][3]f64{
+        [_]f64{ 1.0, 2.0, 3.0 },
+        [_]f64{ 4.0, std.math.nan(f64), 6.0 },
+    };
+
+    var shape: [2]usize = [_]usize{ 2, 3 };
+
+    var tensore = try Tensor(f64).fromArray(&allocator, &inputArray, &shape);
+    defer tensore.deinit();
+    try std.testing.expect(std.math.isNan(inputArray[1][1]) == true);
+    try std.testing.expectError(TensorError.NanValue, tensore.isSafe());
 }

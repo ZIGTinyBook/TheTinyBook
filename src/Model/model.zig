@@ -17,14 +17,19 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
 
         pub fn init(self: *@This()) !void {
             self.layers = try self.allocator.alloc(layer.Layer(T, allocator), 0);
-            self.input_tensor = undefined;
+            self.input_tensor = try tensor.Tensor(T).init(self.allocator);
         }
 
         pub fn deinit(self: *@This()) void {
-            for (self.layers) |*layer_| {
+            for (self.layers, 0..) |*layer_, i| {
                 layer_.deinit();
+                std.debug.print("\n -.-.-> dense layer {} deinitialized", .{i});
             }
             self.allocator.free(self.layers);
+            std.debug.print("\n -.-.-> model layers deinitialized", .{});
+
+            self.input_tensor.deinit(); // pay attention! input_tensor is initialised only if forward() is run at leas once. Sess self.forward()
+            std.debug.print("\n -.-.-> model input_tensor deinitialized", .{});
         }
 
         pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
@@ -33,36 +38,38 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         }
 
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            var output = try input.copy();
+            self.input_tensor.deinit(); //Why this?! it is ok since in each epooch the input tensor must be initialized with the new incomming batch
             self.input_tensor = try input.copy();
+
             for (0..self.layers.len) |i| {
-                std.debug.print("\n-------------------------------pre-norm layer {}", .{i});
-                std.debug.print("\n>>>>>>>>>>>>>  input layer {} NOT normalized  <<<<<<<<<<<<", .{i});
-                output.info();
-                try DataProc.normalize(T, &output, NormalizType.UnityBasedNormalizartion);
-                std.debug.print("\n-------------------------------post-norm layer {}", .{i});
-                std.debug.print("\n>>>>>>>>>>>>>  input layer {} normalized  <<<<<<<<<<<<", .{i});
-                output.info();
-                output = try self.layers[i].forward(&output);
-                std.debug.print("\n>>>>>>>>>>>>>  output layer {}  <<<<<<<<<<<<", .{i});
-                output.info();
+                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                _ = try self.layers[i].forward(try self.getPrevOut(i));
             }
-            return output;
+            return (try self.getPrevOut(self.layers.len)).*;
         }
 
         pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-            //grad is always equal to dot(grad, weights)
             var grad = gradient;
             var grad_duplicate = try grad.copy();
+            defer grad_duplicate.deinit(); // Assicura che grad_duplicate venga deallocato
+
             var counter = (self.layers.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
                 grad = try self.layers[counter].backward(&grad_duplicate);
                 grad_duplicate = try grad.copy();
-                if (counter == 0) break;
+                if (counter == 0) break; // Uscita forzata quando si raggiunge il primo layer
             }
 
             return grad;
+        }
+
+        fn getPrevOut(self: *@This(), layer_numb: usize) !*tensor.Tensor(T) {
+            if (layer_numb == 0) {
+                return &self.input_tensor;
+            } else {
+                return &self.layers[layer_numb - 1].denseLayer.outputActivation;
+            }
         }
     };
 }

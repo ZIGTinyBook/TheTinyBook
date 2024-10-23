@@ -8,7 +8,7 @@ const LossType = @import("loss").LossType;
 const Trainer = @import("trainer");
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
+    const allocator = std.heap.raw_c_allocator;
 
     var model = Model(f64, &allocator){
         .layers = undefined,
@@ -34,7 +34,7 @@ pub fn main() !void {
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
     };
-    try layer1_.init(784, 32, &rng);
+    try layer1_.init(784, 64, &rng);
     try model.addLayer(&layer1_);
 
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -54,7 +54,7 @@ pub fn main() !void {
     var layer2_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer2,
     };
-    try layer2_.init(32, 32, &rng);
+    try layer2_.init(64, 64, &rng);
     try model.addLayer(&layer2_);
 
     var layer3 = layer.DenseLayer(f64, &allocator){
@@ -73,10 +73,10 @@ pub fn main() !void {
     var layer3_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer3,
     };
-    try layer3_.init(32, 10, &rng);
+    try layer3_.init(64, 10, &rng);
     try model.addLayer(&layer3_);
 
-    var load = loader.DataLoader(f64, u8, u8, 16){
+    var load = loader.DataLoader(f64, u8, u8, 100){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -85,22 +85,12 @@ pub fn main() !void {
         .yBatch = undefined,
     };
 
-    // const file_name: []const u8 = "dataset_regressione.csv";
-    // const features = [_]usize{ 0, 1, 2, 3, 4 };
-    // const featureCols: []const usize = &features;
-    // const labelCol: usize = 5;
-    // try load.fromCSV(&allocator, file_name, featureCols, labelCol);
-
     const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
     const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 1, 784, &model, &load, 1, LossType.CCE, 0.5);
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 16, 784, &model, &load, 100, LossType.CCE, 0.05);
-
-    //std.debug.print("Output tensor shape: {any}\n", .{output.shape});
-    //std.debug.print("Output tensor data: {any}\n", .{output.data});
+    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 100, 784, &model, &load, 1, LossType.CCE, 0.005);
 
     model.deinit();
 }
