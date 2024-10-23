@@ -14,7 +14,6 @@ test "DataLoader xNext Test" {
 
     const labels = [_]u8{ 1, 0 };
 
-    // Creazione di un array di etichette coerente con f32 tramite cast esplicito
     var labelSlices: [2]f32 = undefined;
     labelSlices[0] = @as(f32, labels[0]);
     labelSlices[1] = @as(f32, labels[1]);
@@ -23,9 +22,8 @@ test "DataLoader xNext Test" {
     featureSlices[0] = &features[0];
     featureSlices[1] = &features[1];
 
-    const labelSlice: []f32 = &labelSlices; // Modificato da []u8 a []f32
+    const labelSlice: []f32 = &labelSlices;
 
-    // Creazione del DataLoader con tipi coerenti
     var loader = DataLoader(f32, f32, f32, 1){ // Cambiato u8 a f32 per le etichette
         .X = &featureSlices,
         .y = labelSlice,
@@ -34,9 +32,6 @@ test "DataLoader xNext Test" {
         .XBatch = undefined,
         .yBatch = undefined,
     };
-
-    std.debug.print("Printing DataLoader Info\n", .{});
-    std.debug.print("First Dim is {d}\n", .{loader.X.len});
 
     const x1 = loader.xNext() orelse unreachable;
     try std.testing.expectEqual(f32, @TypeOf(x1[0]));
@@ -69,24 +64,19 @@ test "splitCSVLine tests" {
     const allocator = std.testing.allocator;
 
     const originalLine: []const u8 = "1,2,3,4,5\n";
-    std.debug.print("Original CSV line: {s}\n", .{originalLine});
     const csvLine = try allocator.alloc(u8, originalLine.len);
     defer allocator.free(csvLine);
     @memcpy(csvLine, originalLine);
     const loader = DataLoader(f64, f64, u8, 1);
     const result = try loader.splitCSVLine(csvLine, &allocator);
     defer allocator.free(result);
-    std.debug.print("Split result length: {}\n", .{result.len});
     const expected_values = [_][]const u8{ "1", "2", "3", "4", "5" };
     for (result, 0..) |column, i| {
-        std.debug.print("Column {}: {s}\n", .{ i, column });
         try std.testing.expect(std.mem.eql(u8, column, expected_values[i]));
     }
     try std.testing.expectEqual(result.len, 5);
 
-    // Caso 2: Colonne vuote
     const emptyColumnsLine: []const u8 = "1,,3,,5\n";
-    std.debug.print("Original CSV line (empty columns): {s}\n", .{emptyColumnsLine});
     const csvLineEmpty = try allocator.alloc(u8, emptyColumnsLine.len);
     defer allocator.free(csvLineEmpty);
     @memcpy(csvLineEmpty, emptyColumnsLine);
@@ -94,14 +84,11 @@ test "splitCSVLine tests" {
     defer allocator.free(resultEmpty);
     const expected_values_empty = [_][]const u8{ "1", "", "3", "", "5" };
     for (resultEmpty, 0..) |column, i| {
-        std.debug.print("Column {}: {s}\n", .{ i, column });
         try std.testing.expect(std.mem.eql(u8, column, expected_values_empty[i]));
     }
     try std.testing.expectEqual(resultEmpty.len, 5);
 
-    // Caso 3: Stringhe con spazi
     const spacesLine: []const u8 = "a, b, c , d ,e\n";
-    std.debug.print("Original CSV line (with spaces): {s}\n", .{spacesLine});
     const csvLineSpaces = try allocator.alloc(u8, spacesLine.len);
     defer allocator.free(csvLineSpaces);
     @memcpy(csvLineSpaces, spacesLine);
@@ -109,14 +96,12 @@ test "splitCSVLine tests" {
     defer allocator.free(resultSpaces);
     const expected_values_spaces = [_][]const u8{ "a", " b", " c ", " d ", "e" };
     for (resultSpaces, 0..) |column, i| {
-        std.debug.print("Column {}: {s}\n", .{ i, column });
         try std.testing.expect(std.mem.eql(u8, column, expected_values_spaces[i]));
     }
     try std.testing.expectEqual(resultSpaces.len, 5);
 
     // Caso 4: Nessuna nuova riga finale
     const noNewLine: []const u8 = "1,2,3,4,5";
-    std.debug.print("Original CSV line (no newline): {s}\n", .{noNewLine});
     const csvLineNoNewLine = try allocator.alloc(u8, noNewLine.len);
     defer allocator.free(csvLineNoNewLine);
     @memcpy(csvLineNoNewLine, noNewLine);
@@ -124,14 +109,12 @@ test "splitCSVLine tests" {
     defer allocator.free(resultNoNewLine);
     const expected_values_no_newline = [_][]const u8{ "1", "2", "3", "4", "5" };
     for (resultNoNewLine, 0..) |column, i| {
-        std.debug.print("Column {}: {s}\n", .{ i, column });
         try std.testing.expect(std.mem.eql(u8, column, expected_values_no_newline[i]));
     }
     try std.testing.expectEqual(resultNoNewLine.len, 5);
 
     // Caso 5: Delimitatori consecutivi (colonne vuote)
     const consecutiveDelimiters: []const u8 = ",,,,\n";
-    std.debug.print("Original CSV line (consecutive delimiters): {s}\n", .{consecutiveDelimiters});
     const csvLineConsecutive = try allocator.alloc(u8, consecutiveDelimiters.len);
     defer allocator.free(csvLineConsecutive);
     @memcpy(csvLineConsecutive, consecutiveDelimiters);
@@ -139,7 +122,6 @@ test "splitCSVLine tests" {
     defer allocator.free(resultConsecutive);
     const expected_values_consecutive = [_][]const u8{ "", "", "", "", "" };
     for (resultConsecutive, 0..) |column, i| {
-        std.debug.print("Column {}: {s}\n", .{ i, column });
         try std.testing.expect(std.mem.eql(u8, column, expected_values_consecutive[i]));
     }
     try std.testing.expectEqual(resultConsecutive.len, 5);
@@ -170,11 +152,9 @@ test "readCSVLine test with correct file flags" {
     defer allocator.free(lineBuf);
 
     const firstLine = try loader.readCSVLine(&reader, lineBuf) orelse unreachable;
-    std.debug.print("First line: {s}\n", .{firstLine});
     try std.testing.expect(std.mem.eql(u8, firstLine, "1,2,3,4,5"));
 
     const secondLine = try loader.readCSVLine(&reader, lineBuf) orelse unreachable;
-    std.debug.print("Second line: {s}\n", .{secondLine});
     try std.testing.expect(std.mem.eql(u8, secondLine, "6,7,8,9,10"));
 
     const eofLine = try loader.readCSVLine(&reader, lineBuf);
@@ -217,9 +197,6 @@ test "fromCSV test with feature and label extraction" {
     try std.testing.expectEqual(loader.y[1], 10);
 
     loader.deinit(&allocator);
-
-    // Eliminare il file temporaneo alla fine del test
-    //try std.fs.cwd().deleteFile(file_name);
 }
 
 test "loadMNISTImages test" {
@@ -361,7 +338,6 @@ test "To Tensor Batch Test" {
 
     const labels = [_]u8{ 1, 0 };
 
-    // Creazione di un array di etichette coerente con f32 tramite cast esplicito
     var labelSlices: [2]f64 = undefined;
     labelSlices[0] = @as(f64, labels[0]);
     labelSlices[1] = @as(f64, labels[1]);
@@ -369,7 +345,7 @@ test "To Tensor Batch Test" {
     var featureSlices: [2][]f64 = undefined;
     featureSlices[0] = &features[0];
     featureSlices[1] = &features[1];
-    const labelSlice: []f64 = &labelSlices; // Modificato da []u8 a []f32
+    const labelSlice: []f64 = &labelSlices;
 
     var shapeXArr = [_]usize{ 1, 3 };
     var shapeYArr = [_]usize{1};
@@ -383,12 +359,14 @@ test "To Tensor Batch Test" {
         .XBatch = undefined,
         .yBatch = undefined,
     };
-    std.debug.print("Printing DataLoader Info", .{});
-    std.debug.print("Fist Dim is {d}\n", .{loader.X.len});
+
     _ = loader.xNextBatch(1);
     _ = loader.yNextBatch(1);
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    loader.xTensor.info();
+    try std.testing.expect(loader.xTensor.shape[0] == 1);
+    try std.testing.expect(loader.xTensor.shape[1] == 3);
+    try std.testing.expect(loader.yTensor.shape[0] == 1);
+
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }
@@ -423,8 +401,6 @@ test "MNIST batch and to Tensor test" {
     try std.testing.expect(loader.xTensor.shape[1] == 784);
     try std.testing.expect(loader.yTensor.shape[0] == 2);
 
-    loader.xTensor.info();
-    loader.yTensor.info();
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }

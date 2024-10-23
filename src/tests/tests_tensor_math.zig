@@ -11,7 +11,7 @@ test "tests description" {
 
 test "Sum two tensors on CPU architecture" {
     std.debug.print("\n     test: Sum two tensors on CPU architecture", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -35,7 +35,7 @@ test "Sum two tensors on CPU architecture" {
 
 test "Error when input tensors have different sizes" {
     std.debug.print("\n     test: Error when input tensors have different sizes", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -61,7 +61,7 @@ test "Error when input tensors have different sizes" {
 test "Dot product 2x2" {
     std.debug.print("\n     test:Dot product 2x2", .{});
 
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
@@ -114,7 +114,7 @@ test "Dot product 2x2" {
 
 test "GPU architecture under development error" {
     std.debug.print("\n     test: GPU architecture under development error\n", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
     var t1 = try Tensor(f32).fromShape(&allocator, &shape);
@@ -130,7 +130,7 @@ test "GPU architecture under development error" {
 
 test "add bias" {
     std.debug.print("\n     test:add bias", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var shape_tensor: [2]usize = [_]usize{ 2, 3 }; // 2x3 matrix
     var inputArray: [2][3]f32 = [_][3]f32{
@@ -150,11 +150,14 @@ test "add bias" {
     for (t1.data, 0..) |*data, i| {
         try std.testing.expect(data.* == flatArr[i] + 1);
     }
+
+    t1.deinit();
+    bias.deinit();
 }
 
 test "mean" {
     std.debug.print("\n     test:mean", .{});
-    const allocator = std.heap.page_allocator;
+    const allocator = std.testing.allocator;
 
     var shape_tensor: [1]usize = [_]usize{3}; // 2x3 matrix
     var inputArray: [3]f32 = [_]f32{ 1.0, 2.0, 3.0 };
@@ -162,4 +165,6 @@ test "mean" {
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape_tensor);
 
     try std.testing.expect(2.0 == TensMath.mean(f32, &t1));
+
+    t1.deinit();
 }

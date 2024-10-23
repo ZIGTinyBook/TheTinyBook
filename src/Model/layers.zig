@@ -1,3 +1,8 @@
+//! This file contains the definition of the layers that can be used in the neural network.
+//! There are function to initiialize random weigths, initialization right now is completely random but in the future
+//! it will possible to use proper initialization techniques.
+//! Layer can be stacked in a model and they implement proper forward and backward methods.
+
 const std = @import("std");
 const tensor = @import("tensor");
 const TensMath = @import("tensor_m");
@@ -17,17 +22,20 @@ pub const LayerTypes = enum {
     null,
 };
 
+//------------------------------------------------------------------------------------------------------
+/// UTILS
+/// Initialize a matrix of random values with a normal distribution
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
         row.* = try std.heap.page_allocator.alloc(T, n_neurons);
         for (row.*) |*value| {
-            value.* = rng.random().floatNorm(T) + 5;
+            value.* = rng.random().floatNorm(T) + 1; // fix me!! why +1 ??
         }
     }
     return matrix;
 }
-
+///Function used to initialize a matrix of zeros used for bias
 pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
@@ -88,6 +96,9 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
     return LayerType;
 }
 
+/// Function to create a DenseLayer struct in future it will be possible to create other types of layers like convolutional, LSTM etc.
+/// The DenseLayer is a fully connected layer, it has a weight matrix and a bias vector.
+/// It has also an activation function that can be applied to the output, it can even be none.
 pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
     return struct {
         //          | w11   w12  w13 |
@@ -109,6 +120,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
+        ///Initilize the layer with random weights and biases
+        /// also for the gradients
         pub fn init(self: *@This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
             std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
 
@@ -136,6 +149,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.b_gradients = try tensor.Tensor(T).fromShape(self.allocator, &bias_shape);
         }
 
+        ///Deallocate the layer
         pub fn deinit(self: *@This()) void {
             //std.debug.print("Deallocating DenseLayer resources...\n", .{});
 
@@ -161,15 +175,22 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 self.b_gradients.deinit();
             }
 
-            std.debug.print("DenseLayer resources deallocated.\n", .{});
+            if (self.input.data.len > 0) {
+                self.input.deinit();
+            }
+
+            std.debug.print("\nDenseLayer resources deallocated.", .{});
         }
 
+        ///Forward pass of the layer if present it applies the activation function
+        /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(self: *@This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
 
             //this copy is necessary for the backward
+            if (self.input.data.len >= 0) {
+                self.input.deinit();
+            }
             self.input = try input.copy();
-
-            //self.weights.info();
 
             // 1. Check if self.output is already allocated, deallocate if necessary
             // if (self.output.data.len > 0) {
@@ -202,15 +223,11 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.forward(&self.outputActivation);
             }
 
-            // std.debug.print("\n >>>>>>>>>>>post act outputActivation: ", .{});
-            // self.outputActivation.info();
-
-            self.printLayer(1);
-
-            //PAY ATTENTION: here we return the outputActivation, so the altrady activated output
+            //PAY ATTENTION: here we return the outputActivation, so the already activated output
             return self.outputActivation;
         }
 
+        /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
         pub fn backward(self: *@This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             //---- Key Steps: -----
 
@@ -263,6 +280,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             return &dL_dInput;
         }
 
+        ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(self: *@This(), choice: u8) void {
             //MENU choice:
             // 0 -> full details layer
@@ -299,10 +317,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                     self.output.shape[1],
                 });
                 std.debug.print("\n ", .{});
-            }
-            if (choice == 10) {
-                std.debug.print("\n ************************layer*********************", .{});
-                std.debug.print("\n                     yes, I exist                   \n", .{});
             }
         }
     };

@@ -31,7 +31,9 @@ pub fn TrainDataLoader(
     comptime lr: f64,
 ) !void {
     var LossMeanRecord: []f32 = try allocator.alloc(f32, ephocs);
+    defer allocator.free(LossMeanRecord);
     var AccuracyRecord: []f32 = try allocator.alloc(f32, ephocs); // Array per
+    defer allocator.free(AccuracyRecord);
     var shapeXArr = [_]usize{ batchSize, features };
     var shapeYArr = [_]usize{batchSize};
     var shapeX: []usize = &shapeXArr;
@@ -59,6 +61,8 @@ pub fn TrainDataLoader(
             std.debug.print("\n-------------------------------forwarding", .{});
             //try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
             var predictions = try model.forward(&load.xTensor);
+            defer predictions.deinit();
+            defer predictions.deinit();
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 
@@ -179,6 +183,7 @@ pub fn trainTensors(
     comptime lr: f64,
 ) !void {
     var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(LossMeanRecord);
 
     for (0..epochs) |i| {
         std.debug.print("\n\n----------------------epoch:{}", .{i});
@@ -186,11 +191,14 @@ pub fn trainTensors(
         //forwarding
         std.debug.print("\n-------------------------------forwarding", .{});
         var predictions = try model.forward(input);
+        predictions.info();
+        defer predictions.deinit();
 
         //compute loss
         std.debug.print("\n-------------------------------computing loss", .{});
         const loser = Loss.LossFunction(LossType.MSE){};
         var loss = try loser.computeLoss(T, &predictions, targets);
+        defer loss.deinit();
 
         //compute accuracy
         LossMeanRecord[i] = TensMath.mean(T, &loss);
