@@ -17,3 +17,6 @@
 
 #ignore zig cache
 .zig-cache/
+
+#ignore zig output
+.zig-out/

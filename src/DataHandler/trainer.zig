@@ -1,3 +1,7 @@
+//! This file contains at the moment all the available options to train a model.
+//! Dependng on your intentions you can use trainTensors(), a general trainer for tensors,
+//! or TrainDataLoader(), more specific for training data loaded from a file. This last one has been well tested for MNIST.
+
 const std = @import("std");
 const Tensor = @import("tensor");
 const TensMath = @import("tensor_m");
