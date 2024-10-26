@@ -5,20 +5,13 @@
 //!
 const std = @import("std");
 const Tensor = @import("tensor").Tensor; // Import Tensor type
-const TensorError = @import("tensor").TensorError;
 const Architectures = @import("architectures").Architectures; //Import Architectures type
-const ArchitectureError = @import("architectures").ArchitectureError;
 const Converter = @import("typeC");
+//import error libraries
+const TensorMathError = @import("errorHandler").TensorMathError;
+const ArchitectureError = @import("errorHandler").ArchitectureError;
+const TensorError = @import("errorHandler").TensorError;
 
-pub const TensorMathError = error{
-    MemError,
-    InputTensorDifferentSize,
-    InputTensorDifferentShape,
-    InputTensorsWrongShape, //launched in dot_product
-    OutputTensorDifferentSize,
-    TooSmallOutputType, //the type dimension of the output Tensor could coause a loss of information
-    InputTensorDimensionMismatch,
-};
 /// Function that add the bias for all the features in the tensor
 pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
     // Checks:
