@@ -16,7 +16,6 @@ pub fn normalize(comptime T: anytype, tensor: *Tensor(T), normalizationType: Nor
 
 /// Normalize each row in a multidimensional tensor
 fn multidimNormalizeUnityBased(comptime T: anytype, tensor: *Tensor(T)) !void {
-    const epsilon: T = 1e-10;
     // --- Checks ---
     // T must be float
     if (@typeInfo(T) != .Float) return error.NotFloatType;
@@ -25,19 +24,27 @@ fn multidimNormalizeUnityBased(comptime T: anytype, tensor: *Tensor(T)) !void {
     const cols: usize = tensor.shape[tensor.shape.len - 1]; //aka: elements per row
     const numb_of_rows = tensor.data.len / cols;
 
-    // Normalise
-    var max: T = tensor.data[0];
-    var min: T = tensor.data[0];
     var delta: T = 0;
 
     while (counter < numb_of_rows) {
+        var max = tensor.data[counter * cols];
+        var min = tensor.data[counter * cols];
 
         // Find max and min for each row
         for (0..cols) |i| {
-            if (tensor.data[counter * cols + i] > max) max = tensor.data[i];
-            if (tensor.data[counter * cols + i] < min) min = tensor.data[i];
+            if (tensor.data[counter * cols + i] > max) max = tensor.data[counter * cols + i];
+            if (tensor.data[counter * cols + i] < min) min = tensor.data[counter * cols + i];
         }
-        delta = max - min + epsilon;
+        delta = max - min;
+
+        std.debug.print("\n  counter: {}   cols:{}   numb_of_rows:{}   max:{}   min:{}   delta:{}", .{
+            counter,
+            cols,
+            numb_of_rows,
+            max,
+            min,
+            delta,
+        });
 
         // Update tensor for 1D normalization
         for (0..cols) |i| {

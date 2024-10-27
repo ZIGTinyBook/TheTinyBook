@@ -184,10 +184,6 @@ test "Softmax derivate" {
     try std.testing.expect(t1.data[2] + t1.data[3] < 1.1);
 
     try soft.derivate(&t1, &t1);
-    //now data is:
-    //{0.196, −0.196}
-    //{​−0.196, 0.196​}
-
 }
 
 //*********************************************** Sigmoid ***********************************************
@@ -212,15 +208,25 @@ test "Sigmoid forward" {
 }
 
 test "Sigmoid derivate" {
+    std.debug.print("\n     test: Sigmoid derivate ", .{});
+
+    const allocator = std.testing.allocator;
+
     // Setup the gradient and act_forward_out tensors
-    var gradient_data = [_]f64{0.2, 0.4, 0.6, 0.8};
-    var act_forward_out_data = [_]f64{0.5, 0.7, 0.3, 0.9};
-    
-    var gradient_tensor = Tensor.init(gradient_data[0..]);
-    var act_forward_out_tensor = Tensor.init(act_forward_out_data[0..]);
+    var gradient_data = [_]f64{ 0.2, 0.4, 0.6, 0.8 };
+    var shape_grad: [1]usize = [_]usize{4};
+
+    var act_forward_out_data = [_]f64{ 0.5, 0.7, 0.3, 0.9 };
+    var shape_forw: [1]usize = [_]usize{4};
+
+    var gradient_tensor = try Tensor(f64).fromArray(&allocator, &gradient_data, &shape_grad);
+    defer gradient_tensor.deinit();
+    var act_forward_out_tensor = try Tensor(f64).fromArray(&allocator, &act_forward_out_data, &shape_forw);
+    defer act_forward_out_tensor.deinit();
 
     // Call the derivate function
-    try gradient_tensor.derivate(&gradient_tensor, &act_forward_out_tensor);
+    var sigmoid = ActivFun.ActivationFunction(f64, ActivType.Sigmoid){};
+    try sigmoid.derivate(&gradient_tensor, &act_forward_out_tensor);
 
     // Expected values after applying the derivative
     const expected_values = [_]f64{
@@ -231,7 +237,7 @@ test "Sigmoid derivate" {
     };
 
     // Verify the result
-    for (gradient_data) |value, i| {
-        try std.testing.expectEqual(value, expected_values[i]);
+    for (0..gradient_tensor.data.len) |i| {
+        try std.testing.expect(gradient_tensor.data[i] - expected_values[i] < 0.0001);
     }
 }
