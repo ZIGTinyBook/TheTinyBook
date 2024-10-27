@@ -212,27 +212,26 @@ test "Sigmoid forward" {
 }
 
 test "Sigmoid derivate" {
-    std.debug.print("\n     test: Sigmoid derivate ", .{});
+    // Setup the gradient and act_forward_out tensors
+    var gradient_data = [_]f64{0.2, 0.4, 0.6, 0.8};
+    var act_forward_out_data = [_]f64{0.5, 0.7, 0.3, 0.9};
+    
+    var gradient_tensor = Tensor.init(gradient_data[0..]);
+    var act_forward_out_tensor = Tensor.init(act_forward_out_data[0..]);
 
-    const allocator = std.testing.allocator;
+    // Call the derivate function
+    try gradient_tensor.derivate(&gradient_tensor, &act_forward_out_tensor);
 
-    const input_data = [_]f64{ 0.0, 2.0, -2.0 }; // input data for the tensor
-    var shape: [1]usize = [_]usize{3};
-    var input_tensor = try Tensor(f64).fromArray(&allocator, &input_data, &shape); // create tensor from input data
-    defer input_tensor.deinit();
+    // Expected values after applying the derivative
+    const expected_values = [_]f64{
+        0.2 * 0.5 * (1.0 - 0.5),
+        0.4 * 0.7 * (1.0 - 0.7),
+        0.6 * 0.3 * (1.0 - 0.3),
+        0.8 * 0.9 * (1.0 - 0.9),
+    };
 
-    var sigmoid = ActivFun.ActivationFunction(f64, ActivType.Sigmoid){};
-
-    // Test forward pass
-    try sigmoid.forward(&input_tensor);
-    const expected_forward_output = [_]f64{ 0.5, 0.880797, 0.119203 }; // expected sigmoid output for each input value
-    for (input_tensor.data, 0..) |*data, i| {
-        try std.testing.expect(@abs(data.* - expected_forward_output[i]) < 1e-6);
-    }
-    // Test derivative
-    try sigmoid.derivate(&input_tensor);
-    const expected_derivative_output = [_]f64{ 0.25, 0.104994, 0.104994 }; // expected derivative output for each input
-    for (input_tensor.data, 0..) |*data, i| {
-        try std.testing.expect(@abs(data.* - expected_derivative_output[i]) < 1e-6);
+    // Verify the result
+    for (gradient_data) |value, i| {
+        try std.testing.expectEqual(value, expected_values[i]);
     }
 }

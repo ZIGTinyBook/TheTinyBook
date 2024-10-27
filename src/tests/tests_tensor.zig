@@ -1,6 +1,7 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
-const TensorError = @import("tensor").TensorError;
+//import error library
+const TensorError = @import("errorHandler").TensorError;
 
 const expect = std.testing.expect;
 

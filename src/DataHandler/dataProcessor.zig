@@ -9,86 +9,41 @@ pub const NormalizationType = enum {
 
 pub fn normalize(comptime T: anytype, tensor: *Tensor(T), normalizationType: NormalizationType) !void {
     switch (normalizationType) {
-        NormalizationType.UnityBasedNormalizartion => try normalizeUnityBased2D(T, tensor),
-        else => try normalizeUnityBased2D(T, tensor),
+        NormalizationType.UnityBasedNormalizartion => try multidimNormalizeUnityBased(T, tensor),
+        else => try multidimNormalizeUnityBased(T, tensor),
     }
 }
 
-// implements unity-based normalization
-fn normalizeUnityBased2D(comptime T: anytype, tensor: *Tensor(T)) !void {
+/// Normalize each row in a multidimensional tensor
+fn multidimNormalizeUnityBased(comptime T: anytype, tensor: *Tensor(T)) !void {
     const epsilon: T = 1e-10;
     // --- Checks ---
     // T must be float
     if (@typeInfo(T) != .Float) return error.NotFloatType;
 
-    const rows = tensor.shape[0];
-    const cols = if (tensor.shape.len == 2) tensor.shape[1] else 1;
+    var counter: usize = 0; //counter counts the rows in all the tensor, indipendently of the shape
+    const cols: usize = tensor.shape[tensor.shape.len - 1]; //aka: elements per row
+    const numb_of_rows = tensor.data.len / cols;
 
     // Normalise
     var max: T = tensor.data[0];
     var min: T = tensor.data[0];
     var delta: T = 0;
 
-    // If tensor is 1D
-    if (tensor.shape.len == 1) {
-        // Find max and min for 1D tensor
-        for (0..rows) |i| {
-            if (tensor.data[i] > max) max = tensor.data[i];
-            if (tensor.data[i] < min) min = tensor.data[i];
+    while (counter < numb_of_rows) {
+
+        // Find max and min for each row
+        for (0..cols) |i| {
+            if (tensor.data[counter * cols + i] > max) max = tensor.data[i];
+            if (tensor.data[counter * cols + i] < min) min = tensor.data[i];
         }
         delta = max - min + epsilon;
 
         // Update tensor for 1D normalization
-        for (0..rows) |i| {
-            tensor.data[i] = if (delta == 0) 0 else (tensor.data[i] - min) / delta;
+        for (0..cols) |i| {
+            tensor.data[counter * cols + i] = if (delta == 0) 0 else (tensor.data[counter * cols + i] - min) / delta;
         }
-    } else {
-        // 2D tensor case
-        for (0..rows) |i| {
-            max = tensor.data[i * cols];
-            min = tensor.data[i * cols];
-            // Find max and min for each row
-            for (0..cols) |j| {
-                if (tensor.data[i * cols + j] > max) max = tensor.data[i * cols + j];
-                if (tensor.data[i * cols + j] < min) min = tensor.data[i * cols + j];
-            }
-            delta = max - min + epsilon;
 
-            // Update tensor for 2D normalization
-            for (0..cols) |j| {
-                tensor.data[i * cols + j] = if (delta == 0) 0 else (tensor.data[i * cols + j] - min) / delta;
-            }
-        }
+        counter += 1;
     }
 }
-
-// fn normalizeStandardDeviation2D(comptime T: anytype, tensor: *Tensor(T)) !void {
-
-//     // --- Checks ---
-//     //2D only
-//     if (tensor.shape.len > 2) return error.TooManyDimensions;
-//     //T must be float necessary
-//     if (@typeInfo(T) != .Float) return error.NotFloatType;
-
-//     const rows = tensor.shape[0];
-//     const cols = tensor.shape[1];
-
-//     //normalize
-//     var sum: T;
-//     var mean: T;
-
-//     for (0..rows) |i| {
-//         sum = 0.0;
-//         //find mean
-//         for (0..cols) |j| {
-//             sum += tensor.data[i * cols + j];
-//         }
-//         mean = sum /
-//         delta = max - min;
-//         //update tensor
-//         for (0..cols) |j| {
-//             tensor.data[i * cols + j] = tensor.data[i * cols + j] - min / delta;
-//         }
-//     }
-
-// }

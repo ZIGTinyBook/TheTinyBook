@@ -1,6 +1,8 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
-const TensorError = @import("tensor").TensorError;
+//import error libraries
+const TensorError = @import("errorHandler").TensorError;
+const TensorMathError = @import("errorHandler").TensorMathError;
 
 pub const ActivationType = enum {
     ReLU,
@@ -12,7 +14,6 @@ pub const ActivationType = enum {
 /// Activation function Interface, used to instantiate a Loss Function struct
 /// depending on the ActivationType passed by argument.
 pub fn ActivationFunction(comptime T: anytype, activationType: ActivationType) type {
-    //const act =
     return switch (activationType) {
         ActivationType.ReLU => ReLU(T),
         ActivationType.Sigmoid => Sigmoid(T),
@@ -44,15 +45,18 @@ pub fn ReLU(comptime T: anytype) type {
             }
         }
 
-        pub fn derivate(self: *Self, input: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, gradient: *Tensor(T), act_forward_out: *Tensor(T)) !void {
             _ = self;
             //checks
-            if (input.size <= 0) return TensorError.ZeroSizeTensor;
+            if (gradient.size <= 0 or act_forward_out.size <= 0) return TensorError.ZeroSizeTensor;
+            if (gradient.size != act_forward_out.size) return TensorMathError.InputTensorDifferentSize;
 
             //apply ReLU
             //OSS: can be improved, see how did I parallelized CPU Tensor Sum
-            for (0..(input.size - 1)) |i| {
-                input.data[i] = if (input.data[i] <= 0) 0 else 1;
+            for (0..(gradient.size - 1)) |i| {
+                if (act_forward_out.data[i] <= 0) {
+                    gradient.data[i] = 0;
+                }
             }
         }
     };
@@ -77,14 +81,15 @@ pub fn Sigmoid(comptime T: anytype) type {
             }
         }
 
-        pub fn derivate(self: *Self, input: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, gradient: *Tensor(T), act_forward_out: *Tensor(T)) !void {
             _ = self;
             //checks
-            if (input.size <= 0) return TensorError.ZeroSizeTensor;
+            if (gradient.size <= 0 or act_forward_out.size <= 0) return TensorError.ZeroSizeTensor;
+            if (gradient.size != act_forward_out.size) return TensorMathError.InputTensorDifferentSize;
 
             //apply Sigmoid
-            for (0..input.size) |i| {
-                input.data[i] = input.data[i] * (1.0 - input.data[i]);
+            for (0..gradient.size) |i| {
+                gradient.data[i] = gradient.data[i] * act_forward_out.data[i] * (1.0 - act_forward_out.data[i]);
             }
         }
     };

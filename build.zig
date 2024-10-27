@@ -32,6 +32,7 @@ pub fn build(b: *std.Build) void {
     const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
     const activation_mod = b.createModule(.{ .root_source_file = b.path("src/Model/activation_function.zig") });
     const typeConv_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
+    const errorHandler_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/errorHandler.zig") });
 
     //************************************************MODEL DEPENDENCIES************************************************
 
@@ -53,6 +54,7 @@ pub fn build(b: *std.Build) void {
     layers_mod.addImport("activation_function", activation_mod);
     layers_mod.addImport("tensor_m", tensor_math_mod);
     layers_mod.addImport("architectures", architectures_mod);
+    layers_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************DATA LOADER DEPENDENCIES************************************************
 
@@ -80,6 +82,7 @@ pub fn build(b: *std.Build) void {
     // Add necessary imports for the tensor module.
     tensor_mod.addImport("tensor_m", tensor_math_mod);
     tensor_mod.addImport("architectures", architectures_mod);
+    tensor_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************TENSOR MATH DEPENDENCIES************************************************
 
@@ -87,11 +90,13 @@ pub fn build(b: *std.Build) void {
     tensor_math_mod.addImport("tensor", tensor_mod);
     tensor_math_mod.addImport("typeC", typeConv_mod);
     tensor_math_mod.addImport("architectures", architectures_mod);
+    tensor_math_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************ACTIVATION DEPENDENCIES************************************************
 
     // Add necessary imports for the activation module.
     activation_mod.addImport("tensor", tensor_mod);
+    activation_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************LOSS DEPENDENCIES************************************************
 
@@ -99,6 +104,7 @@ pub fn build(b: *std.Build) void {
     loss_mod.addImport("tensor", tensor_mod);
     loss_mod.addImport("tensor_m", tensor_math_mod);
     loss_mod.addImport("typeC", typeConv_mod);
+    loss_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************OPTIMIZER DEPENDENCIES************************************************
 
@@ -106,6 +112,7 @@ pub fn build(b: *std.Build) void {
     optim_mod.addImport("tensor", tensor_mod);
     optim_mod.addImport("model", model_mod);
     optim_mod.addImport("layers", layers_mod);
+    optim_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************MAIN EXECUTABLE************************************************
 
@@ -168,6 +175,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("architectures", architectures_mod);
     unit_tests.root_module.addImport("trainer", trainer_mod);
     unit_tests.root_module.addImport("typeConverter", typeConv_mod);
+    unit_tests.root_module.addImport("errorHandler", errorHandler_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{

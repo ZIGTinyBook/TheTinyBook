@@ -29,7 +29,7 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.None,
+        .activationFunction = ActivationType.ReLU,
     };
     var layer1_ = layer.Layer(f64, &allocator){
         .denseLayer = &layer1,
@@ -48,7 +48,7 @@ pub fn main() !void {
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.None,
+        .activationFunction = ActivationType.ReLU,
     };
     //layer 2: 2 inputs, 5 neurons
     var layer2_ = layer.Layer(f64, &allocator){
@@ -90,7 +90,19 @@ pub fn main() !void {
 
     try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
 
-    try Trainer.TrainDataLoader(f64, u8, u8, &allocator, 100, 784, &model, &load, 1, LossType.CCE, 0.005);
+    try Trainer.TrainDataLoader(
+        f64, //The data type for the tensor elements in the model
+        u8, //The data type for the input tensor (X)
+        u8, //The data type for the output tensor (Y)
+        &allocator, //Memory allocator for dynamic allocations during training
+        100, //The number of samples in each batch
+        784, //The number of features in each input sample
+        &model, //A pointer to the model to be trained
+        &load, //A pointer to the `DataLoader` that provides data batches
+        10, //The total number of epochs to train for
+        LossType.CCE, //The type of loss function used during training
+        0.005, //The learning rate for model optimization
+    );
 
     model.deinit();
 }

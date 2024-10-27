@@ -1,13 +1,13 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
-const TensorError = @import("tensor").TensorError;
 const TensMath = @import("tensor_m");
 
 const Loss = @import("loss");
 const LossType = @import("loss").LossType;
 const MSELoss = @import("loss").MSELoss;
 const CCELoss = @import("loss").CCELoss;
-const LossError = @import("loss").LossError;
+const LossError = @import("errorHandler").LossError;
+const TensorError = @import("errorHandler").TensorError;
 
 test "tests description" {
     std.debug.print("\n--- Running loss_function tests\n", .{});

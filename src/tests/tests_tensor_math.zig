@@ -2,8 +2,9 @@ const std = @import("std");
 const Tensor = @import("tensor").Tensor;
 const TensMath = @import("tensor_m");
 const Architectures = @import("architectures").Architectures;
-const TensorMathError = @import("tensor_m").TensorMathError;
-const ArchitectureError = @import("architectures").ArchitectureError;
+const TensorMathError = @import("errorHandler").TensorMathError;
+const ArchitectureError = @import("errorHandler").ArchitectureError;
+const ErrorHandler = @import("errorHandler");
 
 test "tests description" {
     std.debug.print("\n--- Running tensor_math tests\n", .{});
@@ -83,34 +84,37 @@ test "Dot product 2x2" {
     t2.deinit();
 }
 
-// test "Error when input tensors have incompatible sizes for dot product" {
-//     const allocator = std.heap.page_allocator;
+test "Error when input tensors have incompatible sizes for dot product" {
+    const allocator = std.testing.allocator;
 
-//     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
-//     var shape2: [2]usize = [_]usize{ 3, 2 }; // 3x2 matrix
-//     var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
-//     var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
+    var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+    var shape2: [2]usize = [_]usize{ 3, 2 }; // 3x2 matrix
+    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
+    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
 
-//     try std.testing.expectError(TensorMathError.InputTensorDifferentSize, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
+    try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
 
-//     t1.deinit();
-//     t2.deinit();
-// }
+    _ = TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2) catch |err| {
+        std.debug.print("\n _______ {s} ______", .{ErrorHandler.errorDetails(err)});
+    };
+    t1.deinit();
+    t2.deinit();
+}
 
-// test "Error when input tensors have incompatible shapes for dot product" {
-//     std.debug.print("\n     test: Error when input tensors have incompatible shapes for dot product", .{});
-//     const allocator = std.heap.page_allocator;
+test "Error when input tensors have incompatible shapes for dot product" {
+    std.debug.print("\n     test: Error when input tensors have incompatible shapes for dot product", .{});
+    const allocator = std.testing.allocator;
 
-//     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
-//     var shape2: [2]usize = [_]usize{ 4, 1 }; // 4x1 matrix
-//     var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
-//     var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
+    var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+    var shape2: [2]usize = [_]usize{ 4, 1 }; // 4x1 matrix
+    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
+    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
 
-//     try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
+    try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.dot_product_tensor(Architectures.CPU, f32, f64, &t1, &t2));
 
-//     t1.deinit();
-//     t2.deinit();
-// }
+    t1.deinit();
+    t2.deinit();
+}
 
 test "GPU architecture under development error" {
     std.debug.print("\n     test: GPU architecture under development error\n", .{});

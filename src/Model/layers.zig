@@ -11,10 +11,8 @@ const TensorError = @import("tensor_m").TensorError;
 const ArchitectureError = @import("tensor_m").ArchitectureError;
 const ActivLib = @import("activation_function");
 const ActivationType = @import("activation_function").ActivationType;
-
-pub const errors = error{
-    NullLayer,
-};
+//import error libraries
+const LayerError = @import("errorHandler").LayerError;
 
 pub const LayerTypes = enum {
     DenseLayer,
@@ -56,7 +54,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub fn init(self: @This(), n_inputs: usize, n_neurons: usize, rng: *std.Random.Xoshiro256) !void {
             switch (self) {
-                .null => return error.NullLayer,
+                .null => return LayerError.NullLayer,
                 inline else => |layer| {
                     try layer.init(n_inputs, n_neurons, rng);
                     return;
@@ -71,7 +69,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
         }
         pub fn forward(self: @This(), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             switch (self) {
-                .null => return error.NullLayer,
+                .null => return LayerError.NullLayer,
                 inline else => |layer| {
                     // layer.weights.info();
                     return layer.forward(input);
@@ -81,7 +79,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub fn backward(self: @This(), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             switch (self) {
-                .null => return error.NullLayer,
+                .null => return LayerError.NullLayer,
                 inline else => |layer| return layer.backward(dValues),
             }
         }
@@ -90,6 +88,70 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
             switch (self) {
                 .null => {},
                 inline else => |layer| return layer.printLayer(choice),
+            }
+        }
+
+        //---------------------------------------------------------------
+        //----------------------------getters----------------------------
+        //---------------------------------------------------------------
+        pub fn get_n_inputs(self: @This()) !usize {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_n_inputs(),
+            }
+        }
+        pub fn get_n_neurons(self: @This()) !usize {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_n_neurons(),
+            }
+        }
+        pub fn get_weights(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_weights(),
+            }
+        }
+        pub fn get_bias(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_bias(),
+            }
+        }
+        pub fn get_input(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_input(),
+            }
+        }
+        pub fn get_output(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_output(),
+            }
+        }
+        pub fn get_outputActivation(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_outputActivation(),
+            }
+        }
+        pub fn get_activationFunction(self: @This()) !ActivationType {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_activationFunction(),
+            }
+        }
+        pub fn get_weightGradients(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_weightGradients(),
+            }
+        }
+        pub fn get_biasGradients(self: @This()) !*const tensor.Tensor(T) {
+            switch (self) {
+                .null => return LayerError.NullLayer,
+                inline else => |layer| return layer.get_biasGradients(),
             }
         }
     };
@@ -126,7 +188,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
-            if (n_inputs <= 0 or n_neurons <= 0) return error.InvalidParameters;
+            if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
 
             //initializing number of neurons and inputs----------------------------------
             self.n_inputs = n_inputs;
@@ -235,7 +297,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             if (self.activationFunction == ActivationType.ReLU) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
                 var activation = act_type{};
-                try activation.derivate(dValues);
+                try activation.derivate(dValues, &self.outputActivation);
             } else if (self.activationFunction == ActivationType.Softmax) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
                 var activation = act_type{};
@@ -243,7 +305,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             } else if (self.activationFunction == ActivationType.Sigmoid) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Sigmoid);
                 var activation = act_type{};
-                try activation.derivate(dValues);
+                try activation.derivate(dValues, &self.outputActivation);
             }
 
             // 2. Compute weight gradients (w_gradients)
@@ -318,6 +380,49 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 });
                 std.debug.print("\n ", .{});
             }
+        }
+
+        //---------------------------------------------------------------
+        //----------------------------getters----------------------------
+        //---------------------------------------------------------------
+        pub fn get_n_inputs(self: @This()) usize {
+            return self.n_inputs;
+        }
+
+        pub fn get_n_neurons(self: @This()) usize {
+            return self.n_neurons;
+        }
+
+        pub fn get_weights(self: @This()) *const tensor.Tensor(T) {
+            return &self.weights;
+        }
+
+        pub fn get_bias(self: @This()) *const tensor.Tensor(T) {
+            return &self.bias;
+        }
+
+        pub fn get_input(self: @This()) *const tensor.Tensor(T) {
+            return &self.input;
+        }
+
+        pub fn get_output(self: @This()) *const tensor.Tensor(T) {
+            return &self.output;
+        }
+
+        pub fn get_outputActivation(self: @This()) *const tensor.Tensor(T) {
+            return &self.outputActivation;
+        }
+
+        pub fn get_activationFunction(self: @This()) ActivationType {
+            return self.activationFunction;
+        }
+
+        pub fn get_weightGradients(self: @This()) *const tensor.Tensor(T) {
+            return &self.w_gradients;
+        }
+
+        pub fn get_biasGradients(self: @This()) *const tensor.Tensor(T) {
+            return &self.b_gradients;
         }
     };
 }

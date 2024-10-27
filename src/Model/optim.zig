@@ -2,16 +2,12 @@ const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layers");
 const Model = @import("model");
+const TensorMathError = @import("errorHandler").TensorMathError;
 
 pub const Optimizers = enum {
     SGD,
     Adam,
     RMSprop,
-};
-
-const errors = error{
-    UnsupportedType,
-    InputTensorDifferentSize,
 };
 
 // Define the Optimizer struct with the optimizer function, learning rate, and allocator
@@ -65,7 +61,7 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *con
 
         // Helper function to update tensors
         fn update_tensor(self: *@This(), t: *tensor.Tensor(T), gradients: *tensor.Tensor(T)) !void {
-            if (t.size != gradients.size) return errors.InputTensorDifferentSize;
+            if (t.size != gradients.size) return TensorMathError.InputTensorDifferentSize;
             //we move in the opposite direction of the gradient
             for (t.data, 0..) |*value, i| {
                 value.* -= gradients.data[i] * self.learning_rate;
@@ -89,7 +85,7 @@ pub fn optimizer_ADAMTEST(T: type, lr: f64, allocator: *const std.mem.Allocator)
 
         // Helper function to update tensors
         fn update_tensor(self: *@This(), t: *tensor.Tensor(T), gradients: *tensor.Tensor(T)) !void {
-            if (t.size != gradients.size) return errors.InputTensorDifferentSize;
+            if (t.size != gradients.size) return TensorMathError.InputTensorDifferentSize;
 
             for (t.data, 0..) |*value, i| {
                 value.* -= gradients.data[i] * self.learning_rate;

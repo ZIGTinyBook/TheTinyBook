@@ -1,14 +1,10 @@
 const std = @import("std");
 const Tensor = @import("tensor").Tensor;
-const TensorError = @import("tensor").TensorError;
-const TensorMathError = @import("tensor_m").TensorMathError;
 const Convert = @import("typeC");
-
-pub const LossError = error{
-    SizeMismatch,
-    ShapeMismatch,
-    InvalidPrediction,
-};
+//import error library
+const TensorError = @import("errorHandler").TensorError;
+const TensorMathError = @import("errorHandler").TensorMathError;
+const LossError = @import("errorHandler").LossError;
 
 /// possible Types of Loss function.
 /// Every time a new loss function is added you must update the enum

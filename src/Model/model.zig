@@ -91,14 +91,14 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
             var grad = gradient;
             var grad_duplicate = try grad.copy();
-            defer grad_duplicate.deinit(); // Assicura che grad_duplicate venga deallocato
+            defer grad_duplicate.deinit();
 
             var counter = (self.layers.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
                 grad = try self.layers[counter].backward(&grad_duplicate);
                 grad_duplicate = try grad.copy();
-                if (counter == 0) break; // Uscita forzata quando si raggiunge il primo layer
+                if (counter == 0) break;
             }
             return grad;
         }
@@ -118,7 +118,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             if (layer_numb == 0) {
                 return &self.input_tensor;
             } else {
-                return &self.layers[layer_numb - 1].denseLayer.outputActivation;
+                return &self.layers[layer_numb - 1].denseLayer.outputActivation; //self.layers[layer_numb - 1].get_outputActivation(); //
             }
         }
     };
