@@ -1,5 +1,8 @@
 # TheTinyBook
 
+![image](https://github.com/user-attachments/assets/6a5346e5-58ec-4069-8143-c3b7b03586f3)
+
+
 ## Project Overview
 
 The aim of this project is to develop a Zig library designed to optimize the training and inference of ML models on embedded systems and edge devices. Embedded systems and edge devices typically have limited computational resources, power constraints, and often operate in real-time environments. This library will address these challenges by providing optimized algorithms, efficient memory management, and low-level hardware interfacing tailored to the needs of AI model training on these constrained devices.
