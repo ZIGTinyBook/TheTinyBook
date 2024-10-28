@@ -19,4 +19,4 @@
 .zig-cache/
 
 #ignore zig output
-.zig-out/
+zig-out/
