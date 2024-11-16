@@ -15,7 +15,7 @@ const DataProc = @import("dataprocessor");
 /// deallocation of resources.
 pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) type {
     return struct {
-        layers: []layer.Layer(T, allocator) = undefined, // Array of layers in the model.
+        layers: std.ArrayList(layer.Layer(T, allocator)) = undefined, // Array of layers in the model.
         allocator: *const std.mem.Allocator, // Allocator reference for dynamic memory allocation.
         input_tensor: tensor.Tensor(T), // Tensor that holds the model's input data.
 
@@ -25,7 +25,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// # Errors
         /// Returns an error if memory allocation for the `layers` array or `input_tensor` fails.
         pub fn init(self: *@This()) !void {
-            self.layers = try self.allocator.alloc(layer.Layer(T, allocator), 0);
+            self.layers = std.ArrayList(layer.Layer(T, allocator)).init(allocator.*);
             self.input_tensor = try tensor.Tensor(T).init(self.allocator);
         }
 
@@ -34,11 +34,11 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// This method iterates through each layer, deinitializes it, and then frees
         /// the layer array and input tensor memory.
         pub fn deinit(self: *@This()) void {
-            for (self.layers, 0..) |*layer_, i| {
+            for (self.layers.items, 0..) |*layer_, i| {
                 layer_.deinit();
                 std.debug.print("\n -.-.-> dense layer {} deinitialized", .{i});
             }
-            self.allocator.free(self.layers);
+            self.layers.deinit();
             std.debug.print("\n -.-.-> model layers deinitialized", .{});
 
             self.input_tensor.deinit(); // pay attention! input_tensor is initialised only if forward() is run at leas once. Sess self.forward()
@@ -53,8 +53,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// # Errors
         /// Returns an error if reallocating the `layers` array fails.
         pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
-            self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
-            self.layers[self.layers.len - 1] = new_layer.*;
+            try self.layers.append(new_layer.*);
         }
 
         /// Executes the forward pass through the model with the specified input tensor.
@@ -71,11 +70,11 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             self.input_tensor.deinit(); //Why this?! it is ok since in each epooch the input tensor must be initialized with the new incomming batch
             self.input_tensor = try input.copy();
 
-            for (0..self.layers.len) |i| {
-                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
-                _ = try self.layers[i].forward(try self.getPrevOut(i));
+            for (0..self.layers.items.len) |i| {
+                try DataProc.normalize(T, self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                _ = try self.layers.items[i].forward(self.getPrevOut(i));
             }
-            return (try self.getPrevOut(self.layers.len)).*;
+            return (self.getPrevOut(self.layers.items.len)).*;
         }
 
         /// Executes the backward pass through the model with the specified gradient tensor.
@@ -114,11 +113,11 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if the index is out of bounds or other tensor-related errors occur.
-        fn getPrevOut(self: *@This(), layer_numb: usize) !*tensor.Tensor(T) {
+        fn getPrevOut(self: *@This(), layer_numb: usize) *tensor.Tensor(T) {
             if (layer_numb == 0) {
                 return &self.input_tensor;
             } else {
-                return &self.layers[layer_numb - 1].denseLayer.outputActivation; //self.layers[layer_numb - 1].get_outputActivation(); //
+                return self.layers.items[layer_numb - 1].get_output(); //self.layers[layer_numb - 1].get_outputActivation(); //
             }
         }
     };

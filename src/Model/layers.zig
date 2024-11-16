@@ -66,7 +66,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
             get_n_inputs: *const fn (ctx: *anyopaque) usize,
             get_n_neurons: *const fn (ctx: *anyopaque) usize,
             get_input: *const fn (ctx: *anyopaque) *const tensor.Tensor(T),
-            get_output: *const fn (ctx: *anyopaque) *const tensor.Tensor(T),
+            get_output: *const fn (ctx: *anyopaque) *tensor.Tensor(T),
         };
 
         pub fn init(self: Layer(T, allocator), n_inputs: usize, n_neurons: usize) anyerror!void {
@@ -99,7 +99,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
         pub fn get_input(self: Layer(T, allocator)) *const tensor.Tensor(T) {
             return self.layer_impl.get_input(self.layer_ptr);
         }
-        pub fn get_output(self: Layer(T, allocator)) *const tensor.Tensor(T) {
+        pub fn get_output(self: Layer(T, allocator)) *tensor.Tensor(T) {
             return self.layer_impl.get_output(self.layer_ptr);
         }
     };
@@ -338,7 +338,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             return &self.input;
         }
 
-        pub fn get_output(ctx: *anyopaque) *const tensor.Tensor(T) {
+        pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
             return &self.output;
@@ -514,7 +514,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             return &self.input;
         }
 
-        pub fn get_output(ctx: *anyopaque) *const tensor.Tensor(T) {
+        pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
             return &self.output;
