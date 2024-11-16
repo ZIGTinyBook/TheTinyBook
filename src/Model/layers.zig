@@ -61,37 +61,43 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
             forward: *const fn (ctx: *anyopaque, input: *tensor.Tensor(T)) anyerror!tensor.Tensor(T),
             backward: *const fn (ctx: *anyopaque, dValues: *tensor.Tensor(T)) anyerror!*tensor.Tensor(T),
             printLayer: *const fn (ctx: *anyopaque, choice: u8) void,
-            get_n_inputs: *const fn (ctx: *anyopaque) anyerror!usize,
-            get_n_neurons: *const fn (ctx: *anyopaque) anyerror!usize,
-            get_input: *const fn (ctx: *anyopaque) anyerror!*const tensor.Tensor(T),
-            get_output: *const fn (ctx: *anyopaque) anyerror!*const tensor.Tensor(T),
+            get_n_inputs: *const fn (ctx: *anyopaque) usize,
+            get_n_neurons: *const fn (ctx: *anyopaque) usize,
+            get_input: *const fn (ctx: *anyopaque) *const tensor.Tensor(T),
+            get_output: *const fn (ctx: *anyopaque) *const tensor.Tensor(T),
         };
 
         pub fn init(self: Layer(T, allocator), n_inputs: usize, n_neurons: usize) anyerror!void {
             return self.layer_impl.init(self.layer_ptr, n_inputs, n_neurons);
         }
-        pub fn deinit(self: Layer(T, allocator)) anyerror!void {
-            return self.layer_impl.init(self.layer_ptr);
+
+        /// When deinit() pay attention to:
+        /// - Double-freeing memory.
+        /// - Using uninitialized or already-deallocated pointers.
+        /// - Incorrect allocation or deallocation logic.
+        ///
+        pub fn deinit(self: Layer(T, allocator)) void {
+            return self.layer_impl.deinit(self.layer_ptr);
         }
-        pub fn forward(self: Layer(T, allocator), value: T) !T {
-            return self.layer_impl.forward(self.layer_ptr, value);
+        pub fn forward(self: Layer(T, allocator), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
+            return self.layer_impl.forward(self.layer_ptr, input);
         }
-        pub fn backward(self: Layer(T, allocator), value: T) !T {
-            return self.layer_impl.backward(self.layer_ptr, value);
+        pub fn backward(self: Layer(T, allocator), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+            return self.layer_impl.backward(self.layer_ptr, dValues);
         }
         pub fn printLayer(self: Layer(T, allocator), choice: u8) void {
             return self.layer_impl.printLayer(self.layer_ptr, choice);
         }
-        pub fn get_n_inputs(self: Layer(T, allocator)) !usize {
+        pub fn get_n_inputs(self: Layer(T, allocator)) usize {
             return self.layer_impl.get_n_inputs(self.layer_ptr);
         }
-        pub fn get_n_neurons(self: Layer(T, allocator)) !usize {
+        pub fn get_n_neurons(self: Layer(T, allocator)) usize {
             return self.layer_impl.get_n_neurons(self.layer_ptr);
         }
-        pub fn get_input(self: Layer(T, allocator)) !*const tensor.Tensor(T) {
+        pub fn get_input(self: Layer(T, allocator)) *const tensor.Tensor(T) {
             return self.layer_impl.get_input(self.layer_ptr);
         }
-        pub fn get_output(self: Layer(T, allocator)) !*const tensor.Tensor(T) {
+        pub fn get_output(self: Layer(T, allocator)) *const tensor.Tensor(T) {
             return self.layer_impl.get_output(self.layer_ptr);
         }
     };
@@ -118,8 +124,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *DenseLayer(T, alloc)) Layer(T) {
-            return Layer(T){
+        pub fn create(self: *DenseLayer(T, alloc)) Layer(T, alloc) {
+            return Layer(T, alloc){
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
@@ -184,7 +190,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 self.output.deinit();
             }
 
-            // Dealloca i tensori di gradients se alsizelocati
             if (self.w_gradients.data.len > 0) {
                 self.w_gradients.deinit();
             }
@@ -225,7 +230,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
             //---- Key Steps: -----
-
             // 2. Compute weight gradients (w_gradients)
             var input_transposed = try self.input.transpose2D();
             defer input_transposed.deinit();
@@ -255,8 +259,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
 
-            self.printLayer(1);
-
             return &dL_dInput;
         }
 
@@ -279,8 +281,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 std.debug.print("\n {any}", .{self.bias.data});
                 std.debug.print("\n \n************output", .{});
                 self.output.printMultidim();
-                std.debug.print("\n \n************outputActivation", .{});
-                self.outputActivation.printMultidim();
                 std.debug.print("\n \n************w_gradients", .{});
                 self.w_gradients.printMultidim();
                 std.debug.print("\n \n************b_gradients", .{});

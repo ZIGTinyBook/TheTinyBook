@@ -11,9 +11,7 @@ test "Layer test description" {
 }
 
 test "Rand n and zeros" {
-    var rng = std.Random.Xoshiro256.init(12345);
-
-    const randomArray = try layer_.randn(f32, 5, 5, &rng);
+    const randomArray = try layer_.randn(f32, 5, 5);
     const zerosArray = try layer_.zeros(f32, 5, 5);
 
     //test dimension
@@ -34,7 +32,6 @@ test "Rand n and zeros" {
 test "DenseLayer forward and backward test" {
     std.debug.print("\n     test: DenseLayer forward test ", .{});
     const allocator = &std.testing.allocator;
-    var rng = std.Random.Xoshiro256.init(12345);
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
     var dense_layer = DenseLayer(f64, allocator){
@@ -42,21 +39,16 @@ test "DenseLayer forward and backward test" {
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = allocator,
-        .activationFunction = ActivationType.ReLU,
     };
-
-    var layer1 = Layer(f64, allocator){
-        .denseLayer = &dense_layer,
-    };
+    const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(4, 2, &rng);
+    try layer1.init(4, 2);
     defer layer1.deinit();
 
     // Define an input tensor with 5x4 shape, an input for each neuron
@@ -99,10 +91,11 @@ test "DenseLayer forward and backward test" {
     _ = try layer1.backward(&grad);
 
     // Check that bias and gradients are valid (non-zero)
+    var myDense: *DenseLayer(f64, allocator) = @ptrCast(@alignCast(layer1.layer_ptr));
     for (0..2) |i| {
-        try std.testing.expect(try layer1.denseLayer.bias.get(i) != 0.0);
+        try std.testing.expect(try myDense.bias.get(i) != 0.0);
         for (0..4) |j| {
-            try std.testing.expect(try layer1.denseLayer.w_gradients.get(i + j) != 0.0);
+            try std.testing.expect(try myDense.w_gradients.get(i + j) != 0.0);
         }
     }
 }
@@ -110,7 +103,6 @@ test "DenseLayer forward and backward test" {
 test "test getters " {
     std.debug.print("\n     test: getters ", .{});
     const allocator = &std.testing.allocator;
-    var rng = std.Random.Xoshiro256.init(12345);
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
     var dense_layer = DenseLayer(f64, allocator){
@@ -118,21 +110,16 @@ test "test getters " {
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = allocator,
-        .activationFunction = ActivationType.ReLU,
     };
-
-    var layer1 = Layer(f64, allocator){
-        .denseLayer = &dense_layer,
-    };
+    const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(4, 2, &rng);
+    try layer1.init(4, 2);
     defer layer1.deinit();
 
     // Define an input tensor with 5x4 shape, an input for each neuron
@@ -146,7 +133,7 @@ test "test getters " {
     var shape: [2]usize = [_]usize{ 5, 4 };
 
     var input_tensor = try tensor.Tensor(f64).fromArray(allocator, &inputArray, &shape);
-    defer input_tensor.deinit();
+    //defer input_tensor.deinit();
 
     var output_tensor = try layer1.forward(&input_tensor);
     defer output_tensor.deinit();
@@ -167,46 +154,21 @@ test "test getters " {
     _ = try layer1.backward(&grad);
 
     //check n_inputs
-    try std.testing.expect(dense_layer.n_inputs == try layer1.get_n_inputs());
+    try std.testing.expect(dense_layer.n_inputs == layer1.get_n_inputs());
 
     //check n_neurons
-    try std.testing.expect(dense_layer.n_neurons == try layer1.get_n_neurons());
+    try std.testing.expect(dense_layer.n_neurons == layer1.get_n_neurons());
 
-    //check get_weights
-    for (0..dense_layer.weights.data.len) |i| {
-        try std.testing.expect(dense_layer.weights.data[i] == (try layer1.get_weights()).data[i]);
-    }
-
-    //check get_bias
-    for (0..dense_layer.bias.data.len) |i| {
-        try std.testing.expect(dense_layer.bias.data[i] == (try layer1.get_bias()).data[i]);
-    }
+    //utils myDense cast, is the only way to access and anyopaque
+    //const myDense: *DenseLayer(f64, allocator) = @ptrCast(@alignCast(layer1.layer_ptr));
 
     //check get_input
     for (0..dense_layer.input.data.len) |i| {
-        try std.testing.expect(dense_layer.input.data[i] == (try layer1.get_input()).data[i]);
+        try std.testing.expect(dense_layer.input.data[i] == layer1.get_input().data[i]);
     }
 
     //check get_output
     for (0..dense_layer.output.data.len) |i| {
-        try std.testing.expect(dense_layer.output.data[i] == (try layer1.get_output()).data[i]);
-    }
-
-    //check get_outputActivation
-    for (0..dense_layer.output.data.len) |i| {
-        try std.testing.expect(dense_layer.outputActivation.data[i] == (try layer1.get_outputActivation()).data[i]);
-    }
-
-    //check get_activationFunction
-    try std.testing.expect(dense_layer.activationFunction == try layer1.get_activationFunction());
-
-    //check get_weightGradients
-    for (0..dense_layer.w_gradients.data.len) |i| {
-        try std.testing.expect(dense_layer.w_gradients.data[i] == (try layer1.get_weightGradients()).data[i]);
-    }
-
-    //check get_biasGradients
-    for (0..dense_layer.b_gradients.data.len) |i| {
-        try std.testing.expect(dense_layer.b_gradients.data[i] == (try layer1.get_biasGradients()).data[i]);
+        try std.testing.expect(dense_layer.output.data[i] == layer1.get_output().data[i]);
     }
 }
