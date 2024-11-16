@@ -14,9 +14,10 @@ const ActivationType = @import("activation_function").ActivationType;
 //import error libraries
 const LayerError = @import("errorHandler").LayerError;
 
-pub const LayerTypes = enum {
+pub const LayerType = enum {
     DenseLayer,
     DefaultLayer,
+    ActivationLayer,
     null,
 };
 
@@ -52,6 +53,7 @@ pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
 
 pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
     return struct {
+        layer_type: LayerType,
         layer_ptr: *anyopaque,
         layer_impl: *const Basic_Layer_Interface,
 
@@ -126,6 +128,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         pub fn create(self: *DenseLayer(T, alloc)) Layer(T, alloc) {
             return Layer(T, alloc){
+                .layer_type = LayerType.DenseLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
@@ -367,8 +370,9 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *ActivationLayer(T, alloc)) Layer(T) {
-            return Layer(T){
+        pub fn create(self: *ActivationLayer(T, alloc)) Layer(T, alloc) {
+            return Layer(T, alloc){
+                .layer_type = LayerType.ActivationLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
