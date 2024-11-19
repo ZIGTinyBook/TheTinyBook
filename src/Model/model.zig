@@ -71,8 +71,10 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             self.input_tensor = try input.copy();
 
             for (0..self.layers.items.len) |i| {
+                std.debug.print("\n--------------------------------------forwarding layer {}", .{i});
                 try DataProc.normalize(T, self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
                 _ = try self.layers.items[i].forward(self.getPrevOut(i));
+                self.layers.items[i].printLayer(0);
             }
             return (self.getPrevOut(self.layers.items.len)).*;
         }
@@ -92,10 +94,13 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             var grad_duplicate = try grad.copy();
             defer grad_duplicate.deinit();
 
-            var counter = (self.layers.len - 1);
+            var counter = (self.layers.items.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
-                grad = try self.layers[counter].backward(&grad_duplicate);
+                self.layers.items[counter].printLayer(1);
+                grad = try self.layers.items[counter].backward(&grad_duplicate);
+                std.debug.print("\n-------------------------------------- post backwarding layer {}", .{counter});
+                grad.*.info();
                 grad_duplicate = try grad.copy();
                 if (counter == 0) break;
             }

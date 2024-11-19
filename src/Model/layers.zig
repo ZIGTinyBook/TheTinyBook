@@ -148,7 +148,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         /// also for the gradients
         pub fn init(ctx: *anyopaque, n_inputs: usize, n_neurons: usize) !void {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
-            std.debug.print("Init DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
+            std.debug.print("\nInit DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
             if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
@@ -239,7 +239,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             self.w_gradients.deinit();
             self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &input_transposed, dValues);
-
+            std.debug.print("\n********************** w_gradients ", .{});
+            self.w_gradients.info();
             // 3. Compute bias gradients (b_gradients)
             // Equivalent of np.sum(dL_dOutput, axis=0, keepdims=True)
             var sum: T = 0;
@@ -253,14 +254,12 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 self.b_gradients.data[neuron] = sum;
             }
 
-            // 4. Compute input gradients: dL/dInput = dot(dValues, weights.T)
-            var dValues_transposed = try dValues.transpose2D();
-            defer dValues_transposed.deinit();
-
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
 
             var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
+            std.debug.print("\n********************** dL_dInput ", .{});
+            dL_dInput.info();
 
             return &dL_dInput;
         }
@@ -269,11 +268,11 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
+            std.debug.print("\n ************************Dense layer*********************", .{});
             //MENU choice:
             // 0 -> full details layer
             // 1 -> shape schema
             if (choice == 0) {
-                std.debug.print("\n ************************layer*********************", .{});
                 std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
                 std.debug.print("\n \n************input", .{});
                 self.input.printMultidim();
@@ -290,7 +289,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 std.debug.print("\n {any}", .{self.b_gradients.data});
             }
             if (choice == 1) {
-                std.debug.print("\n ************************layer*********************", .{});
                 std.debug.print("\n   input       weight   bias  output", .{});
                 std.debug.print("\n [{} x {}] * [{} x {}] + {} = [{} x {}] ", .{
                     self.input.shape[0],
@@ -390,7 +388,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         pub fn init(ctx: *anyopaque, n_inputs: usize, n_neurons: usize) !void {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
-            std.debug.print("Init ActivationLayer: n_inputs = {}, n_neurons = {}, Type = {}\n", .{ n_inputs, n_neurons, @TypeOf(T) });
+            std.debug.print("\nInit ActivationLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
             if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
@@ -468,12 +466,11 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
-
+            std.debug.print("\n ************************Activation layer*********************", .{});
             //MENU choice:
             // 0 -> full details layer
             // 1 -> shape schema
             if (choice == 0) {
-                std.debug.print("\n ************************layer*********************", .{});
                 std.debug.print("\n neurons:{}  inputs:{}", .{ self.n_neurons, self.n_inputs });
                 std.debug.print("\n \n************input", .{});
                 self.input.printMultidim();
@@ -483,7 +480,6 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 std.debug.print("\n  {any}", .{self.activationFunction});
             }
             if (choice == 1) {
-                std.debug.print("\n ************************layer*********************", .{});
                 std.debug.print("\n   input         activation     output", .{});
                 std.debug.print("\n [{} x {}]   ->  {any}     = [{} x {}] ", .{
                     self.input.shape[0],
