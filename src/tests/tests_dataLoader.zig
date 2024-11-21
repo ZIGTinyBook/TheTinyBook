@@ -404,3 +404,44 @@ test "MNIST batch and to Tensor test" {
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }
+test "Shuffling and data split" {
+    var allocator = std.testing.allocator;
+    var loader = DataLoader(f64, f64, f64, 1){
+        .X = undefined,
+        .y = undefined,
+        .xTensor = undefined,
+        .yTensor = undefined,
+        .XBatch = undefined,
+        .yBatch = undefined,
+    };
+    defer loader.deinit(&allocator);
+
+    const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
+    const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
+    var shapeXArr = [_]usize{ 32, 784 };
+    var shapeYArr = [_]usize{32};
+    var shapeX: []usize = &shapeXArr;
+    var shapeY: []usize = &shapeYArr;
+
+    try loader.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
+    try loader.trainTestSplit(&allocator, 0.2);
+    const total_samples = loader.X.len;
+    const train_samples = loader.X_train.?.len;
+    const test_samples = loader.X_test.?.len;
+    try std.testing.expect(test_samples == total_samples - train_samples);
+    const x_batch = loader.xTrainNextBatch(32) orelse unreachable;
+    const y_batch = loader.yTrainNextBatch(32) orelse unreachable;
+    const x_testBatch = loader.xTestNextBatch(32) orelse unreachable;
+    const y_testBatch = loader.yTestNextBatch(32) orelse unreachable;
+
+    try std.testing.expect(x_batch.len == 32);
+    try std.testing.expect(y_batch.len == 32);
+    try std.testing.expect(x_testBatch.len == 32);
+    try std.testing.expect(y_testBatch.len == 32);
+    try loader.toTensor(&allocator, &shapeX, &shapeY);
+    try std.testing.expect(loader.xTensor.shape[0] == 32);
+    try std.testing.expect(loader.xTensor.shape[1] == 784);
+    try std.testing.expect(loader.yTensor.shape[0] == 32);
+    loader.xTensor.deinit();
+    loader.yTensor.deinit();
+}

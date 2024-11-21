@@ -11,13 +11,22 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
     return struct {
         X: [][]OutType,
         y: []OutType,
-        x_index: usize = 0, //used for batching the data
-        y_index: usize = 0, //used for batching the data
-        xTensor: tensor.Tensor(OutType), //Realization of the data in a tensor
-        yTensor: tensor.Tensor(OutType), //Realization of the data in a tensor
+        x_index: usize = 0,
+        y_index: usize = 0,
+        xTensor: tensor.Tensor(OutType),
+        yTensor: tensor.Tensor(OutType),
         batchSize: usize = batchSize,
-        XBatch: [][]OutType, //data in array like format dont like the 2 dim array hardcoded
+        XBatch: [][]OutType,
         yBatch: []OutType,
+
+        X_train: ?[][]OutType = undefined,
+        y_train: ?[]OutType = undefined,
+        X_test: ?[][]OutType = undefined,
+        y_test: ?[]OutType = undefined,
+        x_train_index: usize = 0,
+        y_train_index: usize = 0,
+        x_test_index: usize = 0,
+        y_test_index: usize = 0,
 
         ///X next  in an array like format
         pub fn xNext(self: *@This()) ?[]Ftype {
@@ -48,6 +57,10 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
         pub fn reset(self: *@This()) void {
             self.x_index = 0;
             self.y_index = 0;
+            self.x_train_index = 0;
+            self.y_train_index = 0;
+            self.x_test_index = 0;
+            self.y_test_index = 0;
         }
         //Maybe do batch size as a "attribute of the struct"
         ///Get the next batch of data
@@ -74,6 +87,49 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             self.yBatch = batch;
             return batch;
         }
+        pub fn trainTestSplit(self: *@This(), allocator: *const std.mem.Allocator, perc: f32) !void {
+            if (perc <= 0.0 or perc >= 1.0) {
+                return error.InvalidPercentage;
+            }
+
+            const total_samples = self.X.len;
+            const total: f32 = @floatFromInt(total_samples);
+            const train_size: usize = @intFromFloat(perc * total);
+
+            // Shuffle prima di dividere
+            var rng = std.rand.DefaultPrng.init(1234);
+            self.shuffle(&rng);
+
+            // Alloca memoria per i set di training e test
+            self.X_train = try allocator.alloc([]OutType, train_size);
+            self.y_train = try allocator.alloc(OutType, train_size);
+
+            const test_size = total_samples - train_size;
+            self.X_test = try allocator.alloc([]OutType, test_size);
+            self.y_test = try allocator.alloc(OutType, test_size);
+
+            // Estrai le slice opzionali
+            const X_train = self.X_train.?;
+            const y_train = self.y_train.?;
+            const X_test = self.X_test.?;
+            const y_test = self.y_test.?;
+
+            // Copia i dati di training
+            for (self.X[0..train_size], 0..) |features, i| {
+                X_train[i] = features;
+            }
+            for (self.y[0..train_size], 0..) |label, i| {
+                y_train[i] = label;
+            }
+
+            // Copia i dati di test
+            for (self.X[train_size..], 0..) |features, i| {
+                X_test[i] = features;
+            }
+            for (self.y[train_size..], 0..) |label, i| {
+                y_test[i] = label;
+            }
+        }
 
         //We are using Knuth shuffle algorithm with complexity O(n)
         ///Shuffle the data using Knuth shuffle algorithm
@@ -96,6 +152,109 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
 
                 if (i == 0) break;
                 i -= 1;
+            }
+        }
+
+        pub fn xTrainNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
+	    if (self.X_train == null) return null;
+	    const x_train = self.X_train.?;
+
+	    const start = self.x_train_index;
+	    const end = @min(start + batch_size, x_train.len);
+
+	    if (start >= end) return null;
+
+	    const batch = x_train[start..end];
+	    self.x_train_index = end;
+	    self.XBatch = batch;
+	    return batch;
+	}
+
+
+       pub fn yTrainNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
+	    if (self.y_train == null) return null;
+	    const y_train = self.y_train.?;
+
+	    const start = self.y_train_index;
+	    const end = @min(start + batch_size, y_train.len);
+
+	    if (start >= end) return null;
+
+	    const batch = y_train[start..end];
+	    self.y_train_index = end;
+	    self.yBatch = batch;
+	    return batch;
+}
+
+
+        pub fn xTestNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
+	    if (self.X_test == null) return null;
+	    const x_test = self.X_test.?;
+
+	    const start = self.x_test_index;
+	    const end = @min(start + batch_size, x_test.len);
+
+	    if (start >= end) return null;
+
+	    const batch = x_test[start..end];
+	    self.x_test_index = end;
+	    self.XBatch = batch;
+	    return batch;
+}
+
+
+      pub fn yTestNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
+	    if (self.y_test == null) return null;
+	    const y_test = self.y_test.?;
+
+	    const start = self.y_test_index;
+	    const end = @min(start + batch_size, y_test.len);
+
+	    if (start >= end) return null;
+
+	    const batch = y_test[start..end];
+	    self.y_test_index = end;
+	    self.yBatch = batch;
+	    return batch;
+	}
+
+
+        pub fn deinit(self: *@This(), allocator: *std.mem.Allocator) void {
+            var features_freed = false;
+
+            if (self.X_train) |x_train| {
+                for (x_train) |features| {
+                    allocator.free(features);
+                }
+                allocator.free(x_train);
+                features_freed = true;
+            }
+
+            if (self.y_train) |y_train| {
+                allocator.free(y_train);
+            }
+
+            if (self.X_test) |x_test| {
+                for (x_test) |features| {
+                    allocator.free(features);
+                }
+                allocator.free(x_test);
+                features_freed = true;
+            }
+
+            if (self.y_test) |y_test| {
+                allocator.free(y_test);
+            }
+
+            if (!features_freed) {
+                for (self.X) |features| {
+                    allocator.free(features);
+                }
+                allocator.free(self.X);
+                allocator.free(self.y);
+            } else {
+                allocator.free(self.X);
+                allocator.free(self.y);
             }
         }
         ///Load data from a csv like file, it needs to take the file path and the columns of the features and the label
@@ -298,16 +457,6 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             } else {
                 return try std.fmt.parseInt(YType, self, 10);
             }
-        }
-        ///Deinit the data loader
-        pub fn deinit(self: *@This(), allocator: *std.mem.Allocator) void {
-            for (self.X) |features| {
-                allocator.free(features);
-            }
-
-            allocator.free(self.X);
-
-            allocator.free(self.y);
         }
     };
 }
