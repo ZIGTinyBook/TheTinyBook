@@ -15,7 +15,7 @@ const DataProc = @import("dataprocessor");
 /// deallocation of resources.
 pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) type {
     return struct {
-        layers: []layer.Layer(T, allocator) = undefined, // Array of layers in the model.
+        layers: std.ArrayList(layer.Layer(T, allocator)) = undefined, // Array of layers in the model.
         allocator: *const std.mem.Allocator, // Allocator reference for dynamic memory allocation.
         input_tensor: tensor.Tensor(T), // Tensor that holds the model's input data.
 
@@ -25,7 +25,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// # Errors
         /// Returns an error if memory allocation for the `layers` array or `input_tensor` fails.
         pub fn init(self: *@This()) !void {
-            self.layers = try self.allocator.alloc(layer.Layer(T, allocator), 0);
+            self.layers = std.ArrayList(layer.Layer(T, allocator)).init(allocator.*);
             self.input_tensor = try tensor.Tensor(T).init(self.allocator);
         }
 
@@ -34,11 +34,12 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// This method iterates through each layer, deinitializes it, and then frees
         /// the layer array and input tensor memory.
         pub fn deinit(self: *@This()) void {
-            for (self.layers, 0..) |*layer_, i| {
+            for (self.layers.items, 0..) |*layer_, i| {
+                std.debug.print("\n deinitializing layer {} ... ", .{i});
                 layer_.deinit();
-                std.debug.print("\n -.-.-> dense layer {} deinitialized", .{i});
+                std.debug.print("->  layer {} deinitialized", .{i});
             }
-            self.allocator.free(self.layers);
+            self.layers.deinit();
             std.debug.print("\n -.-.-> model layers deinitialized", .{});
 
             self.input_tensor.deinit(); // pay attention! input_tensor is initialised only if forward() is run at leas once. Sess self.forward()
@@ -53,8 +54,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// # Errors
         /// Returns an error if reallocating the `layers` array fails.
         pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
-            self.layers = try self.allocator.realloc(self.layers, self.layers.len + 1);
-            self.layers[self.layers.len - 1] = new_layer.*;
+            try self.layers.append(new_layer.*);
         }
 
         /// Executes the forward pass through the model with the specified input tensor.
@@ -71,11 +71,13 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
             self.input_tensor.deinit(); //Why this?! it is ok since in each epooch the input tensor must be initialized with the new incomming batch
             self.input_tensor = try input.copy();
 
-            for (0..self.layers.len) |i| {
-                try DataProc.normalize(T, try self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
-                _ = try self.layers[i].forward(try self.getPrevOut(i));
+            for (0..self.layers.items.len) |i| {
+                std.debug.print("\n--------------------------------------forwarding layer {}", .{i});
+                try DataProc.normalize(T, self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                _ = try self.layers.items[i].forward(self.getPrevOut(i));
+                //self.layers.items[i].printLayer(0);
             }
-            return (try self.getPrevOut(self.layers.len)).*;
+            return (self.getPrevOut(self.layers.items.len)).*;
         }
 
         /// Executes the backward pass through the model with the specified gradient tensor.
@@ -88,19 +90,25 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if any layer's backward pass or tensor copying fails.
-        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-            var grad = gradient;
-            var grad_duplicate = try grad.copy();
+        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !tensor.Tensor(T) {
+            // std.debug.print("\n GRADIENT ", .{});
+            // gradient.info();
+
+            var grad_ptr: tensor.Tensor(T) = undefined;
+            var grad_duplicate: tensor.Tensor(T) = try gradient.copy();
+            // std.debug.print("\n grad_duplicate ", .{});
+            // grad_duplicate.info();
+
             defer grad_duplicate.deinit();
 
-            var counter = (self.layers.len - 1);
+            var counter = (self.layers.items.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
-                grad = try self.layers[counter].backward(&grad_duplicate);
-                grad_duplicate = try grad.copy();
+                grad_ptr = try self.layers.items[counter].backward(&grad_duplicate);
+                grad_duplicate = try grad_ptr.copy();
                 if (counter == 0) break;
             }
-            return grad;
+            return grad_ptr;
         }
 
         /// Retrieves the output of the specified layer or the input tensor for the first layer.
@@ -114,11 +122,11 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if the index is out of bounds or other tensor-related errors occur.
-        fn getPrevOut(self: *@This(), layer_numb: usize) !*tensor.Tensor(T) {
+        fn getPrevOut(self: *@This(), layer_numb: usize) *tensor.Tensor(T) {
             if (layer_numb == 0) {
                 return &self.input_tensor;
             } else {
-                return &self.layers[layer_numb - 1].denseLayer.outputActivation; //self.layers[layer_numb - 1].get_outputActivation(); //
+                return self.layers.items[layer_numb - 1].get_output(); //self.layers[layer_numb - 1].get_outputActivation(); //
             }
         }
     };

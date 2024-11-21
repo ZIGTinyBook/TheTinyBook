@@ -37,25 +37,20 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *con
         // Step function to update weights and biases using gradients
         pub fn step(self: *@This(), model: *Model.Model(T, allocator)) !void {
             var counter: u32 = 0;
-            for (model.layers) |*layer_| {
-                switch (layer_.*) {
-                    .denseLayer => |dense_layer| {
-                        const weight_gradients = &dense_layer.w_gradients;
-                        const bias_gradients = &dense_layer.b_gradients;
-                        const weight = &dense_layer.weights;
-                        const bias = &dense_layer.bias;
+            for (model.layers.items) |layer_| {
+                if (layer_.layer_type == layer.LayerType.DenseLayer) {
+                    const myDense: *layer.DenseLayer(T, allocator) = @ptrCast(@alignCast(layer_.layer_ptr));
+                    const weight_gradients = &myDense.w_gradients;
+                    const bias_gradients = &myDense.b_gradients;
+                    const weight = &myDense.weights;
+                    const bias = &myDense.bias;
 
-                        std.debug.print("\n ------ step {}", .{counter});
-                        counter += 1;
+                    std.debug.print("\n ------ step {}", .{counter});
 
-                        try self.update_tensor(weight, weight_gradients);
-                        try self.update_tensor(bias, bias_gradients);
-                    },
-
-                    else => {
-                        std.debug.print("\n ------ Layer is null, skipping.", .{});
-                    },
+                    try self.update_tensor(weight, weight_gradients);
+                    try self.update_tensor(bias, bias_gradients);
                 }
+                counter += 1;
             }
         }
 

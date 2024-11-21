@@ -18,25 +18,19 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     };
     try model.init();
 
-    var rng = std.Random.Xoshiro256.init(12345);
-
     var dense_layer = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
     };
-    var layer1_ = layer.Layer(f64, &allocator){
-        .denseLayer = &dense_layer,
-    };
-    try layer1_.init(3, 2, &rng);
+    var layer1_ = layer.DenseLayer(f64, &allocator).create(&dense_layer);
+    try layer1_.init(3, 2);
     try model.addLayer(&layer1_);
 
     var inputArray: [2][3]f64 = [_][3]f64{

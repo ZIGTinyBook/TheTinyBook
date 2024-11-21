@@ -37,15 +37,6 @@ fn multidimNormalizeUnityBased(comptime T: anytype, tensor: *Tensor(T)) !void {
         }
         delta = max - min;
 
-       // std.debug.print("\n  counter: {}   cols:{}   numb_of_rows:{}   max:{}   min:{}   delta:{}", .{
-        //    counter,
-         //     cols,
-             // numb_of_rows,
-            //  max,
-           //   min,
-            //  delta,
-         // });
-
         // Update tensor for 1D normalization
         for (0..cols) |i| {
             tensor.data[counter * cols + i] = if (delta == 0) 0 else (tensor.data[counter * cols + i] - min) / delta;

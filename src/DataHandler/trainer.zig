@@ -332,8 +332,8 @@ pub fn trainTensors(
         // Forward pass
         std.debug.print("\n-------------------------------forwarding", .{});
         var predictions = try model.forward(input);
-        predictions.info();
-        defer predictions.deinit();
+        //predictions.info();
+        //defer predictions.deinit();
 
         // Loss computation
         std.debug.print("\n-------------------------------computing loss", .{});
@@ -349,7 +349,7 @@ pub fn trainTensors(
         std.debug.print("\n-------------------------------computing loss gradient", .{});
         var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
         std.debug.print("\n     gradient:", .{});
-        grad.info();
+        // grad.info();
 
         // Backpropagation
         std.debug.print("\n-------------------------------backwarding", .{});

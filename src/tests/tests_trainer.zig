@@ -16,27 +16,34 @@ test "Multiple layers training test" {
     };
     try model.init();
 
-    var rng = std.Random.Xoshiro256.init(12345);
-
     //layer 1: 3 inputs, 2 neurons
     var layer1 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
     };
-    var layer1_ = layer.Layer(f64, &allocator){
-        .denseLayer = &layer1,
-    };
-    try layer1_.init(3, 2, &rng);
+    var layer1_ = layer.DenseLayer(f64, &allocator).create(&layer1);
+    try layer1_.init(3, 2);
     try model.addLayer(&layer1_);
+
+    //layer 1: 3 inputs, 2 neurons
+    var layer1Activ = layer.ActivationLayer(f64, &allocator){
+        .input = undefined,
+        .output = undefined,
+        .n_inputs = 0,
+        .n_neurons = 0,
+        .activationFunction = ActivationType.ReLU,
+        .allocator = &allocator,
+    };
+    var layer1Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer1Activ);
+    try layer1Activ_.init(2, 2);
+    try model.addLayer(&layer1Activ_);
 
     //layer 2: 2 inputs, 5 neurons
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -44,19 +51,27 @@ test "Multiple layers training test" {
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
     };
-    var layer2_ = layer.Layer(f64, &allocator){
-        .denseLayer = &layer2,
-    };
-    try layer2_.init(2, 5, &rng);
+    var layer2_ = layer.DenseLayer(f64, &allocator).create(&layer2);
+    try layer2_.init(2, 5);
     try model.addLayer(&layer2_);
+
+    var layer2Activ = layer.ActivationLayer(f64, &allocator){
+        .input = undefined,
+        .output = undefined,
+        .n_inputs = 0,
+        .n_neurons = 0,
+        .activationFunction = ActivationType.Softmax,
+        .allocator = &allocator,
+    };
+    var layer2Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer2Activ);
+    try layer2Activ_.init(2, 5);
+    try model.addLayer(&layer2Activ_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },

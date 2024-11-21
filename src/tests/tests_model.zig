@@ -5,7 +5,7 @@ const Model = @import("model").Model;
 const ActivationType = @import("activation_function").ActivationType;
 const Trainer = @import("trainer");
 
-test "Model with multiple layers forward test" {
+test "Model with multiple Denselayers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
     const allocator = std.testing.allocator;
 
@@ -17,44 +17,34 @@ test "Model with multiple layers forward test" {
     try model.init();
     defer model.deinit();
 
-    var rng = std.Random.Xoshiro256.init(12345);
-
-    var layer1 = layer.DenseLayer(f64, &allocator){
+    var dense_layer1 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .input = undefined,
         .bias = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
     };
-    var layer1_ = layer.Layer(f64, &allocator){
-        .denseLayer = &layer1,
-    };
-    try layer1_.init(3, 2, &rng);
+    var layer1_ = layer.DenseLayer(f64, &allocator).create(&dense_layer1);
+    try layer1_.init(3, 2);
     try model.addLayer(&layer1_);
 
-    var layer2 = layer.DenseLayer(f64, &allocator){
+    var dense_layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .outputActivation = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
         .w_gradients = undefined,
         .b_gradients = undefined,
         .allocator = undefined,
-        .activationFunction = ActivationType.ReLU,
     };
-    var layer2_ = layer.Layer(f64, &allocator){
-        .denseLayer = &layer2,
-    };
-    try layer2_.init(2, 3, &rng);
+    var layer2_ = layer.DenseLayer(f64, &allocator).create(&dense_layer2);
+    try layer2_.init(2, 3);
     try model.addLayer(&layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
@@ -69,13 +59,5 @@ test "Model with multiple layers forward test" {
         std.debug.print("\n -.-.-> input_tensor deinitialized", .{});
     }
 
-    var output = try model.forward(&input_tensor);
-    defer {
-        output.deinit();
-        std.debug.print("\n -.-.-> output deinitialized", .{});
-    }
-
-    //std.debug.print("Output tensor shape: {}\n", .{output.shape});
-    //std.debug.print("Output tensor data: {}\n", .{output.data});
-    //output.info();
+    _ = try model.forward(&input_tensor);
 }
