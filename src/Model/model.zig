@@ -35,8 +35,9 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// the layer array and input tensor memory.
         pub fn deinit(self: *@This()) void {
             for (self.layers.items, 0..) |*layer_, i| {
+                std.debug.print("\n deinitializing layer {} ... ", .{i});
                 layer_.deinit();
-                std.debug.print("\n -.-.-> dense layer {} deinitialized", .{i});
+                std.debug.print("->  layer {} deinitialized", .{i});
             }
             self.layers.deinit();
             std.debug.print("\n -.-.-> model layers deinitialized", .{});
@@ -89,22 +90,29 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if any layer's backward pass or tensor copying fails.
-        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !*tensor.Tensor(T) {
-            var grad = gradient;
-            var grad_duplicate = try grad.copy();
+        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !tensor.Tensor(T) {
+            // std.debug.print("\n GRADIENT ", .{});
+            // gradient.info();
+
+            var grad_ptr: tensor.Tensor(T) = undefined;
+            var grad_duplicate: tensor.Tensor(T) = try gradient.copy();
+            // std.debug.print("\n grad_duplicate ", .{});
+            // grad_duplicate.info();
+
             defer grad_duplicate.deinit();
 
             var counter = (self.layers.items.len - 1);
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
-                self.layers.items[counter].printLayer(1);
-                grad = try self.layers.items[counter].backward(&grad_duplicate);
+                // self.layers.items[counter].printLayer(1);
+
+                grad_ptr = try self.layers.items[counter].backward(&grad_duplicate);
                 std.debug.print("\n-------------------------------------- post backwarding layer {}", .{counter});
-                grad.*.info();
-                grad_duplicate = try grad.copy();
+                grad_ptr.info();
+                grad_duplicate = try grad_ptr.copy();
                 if (counter == 0) break;
             }
-            return grad;
+            return grad_ptr;
         }
 
         /// Retrieves the output of the specified layer or the input tensor for the first layer.

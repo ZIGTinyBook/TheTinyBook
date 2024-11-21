@@ -61,7 +61,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
             init: *const fn (ctx: *anyopaque, n_inputs: usize, n_neurons: usize) anyerror!void,
             deinit: *const fn (ctx: *anyopaque) void,
             forward: *const fn (ctx: *anyopaque, input: *tensor.Tensor(T)) anyerror!tensor.Tensor(T),
-            backward: *const fn (ctx: *anyopaque, dValues: *tensor.Tensor(T)) anyerror!*tensor.Tensor(T),
+            backward: *const fn (ctx: *anyopaque, dValues: *tensor.Tensor(T)) anyerror!tensor.Tensor(T),
             printLayer: *const fn (ctx: *anyopaque, choice: u8) void,
             get_n_inputs: *const fn (ctx: *anyopaque) usize,
             get_n_neurons: *const fn (ctx: *anyopaque) usize,
@@ -84,7 +84,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
         pub fn forward(self: Layer(T, allocator), input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             return self.layer_impl.forward(self.layer_ptr, input);
         }
-        pub fn backward(self: Layer(T, allocator), dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn backward(self: Layer(T, allocator), dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
             return self.layer_impl.backward(self.layer_ptr, dValues);
         }
         pub fn printLayer(self: Layer(T, allocator), choice: u8) void {
@@ -229,7 +229,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
-        pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
             //---- Key Steps: -----
@@ -257,11 +257,11 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
 
-            var dL_dInput = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
+            var dL_dInput: tensor.Tensor(T) = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
             std.debug.print("\n********************** dL_dInput ", .{});
             dL_dInput.info();
 
-            return &dL_dInput;
+            return dL_dInput;
         }
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels
@@ -441,7 +441,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
-        pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !*tensor.Tensor(T) {
+        pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
             //---- Key Steps: -----
@@ -460,7 +460,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 try activation.derivate(dValues, &self.output);
             }
 
-            return dValues;
+            return dValues.*;
         }
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels

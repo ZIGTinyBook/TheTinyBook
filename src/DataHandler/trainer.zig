@@ -297,7 +297,7 @@ pub fn trainTensors(
         std.debug.print("\n-------------------------------forwarding", .{});
         var predictions = try model.forward(input);
         //predictions.info();
-        defer predictions.deinit();
+        //defer predictions.deinit();
 
         // Loss computation
         std.debug.print("\n-------------------------------computing loss", .{});
