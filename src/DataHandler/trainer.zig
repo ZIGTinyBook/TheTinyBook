@@ -102,7 +102,7 @@ pub fn TrainDataLoader(
             //try DataProc.normalize(T, &load.xTensor, NormalizType.UnityBasedNormalizartion);
             var predictions = try model.forward(&load.xTensor);
             defer predictions.deinit();
-            defer predictions.deinit();
+
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 

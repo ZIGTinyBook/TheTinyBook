@@ -239,8 +239,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
             self.w_gradients.deinit();
             self.w_gradients = try TensMath.dot_product_tensor(Architectures.CPU, T, T, &input_transposed, dValues);
-            std.debug.print("\n********************** w_gradients ", .{});
-            self.w_gradients.info();
             // 3. Compute bias gradients (b_gradients)
             // Equivalent of np.sum(dL_dOutput, axis=0, keepdims=True)
             var sum: T = 0;
@@ -258,9 +256,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             defer weights_transposed.deinit();
 
             var dL_dInput: tensor.Tensor(T) = try TensMath.dot_product_tensor(Architectures.CPU, T, T, dValues, &weights_transposed);
-            std.debug.print("\n********************** dL_dInput ", .{});
-            dL_dInput.info();
-
+            _ = &dL_dInput;
             return dL_dInput;
         }
 
@@ -443,7 +439,6 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
         pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
-
             //---- Key Steps: -----
             // 1. Apply the derivative of the activation function to dValues
             if (self.activationFunction == ActivationType.ReLU) {
