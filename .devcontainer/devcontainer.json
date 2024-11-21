@@ -1,0 +1,16 @@
+{
+    "name": "Z-Ant Development Container",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "settings": {},
+    "extensions": [
+        "ziglang.vscode-zig",
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools"
+    ],
+    "forwardPorts": [],
+    "remoteUser": "vscode"
+}
+
