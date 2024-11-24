@@ -42,6 +42,7 @@ pub const TrainerType = enum {
 /// - `ephocs`: The total number of epochs to train for.
 /// - `lossType`: The type of loss function used during training.
 /// - `lr`: The learning rate for model optimization.
+/// - `training_size` : the percentage to use as training
 ///
 /// # Returns
 /// - `!void`: Returns an error if any allocation or training step fails.
@@ -69,6 +70,7 @@ pub fn TrainDataLoader(
     epochs: u32,
     comptime lossType: LossType,
     comptime lr: f64,
+    training_size: f32,
 ) !void {
     var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
     defer allocator.free(LossMeanRecord);
@@ -88,7 +90,7 @@ pub fn TrainDataLoader(
     var shapeY: []usize = &shapeYArr;
 
     var steps: u16 = 0;
-    try load.trainTestSplit(allocator, 0.2);
+    try load.trainTestSplit(allocator, training_size);
 
     const train_len: u16 = @as(u16, @intCast(load.X_train.?.len));
     steps = @divFloor(train_len, batchSize);
@@ -112,7 +114,7 @@ pub fn TrainDataLoader(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            defer predictions.deinit();
+            //defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
@@ -154,7 +156,7 @@ pub fn TrainDataLoader(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            defer predictions.deinit();
+            //defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);

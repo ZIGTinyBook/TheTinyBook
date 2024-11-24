@@ -124,9 +124,10 @@ pub fn main() !void {
         784, //The number of features in each input sample
         &model, //A pointer to the model to be trained
         &load, //A pointer to the `DataLoader` that provides data batches
-        10, //The total number of epochs to train for
+        1, //The total number of epochs to train for
         LossType.CCE, //The type of loss function used during training
-        0.005, //The learning rate for model optimization
+        0.005,
+        0.2, //The learning rate for model optimization
     );
 
     model.deinit();
