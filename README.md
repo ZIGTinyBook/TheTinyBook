@@ -2,56 +2,61 @@
 
 ![image](https://github.com/user-attachments/assets/6a5346e5-58ec-4069-8143-c3b7b03586f3)
 
-
 ## Project Overview
 
-The aim of this project is to develop a Zig library designed to optimize the training and inference of ML models on embedded systems and edge devices. Embedded systems and edge devices typically have limited computational resources, power constraints, and often operate in real-time environments. This library will address these challenges by providing optimized algorithms, efficient memory management, and low-level hardware interfacing tailored to the needs of AI model training on these constrained devices.
-Key Features
+**Zant** (Zig-Ant) is an open-source SDK designed to simplify deploying Neural Networks (NN) on microprocessors. Written in Zig, Zant prioritizes cross-compatibility and efficiency, providing tools to import, optimize, and deploy NNs seamlessly, tailored to specific hardware.
 
- **Lightweight and High-Performance**: The library leverages Zig's low-level programming capabilities to deliver high-performance solutions while maintaining a small footprint, crucial for resource-constrained environments.
+### Why Zant?
 
- **Hardware Acceleration Support**: The library will include support for various hardware acceleration techniques, such as SIMD (Single Instruction, Multiple Data) and GPU offloading, where applicable, to maximize the efficiency of AI model training.
+1. Many microcontrollers (e.g., ATMEGA, TI Sitara) lack robust deep learning libraries.
+2. No open-source solution exists for end-to-end NN optimization and deployment.
+3. Inspired by cutting-edge research (e.g., MIT Han Lab), we leverage state-of-the-art optimization techniques.
+4. Collaborating with institutions like Politecnico di Milano to advance NN deployment on constrained devices.
+5. Built for flexibility to adapt to new hardware without codebase changes.
 
- **Efficient Memory Management**: Given the limited memory availability in embedded systems, the library will incorporate advanced memory management techniques, including memory pooling, static memory allocation, and efficient buffer management.
+### Key Features
 
- **Optimized Algorithms**: The library will provide a set of optimized algorithms specifically designed for AI model training on embedded devices. This includes quantization techniques, model pruning, and lightweight neural network architectures that reduce the computational load.
+- **Optimized Performance:** Supports quantization, pruning, and hardware acceleration (SIMD, GPU offloading).
+- **Efficient Memory Usage:** Incorporates memory pooling, static allocation, and buffer optimization.
+- **Cross-Platform Support:** Works on ARM Cortex-M, RISC-V, and more.
+- **Ease of Integration:** Modular design with clear APIs, examples, and documentation.
 
- **Cross-Platform Support**: The library will be designed to be cross-platform, supporting a variety of embedded systems, including ARM Cortex-M, RISC-V, and other popular microcontroller architectures.
+### Use Cases
 
- **Ease of Integration**: The library will be modular and easy to integrate into existing projects, with clear documentation, examples, and APIs that make it straightforward for developers to incorporate AI training capabilities into their embedded or edge devices.
+- **Real-Time Applications:** Object detection, anomaly detection, and predictive maintenance on edge devices.
+- **IoT and Autonomous Systems:** Enable AI in IoT, drones, robots, and vehicles with constrained resources.
 
-## Use Cases
- 
- **Real-Time Applications**: Enabling real-time AI applications such as anomaly detection, predictive maintenance, and object recognition on edge devices.
- **IoT Devices**: Integrating AI capabilities into IoT devices that operate in constrained environments, enhancing their ability to learn and adapt in real-time.
- **Autonomous Systems**: Supporting the training of AI models in autonomous systems like drones, robots, and vehicles where edge processing is crucial.
+---
 
 ## Getting Started
 
 ### Prerequisites
- Zig Compiler: Ensure you have the latest version of the Zig compiler installed. Follow the guide on the official [website](https://ziglang.org/learn/getting-started/).
- Zig knowledge: To better understand the library is necessary a solid knowledge of zig language. We reccomend you a hands-on learning approach, try to solve those excercises... [ziglings/exercises](https://codeberg.org/ziglings/exercises)
+1. Install the [latest Zig compiler](https://ziglang.org/learn/getting-started/).
+2. Brush up your Zig skills with [Ziglings exercises](https://codeberg.org/ziglings/exercises).
 
-# Run
-Go on the project folder and digit:
- ```
- zig build run
+### Run
+Navigate to the project folder and execute:
+```sh
+zig build run
 ```
 
-# Test
- Every time you create a test_file.zig, if not already present remember to add his path  into build.zig/test_list.
- To run tests run: 
- 
- ```
- zig build
- 
- zig build test_all --summary all 
- ```
- 
- (don't worry about stderr)
+### Test
+1. Add new test files to `build.zig/test_list` if not already listed.
+2. Run:
+   ```sh
+   zig build
+   zig build test_all --summary all
+   ```
+   *(Ignore stderr warnings.)*
 
-# Doc
-For the documentation has been used the [ZIG standard](https://ziglang.org/documentation/master/#Doc-Comments)
+### Documentation
+Generated using [Zig's standard documentation format](https://ziglang.org/documentation/master/#Doc-Comments).
 
-# Docker Guide
-[Docker Guide](How_TO_DOCKER_101.md)
+### Docker
+Follow the [Docker Guide](How_TO_DOCKER_101.md) for containerized usage.
+
+---
+
+## Join Us!
+
+Contribute to Zant on [GitHub](#). Let’s make NN deployment on microcontrollers efficient, accessible, and open!
