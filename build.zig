@@ -19,6 +19,8 @@ pub fn build(b: *std.Build) void {
     const architectures_mod = b.createModule(.{ .root_source_file = b.path("src/Core/Tensor/architectures.zig") });
 
     // Create modules from the source files in the `src/Model/` directory.
+    const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
+    const activation_mod = b.createModule(.{ .root_source_file = b.path("src/Model/activation_function.zig") });
     const model_mod = b.createModule(.{ .root_source_file = b.path("src/Model/model.zig") });
     const layers_mod = b.createModule(.{ .root_source_file = b.path("src/Model/layers.zig") });
     const optim_mod = b.createModule(.{ .root_source_file = b.path("src/Model/optim.zig") });
@@ -28,11 +30,10 @@ pub fn build(b: *std.Build) void {
     const dataProcessor_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataProcessor.zig") });
     const trainer_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/trainer.zig") });
 
-    // Create modules for utility and model functions.
-    const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
-    const activation_mod = b.createModule(.{ .root_source_file = b.path("src/Model/activation_function.zig") });
+    // Create modules from the source files in the `src/utils/` directory.
     const typeConv_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
     const errorHandler_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/errorHandler.zig") });
+    const modelImportExport_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/model_import_export.zig") });
 
     //************************************************MODEL DEPENDENCIES************************************************
 
@@ -114,6 +115,14 @@ pub fn build(b: *std.Build) void {
     optim_mod.addImport("layers", layers_mod);
     optim_mod.addImport("errorHandler", errorHandler_mod);
 
+    //************************************************IMPORT/EXPORT DEPENDENCIES************************************************
+
+    // Add necessary imports for the import/export module.
+    modelImportExport_mod.addImport("tensor", tensor_mod);
+    modelImportExport_mod.addImport("layers", layers_mod);
+    modelImportExport_mod.addImport("model", model_mod);
+    modelImportExport_mod.addImport("errorHandler", errorHandler_mod);
+
     //************************************************MAIN EXECUTABLE************************************************
 
     // Define the main executable with target architecture and optimization settings.
@@ -176,6 +185,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("trainer", trainer_mod);
     unit_tests.root_module.addImport("typeConverter", typeConv_mod);
     unit_tests.root_module.addImport("errorHandler", errorHandler_mod);
+    unit_tests.root_module.addImport("model_import_export", modelImportExport_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{
