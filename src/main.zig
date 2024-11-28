@@ -1,6 +1,8 @@
 const std = @import("std");
 const tensor = @import("tensor");
-const layer = @import("layers");
+const layer = @import("layer");
+const denselayer = @import("denselayer").DenseLayer;
+const activationlayer = @import("activationlayer").ActivationLayer;
 const Model = @import("model").Model;
 const loader = @import("dataloader");
 const ActivationType = @import("activation_function").ActivationType;
@@ -17,7 +19,7 @@ pub fn main() !void {
     };
     try model.init();
 
-    var layer1 = layer.DenseLayer(f64, &allocator){
+    var layer1 = denselayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -29,11 +31,11 @@ pub fn main() !void {
         .allocator = undefined,
     };
     //layer 1: 784 inputs, 64 neurons
-    var layer1_ = layer.DenseLayer(f64, &allocator).create(&layer1);
+    var layer1_ = denselayer(f64, &allocator).create(&layer1);
     try layer1_.init(784, 64);
     try model.addLayer(&layer1_);
 
-    var layer1Activ = layer.ActivationLayer(f64, &allocator){
+    var layer1Activ = activationlayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -41,11 +43,11 @@ pub fn main() !void {
         .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
-    var layer1_act = layer.ActivationLayer(f64, &allocator).create(&layer1Activ);
+    var layer1_act = activationlayer(f64, &allocator).create(&layer1Activ);
     try layer1_act.init(64, 64);
     try model.addLayer(&layer1_act);
 
-    var layer2 = layer.DenseLayer(f64, &allocator){
+    var layer2 = denselayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -57,11 +59,11 @@ pub fn main() !void {
         .allocator = undefined,
     };
     //layer 2: 64 inputs, 64 neurons
-    var layer2_ = layer.DenseLayer(f64, &allocator).create(&layer2);
+    var layer2_ = denselayer(f64, &allocator).create(&layer2);
     try layer2_.init(64, 64);
     try model.addLayer(&layer2_);
 
-    var layer2Activ = layer.ActivationLayer(f64, &allocator){
+    var layer2Activ = activationlayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -69,11 +71,11 @@ pub fn main() !void {
         .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
-    var layer2_act = layer.ActivationLayer(f64, &allocator).create(&layer2Activ);
+    var layer2_act = activationlayer(f64, &allocator).create(&layer2Activ);
     try layer2_act.init(64, 64);
     try model.addLayer(&layer2_act);
 
-    var layer3 = layer.DenseLayer(f64, &allocator){
+    var layer3 = denselayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -85,11 +87,11 @@ pub fn main() !void {
         .allocator = undefined,
     };
     //layer 3: 64 inputs, 10 neurons
-    var layer3_ = layer.DenseLayer(f64, &allocator).create(&layer3);
+    var layer3_ = denselayer(f64, &allocator).create(&layer3);
     try layer3_.init(64, 10);
     try model.addLayer(&layer3_);
 
-    var layer3Activ = layer.ActivationLayer(f64, &allocator){
+    var layer3Activ = activationlayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -97,7 +99,7 @@ pub fn main() !void {
         .activationFunction = ActivationType.Softmax,
         .allocator = &allocator,
     };
-    var layer3_act = layer.ActivationLayer(f64, &allocator).create(&layer3Activ);
+    var layer3_act = activationlayer(f64, &allocator).create(&layer3Activ);
     try layer3_act.init(10, 10);
     try model.addLayer(&layer3_act);
 

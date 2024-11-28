@@ -1,6 +1,7 @@
 const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layers");
+const denselayer = @import("denselayer");
 const Model = @import("model");
 const Optim = @import("optim");
 const ActivationType = @import("activation_function").ActivationType;
@@ -18,7 +19,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     };
     try model.init();
 
-    var dense_layer = layer.DenseLayer(f64, &allocator){
+    var dense_layer = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -29,7 +30,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer1_ = layer.DenseLayer(f64, &allocator).create(&dense_layer);
+    var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer);
     try layer1_.init(3, 2);
     try model.addLayer(&layer1_);
 

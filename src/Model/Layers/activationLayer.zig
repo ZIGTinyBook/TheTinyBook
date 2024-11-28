@@ -5,6 +5,7 @@ const Layer = @import("Layer");
 const Architectures = @import("architectures").Architectures;
 const ActivationType = @import("activation_function").ActivationType;
 const ActivLib = @import("activation_function");
+const LayerError = @import("errorHandler").LayerError;
 
 pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
     return struct {
@@ -18,8 +19,8 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *ActivationLayer(T, alloc)) Layer(T, alloc) {
-            return Layer(T, alloc){
+        pub fn create(self: *ActivationLayer(T, alloc)) Layer.Layer(T, alloc) {
+            return Layer.Layer(T, alloc){
                 .layer_type = Layer.LayerType.ActivationLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -41,7 +42,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("\nInit ActivationLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
-            if (n_inputs <= 0 or n_neurons <= 0) return Layer.LayerError.InvalidParameters;
+            if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
 
             //initializing number of neurons and inputs----------------------------------
             self.n_inputs = n_inputs;

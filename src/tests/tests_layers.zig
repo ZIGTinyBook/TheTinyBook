@@ -1,8 +1,8 @@
 const std = @import("std");
-const DenseLayer = @import("layers").DenseLayer;
-const ActivationLayer = @import("layers").ActivationLayer;
-const Layer = @import("layers").Layer;
-const layer_ = @import("layers");
+const DenseLayer = @import("denselayer").DenseLayer;
+const ActivationLayer = @import("activationlayer").ActivationLayer;
+const Layer = @import("layer").Layer;
+const layer_ = @import("layer");
 
 const tensor = @import("tensor");
 const ActivationType = @import("activation_function").ActivationType;

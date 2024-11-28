@@ -1,6 +1,8 @@
 const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layers");
+const denselayer = @import("denselayer");
+const activationlayer = @import("activationlayer");
 const Model = @import("model").Model;
 const ActivationType = @import("activation_function").ActivationType;
 const Trainer = @import("trainer");
@@ -17,7 +19,7 @@ test "Multiple layers training test" {
     try model.init();
 
     //layer 1: 3 inputs, 2 neurons
-    var layer1 = layer.DenseLayer(f64, &allocator){
+    var layer1 = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -28,12 +30,12 @@ test "Multiple layers training test" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer1_ = layer.DenseLayer(f64, &allocator).create(&layer1);
+    var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&layer1);
     try layer1_.init(3, 2);
     try model.addLayer(&layer1_);
 
     //layer 1: 3 inputs, 2 neurons
-    var layer1Activ = layer.ActivationLayer(f64, &allocator){
+    var layer1Activ = activationlayer.ActivationLayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -41,12 +43,12 @@ test "Multiple layers training test" {
         .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
-    var layer1Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer1Activ);
+    var layer1Activ_ = activationlayer.ActivationLayer(f64, &allocator).create(&layer1Activ);
     try layer1Activ_.init(2, 2);
     try model.addLayer(&layer1Activ_);
 
     //layer 2: 2 inputs, 5 neurons
-    var layer2 = layer.DenseLayer(f64, &allocator){
+    var layer2 = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -57,11 +59,11 @@ test "Multiple layers training test" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer2_ = layer.DenseLayer(f64, &allocator).create(&layer2);
+    var layer2_ = denselayer.DenseLayer(f64, &allocator).create(&layer2);
     try layer2_.init(2, 5);
     try model.addLayer(&layer2_);
 
-    var layer2Activ = layer.ActivationLayer(f64, &allocator){
+    var layer2Activ = activationlayer.ActivationLayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -69,7 +71,7 @@ test "Multiple layers training test" {
         .activationFunction = ActivationType.Softmax,
         .allocator = &allocator,
     };
-    var layer2Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer2Activ);
+    var layer2Activ_ = activationlayer.ActivationLayer(f64, &allocator).create(&layer2Activ);
     try layer2Activ_.init(2, 5);
     try model.addLayer(&layer2Activ_);
 

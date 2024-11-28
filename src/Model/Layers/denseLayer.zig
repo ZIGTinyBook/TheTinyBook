@@ -3,6 +3,7 @@ const tensor = @import("tensor");
 const TensMath = @import("tensor_m");
 const Layer = @import("Layer");
 const Architectures = @import("architectures").Architectures;
+const LayerError = @import("errorHandler").LayerError;
 
 /// Function to create a DenseLayer struct in future it will be possible to create other types of layers like convolutional, LSTM etc.
 /// The DenseLayer is a fully connected layer, it has a weight matrix and a bias vector.
@@ -25,8 +26,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *DenseLayer(T, alloc)) Layer(T, alloc) {
-            return Layer(T, alloc){
+        pub fn create(self: *DenseLayer(T, alloc)) Layer.Layer(T, alloc) {
+            return Layer.Layer(T, alloc){
                 .layer_type = Layer.LayerType.DenseLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -50,7 +51,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             std.debug.print("\nInit DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
-            if (n_inputs <= 0 or n_neurons <= 0) return Layer.LayerError.InvalidParameters;
+            if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
 
             //initializing number of neurons and inputs----------------------------------
             self.n_inputs = n_inputs;
