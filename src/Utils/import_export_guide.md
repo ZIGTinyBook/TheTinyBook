@@ -9,7 +9,7 @@ Given a tensor of type T, where T is a zig type, its values will be reported in 
 
 ## Layer
 - **[10]u8** :  a `string` tag representing the type of layer  
-Depending on the type of layer see the relative format. See Layer tags
+Depending on the type of layer see the relative format. See [Layer tags](#Layer-tags)
 
 ### Activation Layer  
 
@@ -17,7 +17,7 @@ Depending on the type of layer see the relative format. See Layer tags
 - **usize** : `n_neurons`
 - **Tensor** : `input` tensor
 - **Tensor** : `output` tensor
-- **[10]u8** : `activationFunction`, see Activation Function tags
+- **[10]u8** : `activationFunction`, see [Activation Function tags](#Activation-Function-tags)
 
 ### Dense Layer
 - **Tensor** : `weights` tensor
@@ -33,5 +33,16 @@ Depending on the type of layer see the relative format. See Layer tags
 - **usize** : NoLayer, representing the number of layers in the model
 - **Layer** : representing a layer. See Layer above.
 
+### Tags
+#### Activation Function tags
+- "ReLU......"
+- "Sigmoid..."
+- "Softmax..."
+- "None......"
+#### Layer tags
+- "Dense....."
+- "Activation"
+- "MaxPool..."
+- "Convol...."
 
 
