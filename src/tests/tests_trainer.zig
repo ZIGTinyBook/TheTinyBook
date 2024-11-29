@@ -30,7 +30,7 @@ test "Multiple layers training test" {
     };
     var layer1_ = layer.DenseLayer(f64, &allocator).create(&layer1);
     try layer1_.init(3, 2);
-    try model.addLayer(&layer1_);
+    try model.addLayer(layer1_);
 
     //layer 1: 3 inputs, 2 neurons
     var layer1Activ = layer.ActivationLayer(f64, &allocator){
@@ -43,7 +43,7 @@ test "Multiple layers training test" {
     };
     var layer1Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer1Activ);
     try layer1Activ_.init(2, 2);
-    try model.addLayer(&layer1Activ_);
+    try model.addLayer(layer1Activ_);
 
     //layer 2: 2 inputs, 5 neurons
     var layer2 = layer.DenseLayer(f64, &allocator){
@@ -59,7 +59,7 @@ test "Multiple layers training test" {
     };
     var layer2_ = layer.DenseLayer(f64, &allocator).create(&layer2);
     try layer2_.init(2, 5);
-    try model.addLayer(&layer2_);
+    try model.addLayer(layer2_);
 
     var layer2Activ = layer.ActivationLayer(f64, &allocator){
         .input = undefined,
@@ -71,7 +71,7 @@ test "Multiple layers training test" {
     };
     var layer2Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer2Activ);
     try layer2Activ_.init(2, 5);
-    try model.addLayer(&layer2Activ_);
+    try model.addLayer(layer2Activ_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },

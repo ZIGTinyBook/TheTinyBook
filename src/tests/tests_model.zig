@@ -30,7 +30,7 @@ test "Model with multiple Denselayers forward test" {
     };
     var layer1_ = layer.DenseLayer(f64, &allocator).create(&dense_layer1);
     try layer1_.init(3, 2);
-    try model.addLayer(&layer1_);
+    try model.addLayer(layer1_);
 
     var dense_layer2 = layer.DenseLayer(f64, &allocator){
         .weights = undefined,
@@ -45,7 +45,7 @@ test "Model with multiple Denselayers forward test" {
     };
     var layer2_ = layer.DenseLayer(f64, &allocator).create(&dense_layer2);
     try layer2_.init(2, 3);
-    try model.addLayer(&layer2_);
+    try model.addLayer(layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },

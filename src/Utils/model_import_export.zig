@@ -16,26 +16,28 @@ pub fn exportModel(
     defer file.close();
 
     const writer = file.writer();
+
+    try writer.writeInt(usize, model.layers.items.len, std.builtin.Endian.big);
+    for (model.layers.items) |*l| {
+        try exportLayer(T, allocator, l.*, writer);
+    }
+    return;
 }
 
 pub fn exportLayer(
     comptime T: type,
     allocator: *const std.mem.Allocator,
     layer: Layer.Layer(T, allocator),
-    file_path: []const u8,
+    writer: std.fs.File.Writer,
 ) !void {
-    var file = try std.fs.cwd().createFile(file_path, .{});
-    defer file.close();
-
-    const writer = file.writer();
 
     //TODO: handle Default layer and null layer
     if (layer.layer_type == LayerType.DenseLayer) {
         try writer.write("Dense.....");
-        try exportLayerDense(T, layer.layer_ptr.*);
+        try exportLayerDense(T, allocator, layer.layer_ptr.*, writer);
     } else if (layer.layer_type == LayerType.ActivationLayer) {
         try writer.write("Activation");
-        //try exportLayerActivation();
+        try exportLayerActivation(T, allocator, layer.layer_ptr.*, writer);
     }
 }
 
@@ -82,11 +84,111 @@ pub fn exportTensor(comptime T: type, tensor: Tensor(T), writer: std.fs.File.Wri
     }
 }
 
-pub fn importTensor(allocator: *const std.mem.Allocator, comptime T: type, file_path: []const u8) !Tensor(T) {
+pub fn importModel(
+    comptime T: type,
+    comptime allocator: *const std.mem.Allocator,
+    file_path: []const u8,
+) Model(T, allocator) {
     var file = try std.fs.cwd().openFile(file_path, .{});
     defer file.close();
-
     const reader = file.reader();
+
+    var model: Model(T, allocator) = Model(T, allocator){
+        .layers = undefined,
+        .allocator = &allocator,
+        .input_tensor = undefined,
+    };
+    try model.init();
+
+    const n_layers = try reader.readInt(usize, std.builtin.Endian.big);
+    for (0..n_layers) |i| {
+        const newLayer: Layer.Layer(T, allocator) = try importLayer(T, allocator, l.*, writer);
+        model.addLayer(newLayer);
+    }
+    return;
+}
+
+pub fn importLayer(
+    comptime T: type,
+    allocator: *const std.mem.Allocator,
+    reader: std.fs.File.Reader,
+) !Layer.Layer(T, allocator) {
+    const layer_type_string: [10]u8 = undefined;
+    try reader.read(layer_type_string);
+
+    //TODO: handle Default layer and null layer
+    if (std.mem.eql(u8, layer_type_string, "Dense.....")) {
+        const denseLayer: Layer.DenseLayer(T, allocator) = try importLayerDense(T, allocator, reader);
+        return Layer.DenseLayer(f64, &allocator).create(&denseLayer);
+    } else if (std.mem.eql(u8, layer_type_string, "Activation")) {
+        //const denseLayer: Layer.ActivationLayer(T, allocator) = try importLayerActivation(T, allocator, reader);
+    }
+}
+
+pub fn importLayerDense(
+    comptime T: type,
+    allocator: *const std.mem.Allocator,
+    reader: std.fs.File.Reader,
+) !Layer.DenseLayer(T, allocator) {
+    const weights_tens: Tensor(T) = try importTensor(T, allocator, reader);
+    const bias_tens: Tensor(T) = try importTensor(T, allocator, reader);
+    const input_tens: Tensor(T) = try importTensor(T, allocator, reader);
+    const output_tens: Tensor(T) = try importTensor(T, allocator, reader);
+    const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
+    const n_neurons = try reader.readInt(usize, std.builtin.Endian.big);
+    const w_grad_tens = try importTensor(T, allocator, reader);
+    const b_grad_tens = try importTensor(T, allocator, reader);
+
+    return Layer.DenseLayer(f64, allocator){
+        .weights = weights_tens,
+        .bias = bias_tens,
+        .input = input_tens,
+        .output = output_tens,
+        .n_inputs = n_inputs,
+        .n_neurons = n_neurons,
+        .w_gradients = w_grad_tens,
+        .b_gradients = b_grad_tens,
+        .allocator = allocator,
+    };
+}
+
+pub fn importLayerActivation(
+    comptime T: type,
+    allocator: *const std.mem.Allocator,
+    reader: std.fs.File.Reader,
+) !Layer.ActivationLayer(T, allocator) {
+    const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
+    const n_neurons = try reader.readInt(usize, std.builtin.Endian.big);
+
+    const input_tens: Tensor(T) = try importTensor(T, allocator, reader);
+    const output_tens: Tensor(T) = try importTensor(T, allocator, reader);
+
+    const activation_type_string: [10]u8 = undefined;
+    try reader.read(activation_type_string);
+
+    const layerActiv = Layer.ActivationLayer(T, allocator){
+        .input = input_tens,
+        .output = output_tens,
+        .n_inputs = n_inputs,
+        .n_neurons = n_neurons,
+        .activationFunction = undefined,
+        .allocator = allocator,
+    };
+
+    if (std.mem.eql(u8, activation_type_string, "ReLU......")) {
+        layerActiv.activationFunction = ActivationType.ReLU;
+    } else if (std.mem.eql(u8, activation_type_string, "Sigmoid...")) {
+        layerActiv.activationFunction = ActivationType.Sigmoid;
+    } else if (std.mem.eql(u8, activation_type_string, "Softmax...")) {
+        layerActiv.activationFunction = ActivationType.Softmax;
+    } else if (std.mem.eql(u8, activation_type_string, "None......")) {
+        layerActiv.activationFunction = ActivationType.None;
+    }
+
+    return layerActiv;
+}
+
+pub fn importTensor(comptime T: type, allocator: *const std.mem.Allocator, reader: std.fs.File.Reader) !Tensor(T) {
 
     // Read tensor size
     const tensor_size: usize = try reader.readInt(usize, std.builtin.Endian.big);
