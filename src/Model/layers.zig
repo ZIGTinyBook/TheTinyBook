@@ -206,6 +206,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
 
             std.debug.print("\nDenseLayer resources deallocated.", .{});
+
+            //return self.allocator.destroy(self);
         }
 
         ///Forward pass of the layer if present it applies the activation function

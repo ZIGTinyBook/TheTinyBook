@@ -15,15 +15,11 @@ Depending on the type of layer see the relative format. See [Layer tags](#Layer-
 
 - **usize** : `n_inputs`
 - **usize** : `n_neurons`
-- **Tensor** : `input` tensor
-- **Tensor** : `output` tensor
 - **[10]u8** : `activationFunction`, see [Activation Function tags](#Activation-Function-tags)
 
 ### Dense Layer
 - **Tensor** : `weights` tensor
 - **Tensor** : `bias` tensor
-- **Tensor** : `input` tensor
-- **Tensor** : `output` tensor
 - **usize** : `n_inputs`
 - **usize** : `n_neurons`
 - **Tensor** : `w_gradients` tensor
