@@ -1,6 +1,6 @@
 const std = @import("std");
 const tensor = @import("tensor");
-const layer = @import("layers");
+const layer = @import("layer");
 const Loss = @import("loss");
 const LossType = @import("loss").LossType;
 const TensMath = @import("tensor_m");

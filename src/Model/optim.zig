@@ -1,8 +1,9 @@
 const std = @import("std");
 const tensor = @import("tensor");
-const layer = @import("layers");
+const layer = @import("layer");
 const Model = @import("model");
 const TensorMathError = @import("errorHandler").TensorMathError;
+const DenseLayer = @import("denselayer");
 
 pub const Optimizers = enum {
     SGD,
@@ -39,7 +40,7 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *con
             var counter: u32 = 0;
             for (model.layers.items) |layer_| {
                 if (layer_.layer_type == layer.LayerType.DenseLayer) {
-                    const myDense: *layer.DenseLayer(T, allocator) = @ptrCast(@alignCast(layer_.layer_ptr));
+                    const myDense: *DenseLayer.DenseLayer(T, allocator) = @ptrCast(@alignCast(layer_.layer_ptr));
                     const weight_gradients = &myDense.w_gradients;
                     const bias_gradients = &myDense.b_gradients;
                     const weight = &myDense.weights;
