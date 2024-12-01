@@ -1,8 +1,11 @@
 const std = @import("std");
 const cwd = std.fs.cwd();
 const Model = @import("model").Model;
-const Layer = @import("layers");
-const LayerType = @import("layers").LayerType;
+const Layer = @import("layer");
+const DenseLayer = @import("denselayer").DenseLayer;
+const ActivationLayer = @import("activationlayer").ActivationLayer;
+
+const LayerType = @import("layer").LayerType;
 const Tensor = @import("tensor").Tensor;
 const ActivationType = @import("activation_function").ActivationType;
 
@@ -39,11 +42,11 @@ pub fn exportLayer(
     //TODO: handle Default layer and null layer
     if (layer.layer_type == LayerType.DenseLayer) {
         _ = try writer.write("Dense.....");
-        const denseLayer: *Layer.DenseLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
+        const denseLayer: *DenseLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
         try exportLayerDense(T, allocator, denseLayer.*, writer);
     } else if (layer.layer_type == LayerType.ActivationLayer) {
         _ = try writer.write("Activation");
-        const activationLayer: *Layer.ActivationLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
+        const activationLayer: *ActivationLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
         try exportLayerActivation(T, allocator, activationLayer.*, writer);
     }
 }
@@ -51,7 +54,7 @@ pub fn exportLayer(
 pub fn exportLayerDense(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
-    layer: Layer.DenseLayer(T, allocator),
+    layer: DenseLayer(T, allocator),
     writer: std.fs.File.Writer,
 ) !void {
     std.debug.print(" dense ", .{});
@@ -67,15 +70,13 @@ pub fn exportLayerDense(
 pub fn exportLayerActivation(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
-    layer: Layer.ActivationLayer(T, allocator),
+    layer: ActivationLayer(T, allocator),
     writer: std.fs.File.Writer,
 ) !void {
     std.debug.print(" activation ", .{});
 
     try writer.writeInt(usize, layer.n_inputs, std.builtin.Endian.big);
     try writer.writeInt(usize, layer.n_neurons, std.builtin.Endian.big);
-    //try exportTensor(T, layer.input, writer);
-    //try exportTensor(T, layer.output, writer);
 
     if (layer.activationFunction == ActivationType.ReLU) {
         _ = try writer.write("ReLU......");
@@ -162,16 +163,16 @@ pub fn importLayer(
 
     //TODO: handle Default layer and null layer
     if (std.mem.eql(u8, &layer_type_string, "Dense.....")) {
-        const denseLayerPtr = try allocator.create(Layer.DenseLayer(T, allocator));
+        const denseLayerPtr = try allocator.create(DenseLayer(T, allocator));
 
         denseLayerPtr.* = try importLayerDense(T, allocator, reader);
         // Transfer ownership to the Layer
-        const newLayer = Layer.DenseLayer(T, allocator).create(denseLayerPtr);
+        const newLayer = DenseLayer(T, allocator).create(denseLayerPtr);
         defer {} // Cancel previous defer since ownership is transferred
 
         return newLayer;
     } else if (std.mem.eql(u8, &layer_type_string, "Activation")) {
-        return Layer.ActivationLayer(T, allocator).create(
+        return ActivationLayer(T, allocator).create(
             @constCast(
                 &try importLayerActivation(T, allocator, reader),
             ),
@@ -185,7 +186,7 @@ pub fn importLayerDense(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     reader: std.fs.File.Reader,
-) !Layer.DenseLayer(T, allocator) {
+) !DenseLayer(T, allocator) {
     const weights_tens: Tensor(T) = try importTensor(T, allocator, reader);
     const bias_tens: Tensor(T) = try importTensor(T, allocator, reader);
     const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
@@ -193,7 +194,7 @@ pub fn importLayerDense(
     const w_grad_tens = try importTensor(T, allocator, reader);
     const b_grad_tens = try importTensor(T, allocator, reader);
 
-    return Layer.DenseLayer(f64, allocator){
+    return DenseLayer(f64, allocator){
         .weights = weights_tens,
         .bias = bias_tens,
         .input = undefined,
@@ -210,14 +211,14 @@ pub fn importLayerActivation(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     reader: std.fs.File.Reader,
-) !Layer.ActivationLayer(T, allocator) {
+) !ActivationLayer(T, allocator) {
     const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
     const n_neurons = try reader.readInt(usize, std.builtin.Endian.big);
 
     var activation_type_string: [10]u8 = undefined;
     _ = try reader.read(&activation_type_string);
 
-    var layerActiv = Layer.ActivationLayer(T, allocator){
+    var layerActiv = ActivationLayer(T, allocator){
         .input = undefined, //input_tens,
         .output = undefined, //output_tens,
         .n_inputs = n_inputs,

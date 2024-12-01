@@ -1,7 +1,9 @@
 const std = @import("std");
 const model_import_export = @import("model_import_export");
 const Model = @import("model").Model;
-const layer = @import("layers");
+const layer = @import("layer");
+const denselayer = @import("denselayer");
+const actlayer = @import("activationlayer");
 const Tensor = @import("tensor").Tensor;
 const ActivationType = @import("activation_function").ActivationType;
 const Trainer = @import("trainer");
@@ -62,7 +64,7 @@ test "Import/Export of dense layer" {
     var file = try std.fs.cwd().createFile(file_path, .{});
     const writer = file.writer();
 
-    var dense_layer1 = layer.DenseLayer(f64, &allocator){
+    var dense_layer1 = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .input = undefined,
         .bias = undefined,
@@ -73,7 +75,7 @@ test "Import/Export of dense layer" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer1_ = layer.DenseLayer(f64, &allocator).create(&dense_layer1);
+    var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer1);
     try layer1_.init(3, 2);
     defer layer1_.deinit();
 
@@ -103,7 +105,7 @@ test "Import/Export of dense layer" {
     try std.testing.expect(layer_imported.get_n_inputs() == layer1_.get_n_inputs());
 
     //check layer
-    const denseImportedPtr: *layer.DenseLayer(f64, &allocator) = @alignCast(@ptrCast(layer_imported.layer_ptr));
+    const denseImportedPtr: *denselayer.DenseLayer(f64, &allocator) = @alignCast(@ptrCast(layer_imported.layer_ptr));
     //same weights len
     try std.testing.expect(denseImportedPtr.weights.data.len == dense_layer1.weights.data.len);
     //same weights
@@ -128,7 +130,7 @@ test "Import/Export of activation layer" {
     var file = try std.fs.cwd().createFile(file_path, .{});
     const writer = file.writer();
 
-    var activ_layer = layer.ActivationLayer(f64, &allocator){
+    var activ_layer = actlayer.ActivationLayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -136,7 +138,7 @@ test "Import/Export of activation layer" {
         .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
-    const layer1_ = layer.ActivationLayer(f64, &allocator).create(&activ_layer);
+    const layer1_ = actlayer.ActivationLayer(f64, &allocator).create(&activ_layer);
     // n_input = 5, n_neurons= 4
     try layer1_.init(5, 4);
 
@@ -159,7 +161,7 @@ test "Import/Export of activation layer" {
     std.debug.print("\n same type: {any}={any}", .{ layer_imported.layer_type, layer1_.layer_type });
     try std.testing.expect(layer_imported.layer_type == layer1_.layer_type);
 
-    const actImportedPtr: *layer.ActivationLayer(f64, &allocator) = @alignCast(@ptrCast(layer_imported.layer_ptr));
+    const actImportedPtr: *actlayer.ActivationLayer(f64, &allocator) = @alignCast(@ptrCast(layer_imported.layer_ptr));
     //same type activagtion
     std.debug.print("\n same type: {any}={any}", .{ actImportedPtr.activationFunction, activ_layer.activationFunction });
     try std.testing.expect(actImportedPtr.activationFunction == activ_layer.activationFunction);
@@ -207,7 +209,7 @@ test "Export of a complex model" {
     try model.init();
 
     //layer 1: 3 inputs, 2 neurons
-    var layer1 = layer.DenseLayer(f64, &allocator){
+    var layer1 = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -218,12 +220,12 @@ test "Export of a complex model" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer1_ = layer.DenseLayer(f64, &allocator).create(&layer1);
+    var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&layer1);
     try layer1_.init(3, 2);
     try model.addLayer(layer1_);
 
     //layer 1: 3 inputs, 2 neurons
-    var layer1Activ = layer.ActivationLayer(f64, &allocator){
+    var layer1Activ = actlayer.ActivationLayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -231,12 +233,12 @@ test "Export of a complex model" {
         .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
-    var layer1Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer1Activ);
+    var layer1Activ_ = actlayer.ActivationLayer(f64, &allocator).create(&layer1Activ);
     try layer1Activ_.init(2, 2);
     try model.addLayer(layer1Activ_);
 
     //layer 2: 2 inputs, 5 neurons
-    var layer2 = layer.DenseLayer(f64, &allocator){
+    var layer2 = denselayer.DenseLayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -247,11 +249,11 @@ test "Export of a complex model" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer2_ = layer.DenseLayer(f64, &allocator).create(&layer2);
+    var layer2_ = denselayer.DenseLayer(f64, &allocator).create(&layer2);
     try layer2_.init(2, 5);
     try model.addLayer(layer2_);
 
-    var layer2Activ = layer.ActivationLayer(f64, &allocator){
+    var layer2Activ = actlayer.ActivationLayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -259,7 +261,7 @@ test "Export of a complex model" {
         .activationFunction = ActivationType.Softmax,
         .allocator = &allocator,
     };
-    var layer2Activ_ = layer.ActivationLayer(f64, &allocator).create(&layer2Activ);
+    var layer2Activ_ = actlayer.ActivationLayer(f64, &allocator).create(&layer2Activ);
     try layer2Activ_.init(2, 5);
     try model.addLayer(layer2Activ_);
 

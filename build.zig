@@ -26,8 +26,8 @@ pub fn build(b: *std.Build) void {
     const optim_mod = b.createModule(.{ .root_source_file = b.path("src/Model/optim.zig") });
 
     // Create modules from the source files in the `src/Model/Layers` directory.
-    const dense_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/denseLayer.zig") });
-    const activationL_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/activationLayer.zig") });
+    const denseLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/denseLayer.zig") });
+    const activationLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/activationLayer.zig") });
 
     // Create modules from the source files in the `src/DataHandler/` directory.
     const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
@@ -61,24 +61,24 @@ pub fn build(b: *std.Build) void {
     layer_mod.addImport("architectures", architectures_mod);
     layer_mod.addImport("errorHandler", errorHandler_mod);
 
-    //************************************************DENSElAYER DEPENDENCIES************************************************
+    //************************************************DENSELAYER DEPENDENCIES************************************************
 
     // Add necessary imports for the denselayers module.
-    dense_mod.addImport("tensor", tensor_mod);
-    dense_mod.addImport("tensor_m", tensor_math_mod);
-    dense_mod.addImport("Layer", layer_mod);
-    dense_mod.addImport("architectures", architectures_mod);
-    dense_mod.addImport("errorHandler", errorHandler_mod);
+    denseLayer_mod.addImport("tensor", tensor_mod);
+    denseLayer_mod.addImport("tensor_m", tensor_math_mod);
+    denseLayer_mod.addImport("Layer", layer_mod);
+    denseLayer_mod.addImport("architectures", architectures_mod);
+    denseLayer_mod.addImport("errorHandler", errorHandler_mod);
 
-    //************************************************ACTIVATIONlAYER DEPENDENCIES************************************************
+    //************************************************ACTIVATIONLAYER DEPENDENCIES************************************************
 
     // Add necessary imports for the activationlayers module.
-    activationL_mod.addImport("tensor", tensor_mod);
-    activationL_mod.addImport("tensor_m", tensor_math_mod);
-    activationL_mod.addImport("Layer", layer_mod);
-    activationL_mod.addImport("architectures", architectures_mod);
-    activationL_mod.addImport("activation_function", activation_mod);
-    activationL_mod.addImport("errorHandler", errorHandler_mod);
+    activationLayer_mod.addImport("tensor", tensor_mod);
+    activationLayer_mod.addImport("tensor_m", tensor_math_mod);
+    activationLayer_mod.addImport("Layer", layer_mod);
+    activationLayer_mod.addImport("architectures", architectures_mod);
+    activationLayer_mod.addImport("activation_function", activation_mod);
+    activationLayer_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************DATA LOADER DEPENDENCIES************************************************
 
@@ -137,16 +137,18 @@ pub fn build(b: *std.Build) void {
     optim_mod.addImport("model", model_mod);
     optim_mod.addImport("layer", layer_mod);
     optim_mod.addImport("errorHandler", errorHandler_mod);
+    optim_mod.addImport("denselayer", denseLayer_mod);
 
     //************************************************IMPORT/EXPORT DEPENDENCIES************************************************
 
     // Add necessary imports for the import/export module.
     modelImportExport_mod.addImport("tensor", tensor_mod);
-    modelImportExport_mod.addImport("layers", layers_mod);
+    modelImportExport_mod.addImport("layer", layer_mod);
+    modelImportExport_mod.addImport("activationlayer", activationLayer_mod);
+    modelImportExport_mod.addImport("denselayer", denseLayer_mod);
     modelImportExport_mod.addImport("model", model_mod);
     modelImportExport_mod.addImport("errorHandler", errorHandler_mod);
     modelImportExport_mod.addImport("activation_function", activation_mod);
-    optim_mod.addImport("denselayer", dense_mod);
 
     //************************************************MAIN EXECUTABLE************************************************
 
@@ -170,8 +172,8 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("activation_function", activation_mod);
     exe.root_module.addImport("loss", loss_mod);
     exe.root_module.addImport("trainer", trainer_mod);
-    exe.root_module.addImport("denselayer", dense_mod);
-    exe.root_module.addImport("activationlayer", activationL_mod);
+    exe.root_module.addImport("denselayer", denseLayer_mod);
+    exe.root_module.addImport("activationlayer", activationLayer_mod);
 
     // Install the executable.
     b.installArtifact(exe);
@@ -213,8 +215,8 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("typeConverter", typeConv_mod);
     unit_tests.root_module.addImport("errorHandler", errorHandler_mod);
     unit_tests.root_module.addImport("model_import_export", modelImportExport_mod);
-    unit_tests.root_module.addImport("denselayer", dense_mod);
-    unit_tests.root_module.addImport("activationlayer", activationL_mod);
+    unit_tests.root_module.addImport("denselayer", denseLayer_mod);
+    unit_tests.root_module.addImport("activationlayer", activationLayer_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{
