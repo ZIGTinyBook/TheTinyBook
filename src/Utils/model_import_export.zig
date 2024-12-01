@@ -39,8 +39,6 @@ pub fn exportLayer(
     //TODO: handle Default layer and null layer
     if (layer.layer_type == LayerType.DenseLayer) {
         _ = try writer.write("Dense.....");
-        // const denseLayer: *Layer.DenseLayer(T, allocator) = @ptrCast(layer.layer_ptr); //cast to : *Layer.DenseLayer(T, allocator)
-        // try exportLayerDense(T, allocator, denseLayer.*, writer);
         const denseLayer: *Layer.DenseLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
         try exportLayerDense(T, allocator, denseLayer.*, writer);
     } else if (layer.layer_type == LayerType.ActivationLayer) {
