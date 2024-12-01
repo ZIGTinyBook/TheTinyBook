@@ -33,7 +33,7 @@ pub fn main() !void {
     //layer 1: 784 inputs, 64 neurons
     var layer1_ = denselayer(f64, &allocator).create(&layer1);
     try layer1_.init(784, 64);
-    try model.addLayer(&layer1_);
+    try model.addLayer(layer1_);
 
     var layer1Activ = activationlayer(f64, &allocator){
         .input = undefined,
@@ -45,7 +45,7 @@ pub fn main() !void {
     };
     var layer1_act = activationlayer(f64, &allocator).create(&layer1Activ);
     try layer1_act.init(64, 64);
-    try model.addLayer(&layer1_act);
+    try model.addLayer(layer1_act);
 
     var layer2 = denselayer(f64, &allocator){
         .weights = undefined,
@@ -61,7 +61,7 @@ pub fn main() !void {
     //layer 2: 64 inputs, 64 neurons
     var layer2_ = denselayer(f64, &allocator).create(&layer2);
     try layer2_.init(64, 64);
-    try model.addLayer(&layer2_);
+    try model.addLayer(layer2_);
 
     var layer2Activ = activationlayer(f64, &allocator){
         .input = undefined,
@@ -73,7 +73,7 @@ pub fn main() !void {
     };
     var layer2_act = activationlayer(f64, &allocator).create(&layer2Activ);
     try layer2_act.init(64, 64);
-    try model.addLayer(&layer2_act);
+    try model.addLayer(layer2_act);
 
     var layer3 = denselayer(f64, &allocator){
         .weights = undefined,
@@ -89,7 +89,7 @@ pub fn main() !void {
     //layer 3: 64 inputs, 10 neurons
     var layer3_ = denselayer(f64, &allocator).create(&layer3);
     try layer3_.init(64, 10);
-    try model.addLayer(&layer3_);
+    try model.addLayer(layer3_);
 
     var layer3Activ = activationlayer(f64, &allocator){
         .input = undefined,
@@ -101,9 +101,9 @@ pub fn main() !void {
     };
     var layer3_act = activationlayer(f64, &allocator).create(&layer3Activ);
     try layer3_act.init(10, 10);
-    try model.addLayer(&layer3_act);
+    try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 100){
+    var load = loader.DataLoader(f64, u8, u8, 10){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -122,7 +122,7 @@ pub fn main() !void {
         u8, //The data type for the input tensor (X)
         u8, //The data type for the output tensor (Y)
         &allocator, //Memory allocator for dynamic allocations during training
-        100, //The number of samples in each batch
+        10, //The number of samples in each batch
         784, //The number of features in each input sample
         &model, //A pointer to the model to be trained
         &load, //A pointer to the `DataLoader` that provides data batches

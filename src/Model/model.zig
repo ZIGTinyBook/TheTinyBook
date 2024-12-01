@@ -53,8 +53,8 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if reallocating the `layers` array fails.
-        pub fn addLayer(self: *@This(), new_layer: *layer.Layer(T, allocator)) !void {
-            try self.layers.append(new_layer.*);
+        pub fn addLayer(self: *@This(), new_layer: layer.Layer(T, allocator)) !void {
+            try self.layers.append(new_layer);
         }
 
         /// Executes the forward pass through the model with the specified input tensor.

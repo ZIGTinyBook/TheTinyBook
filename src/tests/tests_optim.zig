@@ -32,7 +32,7 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     };
     var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer);
     try layer1_.init(3, 2);
-    try model.addLayer(&layer1_);
+    try model.addLayer(layer1_);
 
     var inputArray: [2][3]f64 = [_][3]f64{
         [_]f64{ 1.0, 2.0, 3.0 },
