@@ -172,3 +172,125 @@ test "mean" {
 
     t1.deinit();
 }
+
+test "Convolution 3x3 Input with 2x2 Kernel" {
+    std.debug.print("\n     test: Convolution 3x3 Input with 2x2 Kernel", .{});
+
+    const allocator = std.testing.allocator;
+
+    var input_shape: [2]usize = [_]usize{ 3, 3 }; // 3x3 input tensor
+    var kernel_shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 kernel tensor
+
+    var inputArray: [3][3]f32 = [_][3]f32{
+        [_]f32{ 1.0, 2.0, 3.0 },
+        [_]f32{ 4.0, 5.0, 6.0 },
+        [_]f32{ 7.0, 8.0, 9.0 },
+    };
+
+    var kernelArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ -1.0, 0.0 },
+        [_]f32{ 0.0, 1.0 },
+    };
+
+    var input_tensor = try Tensor(f32).fromArray(&allocator, &inputArray, &input_shape);
+    var kernel_tensor = try Tensor(f32).fromArray(&allocator, &kernelArray, &kernel_shape);
+
+    var result_tensor = try TensMath.convolve_tensor(Architectures.CPU, f32, f32, &input_tensor, &kernel_tensor);
+
+    var expected_result: [2][2]f32 = [_][2]f32{
+        [_]f32{ 0.0, 0.0 },
+        [_]f32{ 0.0, 0.0 },
+    };
+
+    // (1*-1) + (2*0) + (4*0) + (5*1) = -1 + 0 + 0 + 5 = 4
+    expected_result[0][0] = 4.0;
+
+    // (2*-1) + (3*0) + (5*0) + (6*1) = -2 + 0 + 0 + 6 = 4
+    expected_result[0][1] = 4.0;
+
+    // (4*-1) + (5*0) + (7*0) + (8*1) = -4 + 0 + 0 + 8 = 4
+    expected_result[1][0] = 4.0;
+
+    // (5*-1) + (6*0) + (8*0) + (9*1) = -5 + 0 + 0 + 9 = 4
+    expected_result[1][1] = 4.0;
+
+    for (0..2) |i| {
+        for (0..2) |j| {
+            const idx = i * 2 + j;
+            try std.testing.expectEqual(expected_result[i][j], result_tensor.data[idx]);
+        }
+    }
+
+    result_tensor.deinit();
+    input_tensor.deinit();
+    kernel_tensor.deinit();
+}
+
+test "Convolution 5x5 Input with 3x3 Kernel" {
+    std.debug.print("\n     test: Convolution 5x5 Input with 3x3 Kernel", .{});
+
+    const allocator = std.testing.allocator;
+
+    var input_shape: [2]usize = [_]usize{ 5, 5 };
+    var kernel_shape: [2]usize = [_]usize{ 3, 3 };
+
+    var inputArray: [5][5]f32 = [_][5]f32{
+        [_]f32{ 1, 2, 3, 4, 5 },
+        [_]f32{ 6, 7, 8, 9, 10 },
+        [_]f32{ 11, 12, 13, 14, 15 },
+        [_]f32{ 16, 17, 18, 19, 20 },
+        [_]f32{ 21, 22, 23, 24, 25 },
+    };
+
+    var kernelArray: [3][3]f32 = [_][3]f32{
+        [_]f32{ 1, 0, -1 },
+        [_]f32{ 1, 0, -1 },
+        [_]f32{ 1, 0, -1 },
+    };
+
+    var input_tensor = try Tensor(f32).fromArray(&allocator, &inputArray, &input_shape);
+    var kernel_tensor = try Tensor(f32).fromArray(&allocator, &kernelArray, &kernel_shape);
+
+    var result_tensor = try TensMath.convolve_tensor(Architectures.CPU, f32, f32, &input_tensor, &kernel_tensor);
+
+    // Expected result is a 3x3 matrix
+    var expected_result: [3][3]f32 = [_][3]f32{
+        [_]f32{ 0.0, 0.0, 0.0 },
+        [_]f32{ 0.0, 0.0, 0.0 },
+        [_]f32{ 0.0, 0.0, 0.0 },
+    };
+
+    // CManually calculate the expected result
+    for (0..3) |i| {
+        for (0..3) |j| {
+            var sum: f32 = 0.0;
+            for (0..3) |m| {
+                for (0..3) |n| {
+                    const input_value = inputArray[i + m][j + n];
+                    const kernel_value = kernelArray[m][n];
+                    sum += input_value * kernel_value;
+                }
+            }
+            expected_result[i][j] = sum;
+        }
+    }
+
+    std.debug.print("\nCalcolo del risultato atteso:\n", .{});
+    for (0..3) |i| {
+        for (0..3) |j| {
+            std.debug.print("expected_result[{}][{}] = {}\n", .{ i, j, expected_result[i][j] });
+        }
+    }
+
+    for (0..3) |i| {
+        for (0..3) |j| {
+            const idx = i * 3 + j;
+            try std.testing.expectEqual(expected_result[i][j], result_tensor.data[idx]);
+        }
+    }
+
+    // Deinit tensors
+    result_tensor.deinit();
+    input_tensor.deinit();
+    kernel_tensor.deinit();
+}

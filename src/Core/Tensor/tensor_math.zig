@@ -287,3 +287,139 @@ fn multidim_multiplication(comptime inputType: anytype, comptime outputType: any
         }
     }
 }
+pub fn convolve_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, input: *Tensor(Tin), kernel: *Tensor(Tin)) !Tensor(Tout) {
+    return switch (arch) {
+        Architectures.CPU => return CPU_convolve_tensors(Tin, Tout, input, kernel),
+        Architectures.GPU => {
+            std.debug.print("{} è in fase di sviluppo\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
+        },
+        Architectures.SP32 => {
+            std.debug.print("{} è in fase di sviluppo\n", .{arch});
+            return ArchitectureError.UnderDevelopmentArchitecture;
+        },
+        else => return ArchitectureError.UnknownArchitecture,
+    };
+}
+
+/// Convolution fro CPU Architecture
+pub fn CPU_convolve_tensors(comptime inputType: anytype, comptime outputType: anytype, input: *Tensor(inputType), kernel: *Tensor(inputType)) !Tensor(outputType) {
+    // CHECKS:
+    const nDimInput = input.shape.len; // Dimension of the input tensor
+    const nDimKernel = kernel.shape.len; // Dimension of the kernel tensor
+
+    // Verify that the input and kernel tensors have the same number of dimensions
+    if (nDimInput != nDimKernel) return TensorMathError.InputTensorDifferentShape;
+
+    // Verify that the kernel is smaller than the input tensor in all dimensions
+    for (0..nDimInput) |i| {
+        if (kernel.shape[i] > input.shape[i]) return TensorMathError.InputTensorsWrongShape;
+    }
+
+    // Check that the output tensor is large enough to hold the result
+    if (@TypeOf(outputType) == @TypeOf(inputType)) {} else {
+        if (@bitSizeOf(outputType) <= 16) {
+            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
+        } else { // Non quantizzato
+            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
+        }
+    }
+
+    // Creation of the output tensor
+    const allocator = std.heap.page_allocator;
+    var out_shape = try allocator.alloc(usize, nDimInput);
+    for (0..nDimInput) |i| {
+        out_shape[i] = input.shape[i] - kernel.shape[i] + 1;
+    }
+
+    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
+    try out_tensor.set(0, 0);
+
+    const location = try allocator.alloc(usize, nDimInput);
+    for (location) |*loc| {
+        loc.* = 0;
+    }
+
+    // Multi-dimensional convolution
+    try multidim_convolution(
+        inputType,
+        outputType,
+        input,
+        kernel,
+        &out_tensor,
+        0,
+        location,
+    );
+
+    return out_tensor;
+}
+
+/// Function that performs the convolution of two tensors used in a recursive way to handle multidimensional tensors
+fn multidim_convolution(comptime inputType: anytype, comptime outputType: anytype, input: *Tensor(inputType), kernel: *Tensor(inputType), output: *Tensor(outputType), current_dim: usize, location: []usize) !void {
+    if (current_dim == input.shape.len) {
+        // Base Case: calculate in this location
+
+        var sum: outputType = 0;
+        const nDims = input.shape.len;
+
+        const kernel_indices = try std.heap.page_allocator.alloc(usize, nDims);
+        const input_indices = try std.heap.page_allocator.alloc(usize, nDims);
+
+        // SUm over the kernel
+        try sum_over_kernel(
+            inputType,
+            outputType,
+            input,
+            kernel,
+            &sum,
+            location,
+            kernel_indices,
+            input_indices,
+            0,
+        );
+
+        try output.set_at(location, sum);
+
+        std.heap.page_allocator.free(kernel_indices);
+        std.heap.page_allocator.free(input_indices);
+    } else {
+        for (0..output.shape[current_dim]) |i| {
+            location[current_dim] = i;
+            try multidim_convolution(
+                inputType,
+                outputType,
+                input,
+                kernel,
+                output,
+                current_dim + 1,
+                location,
+            );
+        }
+    }
+}
+
+/// Recursive function to sum over the kernel
+fn sum_over_kernel(comptime inputType: anytype, comptime outputType: anytype, input: *Tensor(inputType), kernel: *Tensor(inputType), sum: *outputType, input_location: []usize, kernel_indices: []usize, input_indices: []usize, current_dim: usize) !void {
+    if (current_dim == input.shape.len) {
+        const input_value = try input.get_at(input_indices);
+        const kernel_value = try kernel.get_at(kernel_indices);
+        sum.* += input_value * kernel_value;
+    } else {
+        for (0..kernel.shape[current_dim]) |i| {
+            kernel_indices[current_dim] = i;
+            input_indices[current_dim] = input_location[current_dim] + i;
+
+            try sum_over_kernel(
+                inputType,
+                outputType,
+                input,
+                kernel,
+                sum,
+                input_location,
+                kernel_indices,
+                input_indices,
+                current_dim + 1,
+            );
+        }
+    }
+}
