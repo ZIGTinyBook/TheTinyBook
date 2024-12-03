@@ -177,25 +177,6 @@ test "Import/Export of activation layer" {
     try std.fs.cwd().deleteFile(file_path);
 }
 
-// test "Import/Export of a tensor" {
-//     std.debug.print("\n     test: Import/Export of a tensor", .{});
-//     const allocator = std.testing.allocator;
-//     const file_path = "importExportTestFile.bin";
-//     //EXPORT
-//     var file = try std.fs.cwd().createFile(file_path, .{});
-//     const writer = file.writer();
-
-//     file.close();
-
-//     //IMPORT
-//     file = try std.fs.cwd().openFile(file_path, .{});
-//     const reader = file.reader();
-
-//     file.close();
-
-//     try std.fs.cwd().deleteFile(file_path);
-// }
-
 test "Export of a complex model" {
     std.debug.print("\n     test: Export of a 2D Tensor", .{});
 
