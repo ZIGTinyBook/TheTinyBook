@@ -294,3 +294,47 @@ test "Convolution 5x5 Input with 3x3 Kernel" {
     input_tensor.deinit();
     kernel_tensor.deinit();
 }
+test "Convolution with Bias 3x3 Input with 2x2 Kernel" {
+    std.debug.print("\nTest: Convolution with Bias 3x3 Input with 2x2 Kernel\n", .{});
+
+    const allocator = std.testing.allocator;
+
+    var input_shape: [2]usize = [_]usize{ 3, 3 }; // 3x3 input tensor
+    var kernel_shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 kernel tensor
+
+    var inputArray: [3][3]f32 = [_][3]f32{
+        [_]f32{ 1.0, 2.0, 3.0 },
+        [_]f32{ 4.0, 5.0, 6.0 },
+        [_]f32{ 7.0, 8.0, 9.0 },
+    };
+
+    var kernelArray: [2][2]f32 = [_][2]f32{
+        [_]f32{ -1.0, 0.0 },
+        [_]f32{ 0.0, 1.0 },
+    };
+
+    const bias: f32 = 1.0;
+
+    var input_tensor = try Tensor(f32).fromArray(&allocator, &inputArray, &input_shape);
+    defer input_tensor.deinit();
+
+    var kernel_tensor = try Tensor(f32).fromArray(&allocator, &kernelArray, &kernel_shape);
+    defer kernel_tensor.deinit();
+
+    var result_tensor = try TensMath.CPU_convolve_tensors_with_bias(f32, f32, &input_tensor, &kernel_tensor, bias);
+    defer result_tensor.deinit();
+
+    // Expected result after convolution and adding bias
+    const expected_result: [2][2]f32 = [_][2]f32{
+        [_]f32{ 5.0, 5.0 },
+        [_]f32{ 5.0, 5.0 },
+    };
+
+    // Verification of the results
+    for (0..2) |i| {
+        for (0..2) |j| {
+            const idx = i * 2 + j;
+            try std.testing.expectEqual(expected_result[i][j], result_tensor.data[idx]);
+        }
+    }
+}
