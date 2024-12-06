@@ -25,7 +25,7 @@ pub const LayerType = enum {
 /// UTILS
 /// Initialize a matrix of random values with a normal distribution
 pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
-    var rng = std.Random.Xoshiro256.init(12345);
+    var rng = std.Random.Xoshiro256.init();
 
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
@@ -36,6 +36,20 @@ pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     }
     return matrix;
 }
+
+pub fn he_init(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
+    var rng = std.Random.Xoshiro256.init();
+
+    const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
+    for (matrix) |*row| {
+        row.* = try std.heap.page_allocator.alloc(T, n_neurons);
+        for (row.*) |*value| {
+            value.* = rng.random().floatNorm(T) + 1; // fix me!! why +1 ??
+        }
+    }
+    return matrix;
+}
+
 ///Function used to initialize a matrix of zeros used for bias
 pub fn zeros(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);

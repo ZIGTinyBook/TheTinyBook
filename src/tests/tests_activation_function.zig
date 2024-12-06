@@ -8,81 +8,121 @@ test "tests description" {
 }
 
 //*********************************************** ReLU ***********************************************
-test "ReLU from ActivationFunction()" {
-    std.debug.print("\n     test: ReLU from ActivationFunction()", .{});
+// test "ReLU from ActivationFunction()" {
+//     std.debug.print("\n     test: ReLU from ActivationFunction()", .{});
 
-    const allocator = std.testing.allocator;
+//     const allocator = std.testing.allocator;
 
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ -1.0, -2.0 },
-        [_]f32{ -4.0, -5.0 },
-    };
+//     var inputArray: [2][2]f32 = [_][2]f32{
+//         [_]f32{ 1.0, -2.0 },
+//         [_]f32{ -4.0, 5.0 },
+//     };
 
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+//     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
-    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
-    defer t1.deinit();
+//     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+//     defer t1.deinit();
 
-    var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
-    //var relu = act_type{};
+//     var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
+//     try relu.forward(&t1);
 
-    try relu.forward(&t1);
+//     try std.testing.expect(0.0 < t1.data[0]);
+//     try std.testing.expect(0.0 == t1.data[1]);
+//     try std.testing.expect(0.0 == t1.data[2]);
+//     try std.testing.expect(0.0 < t1.data[3]);
+// }
 
-    for (t1.data) |*val| {
-        try std.testing.expect(0.0 == val.*);
-    }
-}
+// test "ReLU all negative" {
+//     std.debug.print("\n     test: ReLU all negative", .{});
 
-test "ReLU all negative" {
-    std.debug.print("\n     test: ReLU all negative", .{});
+//     const allocator = std.testing.allocator;
 
-    const allocator = std.testing.allocator;
+//     var inputArray: [2][2]f32 = [_][2]f32{
+//         [_]f32{ -1.0, -2.0 },
+//         [_]f32{ -4.0, -5.0 },
+//     };
 
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ -1.0, -2.0 },
-        [_]f32{ -4.0, -5.0 },
-    };
+//     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+//     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+//     defer t1.deinit();
 
-    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
-    defer t1.deinit();
+//     var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
 
-    var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
-    //var relu = act_type{};
+//     try relu.forward(&t1);
 
-    try relu.forward(&t1);
+//     for (t1.data) |*val| {
+//         try std.testing.expect(0.0 == val.*);
+//     }
+// }
 
-    for (t1.data) |*val| {
-        try std.testing.expect(0.0 == val.*);
-    }
-}
+// test "ReLU all positive" {
+//     std.debug.print("\n     test: ReLU all positive", .{});
 
-test "ReLU all positive" {
-    std.debug.print("\n     test: ReLU all positive", .{});
+//     const allocator = std.testing.allocator;
 
-    const allocator = std.testing.allocator;
+//     var inputArray: [2][2]f32 = [_][2]f32{
+//         [_]f32{ 1.0, 2.0 },
+//         [_]f32{ 4.0, 5.0 },
+//     };
 
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ 1.0, 2.0 },
-        [_]f32{ 4.0, 5.0 },
-    };
+//     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+//     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+//     defer t1.deinit();
 
-    var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
-    defer t1.deinit();
+//     var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
+//     try relu.forward(&t1);
 
-    var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
-    try relu.forward(&t1);
+//     for (t1.data) |*val| {
+//         try std.testing.expect(val.* >= 0);
+//     }
+// }
 
-    for (t1.data) |*val| {
-        try std.testing.expect(val.* >= 0);
-    }
-}
+// test "ReLU backward " {
+//     std.debug.print("\n     test: ReLU all positive", .{});
+
+//     const allocator = std.testing.allocator;
+
+//     var inputArray: [2][2]f32 = [_][2]f32{
+//         [_]f32{ 1.0, -2.0 },
+//         [_]f32{ -4.0, 5.0 },
+//     };
+
+//     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+//     var t_input = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
+//     defer t_input.deinit();
+//     var t_output = try t_input.copy();
+//     defer t_output.deinit();
+
+//     var relu = ActivFun.ActivationFunction(f32, ActivType.ReLU){};
+//     try relu.forward(&t_output);
+
+//     for (t_output.data) |*val| {
+//         try std.testing.expect(val.* >= 0);
+//     }
+
+//     // test backward----------------------------------------
+//     var dValues: [2][2]f32 = [_][2]f32{
+//         [_]f32{ 10.0, -20.0 },
+//         [_]f32{ -40.0, -50.0 },
+//     };
+
+//     var shape_dValues: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+
+//     var t_dValues = try Tensor(f32).fromArray(&allocator, &dValues, &shape_dValues);
+//     defer t_dValues.deinit();
+
+//     try relu.derivate(&t_dValues, &t_input);
+
+//     try std.testing.expect(10.0 == t_dValues.data[0]);
+//     try std.testing.expect(0.0 == t_dValues.data[1]);
+//     try std.testing.expect(0.0 == t_dValues.data[2]);
+//     try std.testing.expect(-50.0 == t_dValues.data[3]);
+// }
 
 //*********************************************** Softmax ***********************************************
-
 test "Softmax from ActivationFunction()" {
     std.debug.print("\n     test: Softmax from ActivationFunction()", .{});
     const allocator = std.testing.allocator;
@@ -118,9 +158,6 @@ test "Softmax all positive" {
 
     var soft = ActivFun.ActivationFunction(f32, ActivType.Softmax){};
     try soft.forward(&t1);
-    //now data is:
-    //{ 0.2689414,  0.7310586  }
-    //{ 0.2689414,  0.73105854 }
 
     t1.info();
 

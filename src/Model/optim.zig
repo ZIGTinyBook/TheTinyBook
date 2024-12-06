@@ -46,7 +46,7 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64, allocator: *con
                     const weight = &myDense.weights;
                     const bias = &myDense.bias;
 
-                    std.debug.print("\n ------ step {}", .{counter});
+                    //std.debug.print("\n ------ step {}", .{counter});
 
                     try self.update_tensor(weight, weight_gradients);
                     try self.update_tensor(bias, bias_gradients);

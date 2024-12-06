@@ -99,7 +99,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             if (self.activationFunction == ActivationType.ReLU) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.ReLU);
                 var activation = act_type{};
-                try activation.derivate(dValues, &self.output);
+                try activation.derivate(dValues, &self.input);
             } else if (self.activationFunction == ActivationType.Softmax) {
                 const act_type = ActivLib.ActivationFunction(T, ActivationType.Softmax);
                 var activation = act_type{};

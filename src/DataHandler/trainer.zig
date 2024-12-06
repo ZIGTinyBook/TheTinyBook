@@ -137,7 +137,7 @@ pub fn TrainDataLoader(
 
             try optimizer.step(model);
 
-            std.debug.print("Training - Epoch: {}, Step: {}\n", .{ i + 1, step + 1 });
+            std.debug.print("Training - Epoch: {}, Step: {}, Loss: {}, Accuracy: {} \n", .{ i + 1, step + 1, LossMeanRecord[i], AccuracyRecord[i] });
         }
 
         load.reset();

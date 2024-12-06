@@ -30,6 +30,7 @@ pub fn None() type {}
 pub fn ReLU(comptime T: anytype) type {
     return struct {
         const Self = @This();
+
         //it directly modify the input tensor
         //threshold is usually set to zero
         pub fn forward(self: *Self, input: *Tensor(T)) !void {
@@ -45,16 +46,16 @@ pub fn ReLU(comptime T: anytype) type {
             }
         }
 
-        pub fn derivate(self: *Self, gradient: *Tensor(T), act_forward_out: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, gradient: *Tensor(T), act_relu_input: *Tensor(T)) !void {
             _ = self;
             //checks
-            if (gradient.size <= 0 or act_forward_out.size <= 0) return TensorError.ZeroSizeTensor;
-            if (gradient.size != act_forward_out.size) return TensorMathError.InputTensorDifferentSize;
+            if (gradient.size <= 0 or act_relu_input.size <= 0) return TensorError.ZeroSizeTensor;
+            if (gradient.size != act_relu_input.size) return TensorMathError.InputTensorDifferentSize;
 
             //apply ReLU
             //OSS: can be improved, see how did I parallelized CPU Tensor Sum
             for (0..(gradient.size - 1)) |i| {
-                if (act_forward_out.data[i] <= 0) {
+                if (act_relu_input.data[i] <= 0) {
                     gradient.data[i] = 0;
                 }
             }
@@ -130,10 +131,8 @@ pub fn Softmax(comptime T: anytype) type {
                 sum_of_exp = 0.0;
                 for (0..cols) |j| {
                     val = input.data[i * cols + j];
-                    //std.debug.print("\nval: {}", .{val});
                     val = @exp(val);
                     input.data[i * cols + j] = val;
-                    //std.debug.print(" exp: {}", .{val});
                     sum_of_exp += val;
                 }
                 for (0..cols) |j| {
@@ -194,7 +193,7 @@ pub fn Softmax(comptime T: anytype) type {
             }
         }
 
-        pub fn derivate(self: *Self, dL_dX: *Tensor(T), act_forward_out: *Tensor(T)) !void {
+        pub fn derivate(self: *Self, dL_dX: *Tensor(T), softmax_output: *Tensor(T)) !void {
             _ = self;
             // softmax_output: The output matrix from the Softmax forward pass.
             // dL_dS: The gradient of the loss with respect to the Softmax output (this is given to us during backpropagation).
@@ -217,11 +216,11 @@ pub fn Softmax(comptime T: anytype) type {
                     var dL_dX_ij: T = 0;
 
                     // Calculate the gradient for input element x_ij
-                    const softmax_j = act_forward_out.data[i * cols + j];
+                    const softmax_j = softmax_output.data[i * cols + j];
 
                     // Sum over all elements in the row to compute dL/dX_ij
                     for (0..cols) |k| {
-                        const softmax_k = act_forward_out.data[i * cols + k];
+                        const softmax_k = softmax_output.data[i * cols + k];
                         const dL_dS_k = dL_dS.data[i * cols + k];
 
                         if (j == k) {
