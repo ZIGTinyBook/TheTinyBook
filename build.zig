@@ -60,6 +60,7 @@ pub fn build(b: *std.Build) void {
     layer_mod.addImport("tensor_m", tensor_math_mod);
     layer_mod.addImport("architectures", architectures_mod);
     layer_mod.addImport("errorHandler", errorHandler_mod);
+    layer_mod.addImport("dataProcessor", dataProcessor_mod);
 
     //************************************************DENSELAYER DEPENDENCIES************************************************
 

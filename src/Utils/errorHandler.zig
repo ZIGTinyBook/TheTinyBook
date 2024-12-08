@@ -11,6 +11,8 @@ pub const LossError = error{
 pub const LayerError = error{
     NullLayer,
     InvalidParameters,
+    Only2DSupported,
+    FeatureNotSupported,
 };
 
 /// Type errors

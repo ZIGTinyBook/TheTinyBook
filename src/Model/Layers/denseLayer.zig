@@ -62,8 +62,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.allocator = alloc;
 
             //std.debug.print("Generating random weights...\n", .{});
-            const weight_matrix = try Layer.randn(T, n_inputs, n_neurons);
-            const bias_matrix = try Layer.randn(T, 1, n_neurons);
+            const weight_matrix = try Layer.he_init(T, n_inputs, n_neurons, alloc); //randn(T, 1, n_neurons);
+            const bias_matrix = try Layer.he_init(T, 1, n_neurons, alloc); //randn(T, 1, n_neurons);
 
             //initializing weights and biases--------------------------------------------
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);

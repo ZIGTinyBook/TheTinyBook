@@ -11,8 +11,11 @@ const TensorError = @import("tensor_m").TensorError;
 const ArchitectureError = @import("tensor_m").ArchitectureError;
 const ActivLib = @import("activation_function");
 const ActivationType = @import("activation_function").ActivationType;
-//import error libraries
+
+//import error libraries and utils
 const LayerError = @import("errorHandler").LayerError;
+const RndGen = std.rand.DefaultPrng;
+const normalizer = @import("dataProcessor");
 
 pub const LayerType = enum {
     DenseLayer,
@@ -37,14 +40,15 @@ pub fn randn(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
     return matrix;
 }
 
-pub fn he_init(comptime T: type, n_inputs: usize, n_neurons: usize) ![][]T {
-    var rng = std.Random.Xoshiro256.init();
-
-    const matrix = try std.heap.page_allocator.alloc([]T, n_inputs);
+pub fn he_init(comptime T: type, n_inputs: usize, n_neurons: usize, allocator: *const std.mem.Allocator) ![][]T {
+    var rnd = RndGen.init(0);
+    const cast_n_inputs: T = @floatFromInt(n_inputs);
+    const range = std.math.sqrt(2.0 / cast_n_inputs);
+    const matrix = try allocator.alloc([]T, n_inputs);
     for (matrix) |*row| {
-        row.* = try std.heap.page_allocator.alloc(T, n_neurons);
+        row.* = try allocator.alloc(T, n_neurons);
         for (row.*) |*value| {
-            value.* = rng.random().floatNorm(T) + 1; // fix me!! why +1 ??
+            value.* = range * rnd.random().float(T);
         }
     }
     return matrix;
