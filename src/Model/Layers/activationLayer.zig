@@ -25,6 +25,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
+                    .convInit = convInit,
                     .deinit = deinit,
                     .forward = forward,
                     .backward = backward,
@@ -48,6 +49,14 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
             self.allocator = alloc;
+        }
+
+        pub fn convInit(ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) !void {
+            _ = ctx;
+            _ = input_channels;
+            _ = output_channels;
+            _ = kernel_size;
+            return LayerError.InvalidLayerType;
         }
 
         ///Deallocate the layer

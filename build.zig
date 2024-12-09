@@ -28,6 +28,7 @@ pub fn build(b: *std.Build) void {
     // Create modules from the source files in the `src/Model/Layers` directory.
     const denseLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/denseLayer.zig") });
     const activationLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/activationLayer.zig") });
+    const convLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/convLayer.zig") });
 
     // Create modules from the source files in the `src/DataHandler/` directory.
     const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
@@ -69,6 +70,13 @@ pub fn build(b: *std.Build) void {
     denseLayer_mod.addImport("Layer", layer_mod);
     denseLayer_mod.addImport("architectures", architectures_mod);
     denseLayer_mod.addImport("errorHandler", errorHandler_mod);
+
+    //************************************************CONVLAYER DEPENDENCIES************************************************
+    convLayer_mod.addImport("Tensor", tensor_mod);
+    convLayer_mod.addImport("tensor_m", tensor_math_mod);
+    convLayer_mod.addImport("Layer", layer_mod);
+    convLayer_mod.addImport("architectures", architectures_mod);
+    convLayer_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************ACTIVATIONLAYER DEPENDENCIES************************************************
 
@@ -115,6 +123,7 @@ pub fn build(b: *std.Build) void {
     tensor_math_mod.addImport("typeC", typeConv_mod);
     tensor_math_mod.addImport("architectures", architectures_mod);
     tensor_math_mod.addImport("errorHandler", errorHandler_mod);
+    tensor_math_mod.addImport("Layer", layer_mod);
 
     //************************************************ACTIVATION DEPENDENCIES************************************************
 
@@ -217,6 +226,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("model_import_export", modelImportExport_mod);
     unit_tests.root_module.addImport("denselayer", denseLayer_mod);
     unit_tests.root_module.addImport("activationlayer", activationLayer_mod);
+    unit_tests.root_module.addImport("convLayer", convLayer_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{

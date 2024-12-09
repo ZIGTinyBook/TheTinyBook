@@ -11,6 +11,7 @@ pub const LossError = error{
 pub const LayerError = error{
     NullLayer,
     InvalidParameters,
+    InvalidLayerType,
 };
 
 /// Type errors
@@ -47,6 +48,10 @@ pub const TensorError = error{
     NotFiniteValue,
     NegativeInfValue,
     PositiveInfValue,
+    InvalidSliceIndices,
+    InvalidSliceShape,
+    SliceOutOfBounds,
+    InvalidIndices,
 };
 
 /// A union type to represent any of the errors

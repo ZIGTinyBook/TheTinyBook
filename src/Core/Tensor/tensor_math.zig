@@ -7,6 +7,7 @@ const std = @import("std");
 const Tensor = @import("tensor").Tensor; // Import Tensor type
 const Architectures = @import("architectures").Architectures; //Import Architectures type
 const Converter = @import("typeC");
+const Layer = @import("Layer");
 //import error libraries
 const TensorMathError = @import("errorHandler").TensorMathError;
 const ArchitectureError = @import("errorHandler").ArchitectureError;
@@ -287,6 +288,7 @@ fn multidim_multiplication(comptime inputType: anytype, comptime outputType: any
         }
     }
 }
+
 pub fn convolve_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, input: *Tensor(Tin), kernel: *Tensor(Tin)) !Tensor(Tout) {
     return switch (arch) {
         Architectures.CPU => return CPU_convolve_tensors(Tin, Tout, input, kernel),
@@ -398,17 +400,64 @@ fn multidim_convolution(comptime inputType: anytype, comptime outputType: anytyp
     }
 }
 
+fn anyOutOfBounds(indices: []usize, shape: []usize) bool {
+    for (0..indices.len) |i| {
+        if (indices[i] >= shape[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 /// Recursive function to sum over the kernel
-fn sum_over_kernel(comptime inputType: anytype, comptime outputType: anytype, input: *Tensor(inputType), kernel: *Tensor(inputType), sum: *outputType, input_location: []usize, kernel_indices: []usize, input_indices: []usize, current_dim: usize) !void {
-    if (current_dim == input.shape.len) {
+fn sum_over_kernel(
+    comptime inputType: anytype,
+    comptime outputType: anytype,
+    input: *Tensor(inputType),
+    kernel: *Tensor(inputType),
+    sum: *outputType,
+    input_location: []usize,
+    kernel_indices: []usize,
+    input_indices: []usize,
+    current_dim: usize,
+) !void {
+    if (current_dim == kernel.shape.len) {
+        // Final indices:
+        std.debug.print("sum_over_kernel: Final indices - input_indices: {d}, kernel_indices: {d}\n", .{ input_indices, kernel_indices });
+
+        if (anyOutOfBounds(input_indices, input.shape)) {
+            std.debug.print("Error: input_indices out of bounds: {d}, shape: {d}\n", .{ input_indices, input.shape });
+            return error.IndexOutOfBounds;
+        }
+        if (anyOutOfBounds(kernel_indices, kernel.shape)) {
+            std.debug.print("Error: kernel_indices out of bounds: {d}, shape: {d}\n", .{ kernel_indices, kernel.shape });
+            return error.IndexOutOfBounds;
+        }
+
         const input_value = try input.get_at(input_indices);
         const kernel_value = try kernel.get_at(kernel_indices);
-        sum.* += input_value * kernel_value;
-    } else {
-        for (0..kernel.shape[current_dim]) |i| {
-            kernel_indices[current_dim] = i;
-            input_indices[current_dim] = input_location[current_dim] + i;
 
+        std.debug.print("Input value: {}, Kernel value: {}\n", .{ input_value, kernel_value });
+
+        sum.* += input_value * kernel_value;
+        std.debug.print("Updated sum: {}\n", .{sum.*});
+    } else {
+        // Scorri lungo la dimensione corrente del kernel
+        for (0..kernel.shape[current_dim]) |k| {
+            kernel_indices[current_dim] = k;
+
+            // Calcola l'indice dell'input corrispondente
+            const input_idx_dim = if (current_dim >= 2) current_dim else current_dim + 2;
+            if (input_idx_dim < input_indices.len) {
+                input_indices[input_idx_dim] = input_location[input_idx_dim] + k;
+
+                std.debug.print(
+                    "sum_over_kernel: Updating indices - kernel_indices: {d}, input_indices: {d}\n",
+                    .{ kernel_indices, input_indices },
+                );
+            }
+
+            // Ricorsione per le dimensioni successive
             try sum_over_kernel(
                 inputType,
                 outputType,
@@ -424,116 +473,74 @@ fn sum_over_kernel(comptime inputType: anytype, comptime outputType: anytype, in
     }
 }
 
-pub fn CPU_convolve_tensors_with_bias(
-    comptime inputType: anytype,
-    comptime outputType: anytype,
-    input: *Tensor(inputType),
-    kernel: *Tensor(inputType),
-    bias: outputType,
-) !Tensor(outputType) {
-    // CHECKS:
-    const nDimInput = input.shape.len; // Dimension of the input tensor
-    const nDimKernel = kernel.shape.len; // Dimension of the kernel tensor
-
-    // Verify that the input and kernel tensors have the same number of dimensions
-    if (nDimInput != nDimKernel) return TensorMathError.InputTensorDifferentShape;
-
-    // Verify that the kernel is smaller than the input tensor in all dimensions
-    for (0..nDimInput) |i| {
-        if (kernel.shape[i] > input.shape[i]) return TensorMathError.InputTensorsWrongShape;
-    }
-
-    // Check that the output tensor is large enough to hold the result
-    if (@TypeOf(outputType) == @TypeOf(inputType)) {} else {
-        if (@bitSizeOf(outputType) <= 16) {
-            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
-        } else { // Non-quantized
-            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
-        }
-    }
-
-    // Creation of the output tensor
-    const allocator = std.heap.page_allocator;
-    var out_shape = try allocator.alloc(usize, nDimInput);
-    defer allocator.free(out_shape);
-
-    for (0..nDimInput) |i| {
-        out_shape[i] = input.shape[i] - kernel.shape[i] + 1;
-    }
-
-    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
-    // Do not defer out_tensor.deinit() here; the caller will deinit it
-
-    try out_tensor.set(0, 0);
-
-    const location = try allocator.alloc(usize, nDimInput);
-    defer allocator.free(location);
-
-    for (location) |*loc| {
-        loc.* = 0;
-    }
-
-    // Multi-dimensional convolution with bias
-    try multidim_convolution_with_bias(
-        inputType,
-        outputType,
-        input,
-        kernel,
-        &out_tensor,
-        bias,
-        0,
-        location,
-    );
-
-    // Return the output tensor without deinitializing it
-    return out_tensor;
-}
-
-/// Function that performs the convolution of two tensors with bias, used recursively to handle multidimensional tensors
-/// Function that performs the convolution of two tensors with bias, used recursively to handle multidimensional tensors
+/// Multidim Conv
 fn multidim_convolution_with_bias(
     comptime inputType: anytype,
     comptime outputType: anytype,
     input: *Tensor(inputType),
     kernel: *Tensor(inputType),
     output: *Tensor(outputType),
-    bias: outputType,
+    bias: *Tensor(outputType),
     current_dim: usize,
     location: []usize,
 ) !void {
-    if (current_dim == input.shape.len) {
-        // Base Case: calculate in this location
-
+    if (current_dim == output.shape.len) {
         var sum: outputType = 0;
-        const nDims = input.shape.len;
 
-        const kernel_indices = try std.heap.page_allocator.alloc(usize, nDims);
+        const kernel_indices = try std.heap.page_allocator.alloc(usize, kernel.shape.len);
         defer std.heap.page_allocator.free(kernel_indices);
-        const input_indices = try std.heap.page_allocator.alloc(usize, nDims);
+        const input_indices = try std.heap.page_allocator.alloc(usize, input.shape.len);
         defer std.heap.page_allocator.free(input_indices);
 
-        // Sum over the kernel
-        try sum_over_kernel(
-            inputType,
-            outputType,
-            input,
-            kernel,
-            &sum,
-            location,
-            kernel_indices,
-            input_indices,
-            0,
-        );
+        // Inizializza gli indici
+        for (0..kernel_indices.len) |i| kernel_indices[i] = 0;
+        for (0..input_indices.len) |i| input_indices[i] = 0;
 
-        sum += bias; // Add the bias after summing over the kernel
+        // Imposta il batch
+        input_indices[0] = location[0]; // Batch
 
+        std.debug.print("multidim_convolution_with_bias: location: {d}, sum: {}\n", .{ location, sum });
+
+        // Itera su tutti i canali
+        for (0..kernel.shape[1]) |channel| {
+            input_indices[1] = channel; // Canale di input
+            kernel_indices[1] = channel; // Canale del kernel
+
+            try sum_over_kernel(
+                inputType,
+                outputType,
+                input,
+                kernel,
+                &sum,
+                location,
+                kernel_indices,
+                input_indices,
+                2, // Partendo dalle dimensioni spaziali
+            );
+        }
+
+        // Recupera il bias dal tensore bias
+        const bias_index = [_]usize{ location[1], 0 }; // Location[1] corrisponde al filtro
+        bias.info();
+        const bias_value = try bias.get_at(&bias_index);
+
+        sum += bias_value; // Aggiungi il bias
+        std.debug.print("multidim_convolution_with_bias: Adding bias. New sum: {}\n", .{sum});
+
+        // Imposta il risultato nell'output
         try output.set_at(location, sum);
-
-        // Memory is freed automatically by defer statements
-
     } else {
+        // Itera lungo la dimensione corrente dell'output
         for (0..output.shape[current_dim]) |i| {
             location[current_dim] = i;
+
+            if (location[current_dim] >= output.shape[current_dim]) {
+                std.debug.print("Error: location out of bounds: {d}, shape: {d}\n", .{ location, output.shape });
+                return error.IndexOutOfBounds;
+            }
+
+            std.debug.print("multidim_convolution_with_bias: Recursing at dimension {d}, index {d}\n", .{ current_dim, i });
+
             try multidim_convolution_with_bias(
                 inputType,
                 outputType,
@@ -546,4 +553,298 @@ fn multidim_convolution_with_bias(
             );
         }
     }
+}
+
+/// Convoluzione tensor with bias
+pub fn CPU_convolve_tensors_with_bias(
+    comptime inputType: anytype,
+    comptime outputType: anytype,
+    input: *Tensor(inputType),
+    kernel: *Tensor(inputType),
+    bias: *Tensor(outputType),
+) !Tensor(outputType) {
+    std.debug.print("CPU_convolve_tensors_with_bias: input shape: {d}, kernel shape: {d}\n", .{ input.shape, kernel.shape });
+
+    const nDimInput = input.shape.len;
+    const nDimKernel = kernel.shape.len;
+
+    if (nDimInput != 4 or nDimKernel != 4) {
+        std.debug.print("Error: Tensors must have 4 dimensions\n", .{});
+        return TensorMathError.InputTensorDifferentShape;
+    }
+
+    if (input.shape[1] != kernel.shape[1]) {
+        std.debug.print("Error: Mismatched channels. Input: {d}, Kernel: {d}\n", .{ input.shape[1], kernel.shape[1] });
+        return TensorMathError.InputTensorsWrongShape;
+    }
+
+    for (2..4) |i| {
+        if (kernel.shape[i] > input.shape[i]) {
+            std.debug.print("Error: Kernel larger than input in dimension {d}\n", .{i});
+            return TensorMathError.InputTensorsWrongShape;
+        }
+    }
+
+    var out_shape: [4]usize = [_]usize{
+        input.shape[0], // Batch
+        kernel.shape[0], // n filters
+        input.shape[2] - kernel.shape[2] + 1, // Height
+        input.shape[3] - kernel.shape[3] + 1, // Width
+    };
+
+    std.debug.print("Output tensor shape: {d}\n", .{out_shape});
+
+    var out_tensor = try Tensor(outputType).fromShape(&std.heap.page_allocator, &out_shape);
+    try out_tensor.set(0, 0);
+
+    var location: [4]usize = [_]usize{ 0, 0, 0, 0 };
+
+    try multidim_convolution_with_bias(
+        inputType,
+        outputType,
+        input,
+        kernel,
+        &out_tensor,
+        bias,
+        0,
+        &location,
+    );
+
+    std.debug.print("Result tensor data: {d}\n", .{out_tensor.data});
+    return out_tensor;
+}
+
+pub fn convolution_backward_biases(comptime T: type, dValues: *Tensor(T)) !Tensor(T) {
+    // Compute gradients with respect to biases by summing over batch, height, and width dimensions
+    // Assumes dValues shape: [batch_size, out_channels, output_height, output_width]
+
+    const allocator = std.heap.page_allocator;
+
+    // Check that dValues has at least 4 dimensions
+    if (dValues.shape.len < 4) return TensorMathError.InputTensorsWrongShape;
+
+    const out_channels = dValues.shape[1];
+    var bias_gradients_shape = [_]usize{out_channels};
+
+    // Allocate the bias_gradients tensor
+    var bias_gradients = try Tensor(T).fromShape(&allocator, &bias_gradients_shape);
+
+    // Initialize bias_gradients to zero
+    try bias_gradients.set(0, 0);
+
+    const batch_size = dValues.shape[0];
+    const output_height = dValues.shape[2];
+    const output_width = dValues.shape[3];
+
+    // Sum over batch_size, output_height, output_width dimensions
+    for (0..out_channels) |oc| {
+        var sum: T = 0;
+        for (0..batch_size) |b| {
+            for (0..output_height) |h| {
+                for (0..output_width) |w| {
+                    const index = [_]usize{ b, oc, h, w };
+                    const val = try dValues.get_at(&index);
+                    sum += val;
+                }
+            }
+        }
+        // Set the sum in bias_gradients
+        try bias_gradients.set_at(&[_]usize{oc}, sum);
+    }
+
+    return bias_gradients;
+}
+
+pub fn convolution_backward_weights(comptime T: type, input: *Tensor(T), dValues: *Tensor(T)) !Tensor(T) {
+    // Compute gradients with respect to weights
+    // Input shape: [batch_size, in_channels, input_height, input_width]
+    // dValues shape: [batch_size, out_channels, output_height, output_width]
+    // Weights shape: [out_channels, in_channels, kernel_height, kernel_width]
+
+    const allocator = std.heap.page_allocator;
+
+    const batch_size = input.shape[0];
+    const in_channels = input.shape[1];
+    const input_height = input.shape[2];
+    const input_width = input.shape[3];
+
+    const out_batch_size = dValues.shape[0];
+    const out_channels = dValues.shape[1];
+    const output_height = dValues.shape[2];
+    const output_width = dValues.shape[3];
+
+    std.debug.print("\n batch_size: {} in_channels: {} input_height: {} input_width: {} out_batch_size: {} out_channels: {} output_height: {} output_width: {}\n", .{ batch_size, in_channels, input_height, input_width, out_batch_size, out_channels, output_height, output_width });
+
+    // Check for matching batch sizes
+    if (batch_size != out_batch_size) return TensorMathError.InputTensorsWrongShape;
+
+    // Calculate kernel dimensions
+    const kernel_height = input_height - output_height + 1;
+    const kernel_width = input_width - output_width + 1;
+
+    var w_gradients_shape = [_]usize{ out_channels, in_channels, kernel_height, kernel_width };
+    var w_gradients = try Tensor(T).fromShape(&allocator, &w_gradients_shape);
+
+    // Initialize w_gradients to zero
+    try w_gradients.set(0, 0);
+
+    // Compute gradients
+    for (0..out_channels) |oc| {
+        for (0..in_channels) |ic| {
+            for (0..kernel_height) |kh| {
+                for (0..kernel_width) |kw| {
+                    var sum: T = 0;
+                    for (0..batch_size) |b| {
+                        for (0..output_height) |oh| {
+                            for (0..output_width) |ow| {
+                                const input_h = oh + kh;
+                                const input_w = ow + kw;
+
+                                const input_index = [_]usize{ b, ic, input_h, input_w };
+                                const dValue_index = [_]usize{ b, oc, oh, ow };
+
+                                const input_val = try input.get_at(&input_index);
+                                const dValue = try dValues.get_at(&dValue_index);
+
+                                sum += input_val * dValue;
+                            }
+                        }
+                    }
+                    // Set the gradient
+                    const w_grad_index = [_]usize{ oc, ic, kh, kw };
+                    try w_gradients.set_at(&w_grad_index, sum);
+                }
+            }
+        }
+    }
+
+    return w_gradients;
+}
+
+pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights: *Tensor(T)) !Tensor(T) {
+    // Compute gradients with respect to the input
+    // dValues shape: [batch_size, out_channels, output_height, output_width]
+    // Weights shape: [out_channels, in_channels, kernel_height, kernel_width]
+    // Output gradients shape: [batch_size, in_channels, input_height, input_width]
+
+    const allocator = std.heap.page_allocator;
+
+    const batch_size = dValues.shape[0];
+    const out_channels = dValues.shape[1];
+    const output_height = dValues.shape[2];
+    const output_width = dValues.shape[3];
+
+    const weight_out_channels = weights.shape[0];
+    const in_channels = weights.shape[1];
+    const kernel_height = weights.shape[2];
+    const kernel_width = weights.shape[3];
+
+    if (out_channels != weight_out_channels) {
+        std.debug.print("Error: Mismatched output channels: dValues {d}, weights {d}\n", .{ out_channels, weight_out_channels });
+        return TensorMathError.InputTensorsWrongShape;
+    }
+
+    const input_height = output_height + kernel_height - 1;
+    const input_width = output_width + kernel_width - 1;
+
+    var input_gradients_shape = [_]usize{ batch_size, in_channels, input_height, input_width };
+    var input_gradients = try Tensor(T).fromShape(&allocator, &input_gradients_shape);
+
+    // Initialize input_gradients to zero
+    try input_gradients.set(0, 0);
+
+    std.debug.print("Backward input gradients initialized with shape: {d}\n", .{input_gradients.shape});
+
+    // Compute input gradients
+    for (0..batch_size) |b| {
+        for (0..in_channels) |ic| {
+            var shape: [4]usize = [_]usize{ 1, 1, input_height, input_width };
+            var input_channel_gradient = try Tensor(T).fromShape(&allocator, &shape);
+            try input_channel_gradient.set(0, 0);
+
+            for (0..out_channels) |oc| {
+                std.debug.print("Processing batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+
+                // Flip weights along spatial dimensions (rotate 180 degrees)
+                var flipped_weights = try flip_kernel(T, weights, oc, ic);
+
+                // Slice dValues for the current batch and out_channel
+                var start_indices = [_]usize{ b, oc, 0, 0 };
+                var slice_shape = [_]usize{ 1, 1, output_height, output_width };
+
+                std.debug.print("Slicing dValues with start indices: {d}, slice shape: {d}\n", .{ start_indices, slice_shape });
+
+                var dValue_slice = try dValues.slice(&start_indices, &slice_shape);
+
+                std.debug.print("Starting convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+
+                //Create 0 array with bias, can be optimized
+                const zeros = try Layer.zeros(T, out_channels, 1);
+                var shapeBias = [_]usize{ out_channels, 1 };
+                var zeroBias = try Tensor(T).fromArray(&allocator, zeros, &shapeBias);
+
+                // Convolve dValues[b, oc, :, :] with flipped_weights
+                var input_grad = try CPU_convolve_tensors_with_bias(T, T, &dValue_slice, &flipped_weights, &zeroBias);
+
+                // Add to input_channel_gradient
+                for (0..input_grad.shape[2]) |h| {
+                    for (0..input_grad.shape[3]) |w| {
+                        const input_grad_val = try input_grad.get_at(&[_]usize{ 0, 0, h, w });
+                        const index = [_]usize{ 0, 0, h, w };
+                        const current_val = try input_channel_gradient.get_at(&index);
+                        try input_channel_gradient.set_at(&index, current_val + input_grad_val);
+                    }
+                }
+
+                std.debug.print("Completed convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+
+                // Clean up temporary tensors
+                input_grad.deinit();
+                flipped_weights.deinit();
+                dValue_slice.deinit();
+                zeroBias.deinit();
+            }
+
+            // Add input_channel_gradient to input_gradients
+            for (0..input_height) |h| {
+                for (0..input_width) |w| {
+                    const grad_val = try input_channel_gradient.get_at(&[_]usize{ 0, 0, h, w });
+                    const index = [_]usize{ b, ic, h, w };
+                    const current_val = try input_gradients.get_at(&index);
+                    try input_gradients.set_at(&index, current_val + grad_val);
+                }
+            }
+
+            input_channel_gradient.deinit();
+        }
+    }
+
+    std.debug.print("Completed backward input gradients computation. Shape: {d}\n", .{input_gradients.shape});
+
+    return input_gradients;
+}
+
+// Helper function to flip the kernel (rotate 180 degrees)
+fn flip_kernel(comptime T: type, weights: *Tensor(T), out_channel: usize, in_channel: usize) !Tensor(T) {
+    const allocator = std.heap.page_allocator;
+
+    const kernel_height = weights.shape[2];
+    const kernel_width = weights.shape[3];
+    var flipped_shape = [_]usize{ 1, 1, kernel_height, kernel_width };
+
+    var flipped_kernel = try Tensor(T).fromShape(&allocator, &flipped_shape);
+
+    for (0..kernel_height) |h| {
+        for (0..kernel_width) |w| {
+            const flipped_index = [_]usize{ 0, 0, kernel_height - h - 1, kernel_width - w - 1 };
+            const original_index = [_]usize{ out_channel, in_channel, h, w };
+
+            const value = try weights.get_at(&original_index);
+            try flipped_kernel.set_at(&flipped_index, value);
+        }
+    }
+
+    std.debug.print("Flipped kernel for out_channel {d}, in_channel {d} generated.\n", .{ out_channel, in_channel });
+
+    return flipped_kernel;
 }

@@ -1,9 +1,16 @@
 const std = @import("std");
 const DenseLayer = @import("denselayer").DenseLayer;
+const ConvolutionalLayer = @import("convLayer").ConvolutionalLayer;
 const ActivationLayer = @import("activationlayer").ActivationLayer;
 const Layer = @import("layer").Layer;
 const layer_ = @import("layer");
-
+const Tensor = @import("tensor").Tensor;
+const TensMath = @import("tensor_math");
+const ConvLayer = @import("convLayer");
+const ActivationFunction = @import("activation_function");
+const LayerError = @import("errorHandler").LayerError;
+const TensorError = @import("errorHandler").TensorError;
+const TensorMathError = @import("errorHandler").TensorMathError;
 const tensor = @import("tensor");
 const ActivationType = @import("activation_function").ActivationType;
 
@@ -212,4 +219,90 @@ test "ActivationLayer forward and backward test" {
 
     // Test backward
     _ = try layer1.backward(&input_tensor);
+}
+
+test "Complete test of the new convolutional layer functionalities" {
+    std.debug.print("\n     Test: Conv forward test ", .{});
+
+    const allocator = &std.testing.allocator;
+
+    // Define input data
+    var input_data = [_]f64{
+        // Batch 1, Channel 1
+        1,  2,  3,
+        4,  5,  6,
+        7,  8,  9,
+        // Batch 1, Channel 2
+        10, 11, 12,
+        13, 14, 15,
+        16, 17, 18,
+        // Batch 2, Channel 1
+        19, 20, 21,
+        22, 23, 24,
+        25, 26, 27,
+        // Batch 2, Channel 2
+        28, 29, 30,
+        31, 32, 33,
+        34, 35, 36,
+    };
+    var input_shape = [_]usize{ 2, 2, 3, 3 }; // [batch_size, in_channels, height, width]
+    var input = try Tensor(f64).fromArray(allocator, &input_data, &input_shape);
+    defer input.deinit();
+
+    // Create the convolutional layer
+    var conv_layer = ConvLayer.ConvolutionalLayer(f64, allocator){
+        .weights = undefined,
+        .bias = undefined,
+        .input = undefined,
+        .output = undefined,
+        .input_channels = 0,
+        .output_channels = 0,
+        .kernel_size = undefined,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
+        .allocator = allocator,
+    };
+    var layer = conv_layer.create();
+
+    // Initialize the convolutional layer
+    try layer.convInit(2, 2, .{ 2, 2 }); // input_channels=2, output_channels=2, kernel_size=[2,2]
+
+    // Perform the forward pass
+    var output = try layer.forward(&input);
+    std.debug.print("Output shape: {any}\n", .{output.shape});
+
+    // Print the output for verification
+    std.debug.print("Output of forward pass:\n", .{});
+    output.info();
+
+    // Create a dummy gradient for the backward pass (same shape as output)
+    var dValues_data = try allocator.alloc(f64, output.size);
+    _ = &dValues_data;
+    defer allocator.free(dValues_data);
+    for (dValues_data) |*val| {
+        val.* = 1; // Set the gradient to 1 for simplicity
+    }
+    var dValues = try Tensor(f64).fromArray(allocator, dValues_data, output.shape);
+    defer dValues.deinit();
+
+    // Perform the backward pass
+    var dInput = try layer.backward(&dValues);
+    defer dInput.deinit();
+
+    // Print the gradients for verification
+    std.debug.print("Weight gradients:\n", .{});
+    // conv_layer.w_gradients.printMultidim();
+    conv_layer.w_gradients.info();
+
+    std.debug.print("Input gradients:\n", .{});
+    // dInput.printMultidim();
+
+    // Verify the shapes
+    // try std.testing.expectEqual(conv_layer.w_gradients.shape, conv_layer.weights.shape);
+    // try std.testing.expectEqual(dInput.shape, input.shape);
+
+    // Clean up resources
+    layer.deinit();
+    _ = &input_data;
+    _ = &conv_layer;
 }

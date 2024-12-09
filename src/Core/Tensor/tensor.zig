@@ -239,9 +239,9 @@ pub fn Tensor(comptime T: type) type {
             return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
         }
 
-        fn calculateProduct(slice: []usize) usize {
+        fn calculateProduct(slices: []usize) usize {
             var product: usize = 1;
-            for (slice) |elem| {
+            for (slices) |elem| {
                 product *= elem;
             }
             return product;
@@ -271,11 +271,151 @@ pub fn Tensor(comptime T: type) type {
         pub fn flatten_index(self: *const @This(), indices: []const usize) !usize {
             var idx: usize = 0;
             var stride: usize = 1;
-            for (0..self.shape.len) |i| {
-                idx += indices[self.shape.len - 1 - i] * stride;
-                stride *= self.shape[self.shape.len - 1 - i];
+
+            if (indices.len != self.shape.len) {
+                return error.InvalidIndexLength;
             }
+
+            for (0..self.shape.len) |i| {
+                const rev_idx = self.shape.len - 1 - i;
+                const index = indices[rev_idx];
+
+                // Controllo per indice fuori dai limiti
+                if (index >= self.shape[rev_idx]) {
+                    return error.IndexOutOfBounds;
+                }
+
+                idx += index * stride;
+                stride *= self.shape[rev_idx];
+            }
+
             return idx;
+        }
+
+        pub fn slice(self: *Tensor(T), start_indices: []usize, slice_shape: []usize) !Tensor(T) {
+            // Validate input
+            if (start_indices.len != self.shape.len) return TensorError.InvalidSliceIndices;
+            if (slice_shape.len != self.shape.len) return TensorError.InvalidSliceShape;
+
+            // Verify that the slice is within bounds
+            for (0..self.shape.len) |i| {
+                if (start_indices[i] + slice_shape[i] > self.shape[i]) return TensorError.SliceOutOfBounds;
+            }
+
+            // Calculate the total size of the new tensor
+            var new_size: usize = 1;
+            for (slice_shape) |dim| {
+                new_size *= dim;
+            }
+
+            // Allocate data for the new tensor
+            const new_data = try self.allocator.alloc(T, new_size);
+
+            // Prepare for copying data
+            const num_dims = self.shape.len;
+
+            // Strides for the original tensor
+            const strides = try self.getStrides();
+            defer self.allocator.free(strides);
+
+            // Recursive function to copy data
+            const indices = try self.allocator.alloc(usize, num_dims);
+            defer self.allocator.free(indices);
+
+            for (indices) |*idx| idx.* = 0;
+
+            var new_data_index: usize = 0;
+
+            try copy_data_recursive(
+                self,
+                new_data,
+                &new_data_index,
+                start_indices,
+                slice_shape,
+                indices,
+                0,
+            );
+
+            // Create the new tensor
+            var new_tensor = Tensor(T){
+                .data = new_data,
+                .shape = try self.allocator.dupe(usize, slice_shape),
+                .size = new_size,
+                .allocator = self.allocator,
+            };
+
+            _ = &new_tensor;
+
+            return new_tensor;
+        }
+
+        // Recursive function to copy data
+        fn copy_data_recursive(
+            self: *Tensor(T),
+            new_data: []T,
+            new_data_index: *usize,
+            start_indices: []usize,
+            slice_shape: []usize,
+            indices: []usize,
+            dim: usize,
+        ) !void {
+            if (dim == self.shape.len) {
+                // Calculate the index in the original tensor
+                var self_indices = try self.allocator.alloc(usize, self.shape.len);
+                defer self.allocator.free(self_indices);
+
+                for (0..self.shape.len) |i| {
+                    self_indices[i] = start_indices[i] + indices[i];
+                }
+
+                const flat_index = try self.get_flat_index(self_indices);
+                new_data[new_data_index.*] = self.data[flat_index];
+                new_data_index.* += 1;
+            } else {
+                for (0..slice_shape[dim]) |i| {
+                    indices[dim] = i;
+                    try copy_data_recursive(
+                        self,
+                        new_data,
+                        new_data_index,
+                        start_indices,
+                        slice_shape,
+                        indices,
+                        dim + 1,
+                    );
+                }
+            }
+        }
+
+        // Helper function to calculate the flat index from multi-dimensional indices
+        fn get_flat_index(self: *Tensor(T), indices: []usize) !usize {
+            if (indices.len != self.shape.len) return TensorError.InvalidIndices;
+
+            var flat_index: usize = 0;
+            var stride: usize = 1;
+
+            var i: usize = self.shape.len - 1;
+            while (true) {
+                flat_index += indices[i] * stride;
+                stride *= self.shape[i];
+                if (i == 0) break;
+                i -= 1;
+            }
+
+            return flat_index;
+        }
+
+        // Function to calculate strides for the tensor
+        pub fn getStrides(self: *Tensor(T)) ![]usize {
+            const num_dims = self.shape.len;
+            var strides = try self.allocator.alloc(usize, num_dims);
+            strides[num_dims - 1] = 1;
+            var i: usize = num_dims - 1;
+            while (i > 0) {
+                strides[i - 1] = strides[i] * self.shape[i];
+                i -= 1;
+            }
+            return strides;
         }
 
         /// Prints all the possible details of a tensor.

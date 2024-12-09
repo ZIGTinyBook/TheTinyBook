@@ -32,6 +32,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
+                    .convInit = convInit,
                     .deinit = deinit,
                     .forward = forward,
                     .backward = backward,
@@ -72,6 +73,14 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             //initializing gradients to all zeros----------------------------------------
             self.w_gradients = try tensor.Tensor(T).fromShape(self.allocator, &weight_shape);
             self.b_gradients = try tensor.Tensor(T).fromShape(self.allocator, &bias_shape);
+        }
+
+        pub fn convInit(ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) !void {
+            _ = ctx;
+            _ = input_channels;
+            _ = output_channels;
+            _ = kernel_size;
+            return LayerError.InvalidLayerType;
         }
 
         ///Deallocate the layer

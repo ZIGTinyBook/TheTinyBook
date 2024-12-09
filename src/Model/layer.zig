@@ -17,6 +17,7 @@ const LayerError = @import("errorHandler").LayerError;
 pub const LayerType = enum {
     DenseLayer,
     DefaultLayer,
+    ConvolutionalLayer,
     ActivationLayer,
     null,
 };
@@ -59,6 +60,7 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub const Basic_Layer_Interface = struct {
             init: *const fn (ctx: *anyopaque, n_inputs: usize, n_neurons: usize) anyerror!void,
+            convInit: *const fn (ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) anyerror!void,
             deinit: *const fn (ctx: *anyopaque) void,
             forward: *const fn (ctx: *anyopaque, input: *tensor.Tensor(T)) anyerror!tensor.Tensor(T),
             backward: *const fn (ctx: *anyopaque, dValues: *tensor.Tensor(T)) anyerror!tensor.Tensor(T),
@@ -71,6 +73,10 @@ pub fn Layer(comptime T: type, allocator: *const std.mem.Allocator) type {
 
         pub fn init(self: Layer(T, allocator), n_inputs: usize, n_neurons: usize) anyerror!void {
             return self.layer_impl.init(self.layer_ptr, n_inputs, n_neurons);
+        }
+
+        pub fn convInit(self: Layer(T, allocator), input_channels: usize, output_channels: usize, kernel_size: [2]usize) anyerror!void {
+            return self.layer_impl.convInit(self.layer_ptr, input_channels, output_channels, kernel_size);
         }
 
         /// When deinit() pay attention to:
