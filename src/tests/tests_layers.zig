@@ -265,7 +265,7 @@ test "Complete test of the new convolutional layer functionalities" {
     var layer = conv_layer.create();
 
     // Initialize the convolutional layer
-    try layer.convInit(2, 2, .{ 2, 2 }); // input_channels=2, output_channels=2, kernel_size=[2,2]
+    try layer.convInit(2, 5, .{ 2, 2 }); // input_channels=2, output_channels=2, kernel_size=[2,2]
 
     // Perform the forward pass
     var output = try layer.forward(&input);

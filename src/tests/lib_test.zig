@@ -10,7 +10,7 @@ test {
     // _ = @import("tests_model.zig");
     // _ = @import("tests_dataProcessor.zig");
     // _ = @import("tests_optim.zig");
-    // _ = @import("tests_dataLoader.zig");
+    _ = @import("tests_dataLoader.zig");
     // _ = @import("tests_trainer.zig");
     // _ = @import("tests_modelExport.zig");
 }

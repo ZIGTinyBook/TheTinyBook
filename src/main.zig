@@ -129,7 +129,7 @@ pub fn main() !void {
         1, //The total number of epochs to train for
         LossType.CCE, //The type of loss function used during training
         0.005,
-        0.2, //The learning rate for model optimization
+        0.2, //Testing size
     );
 
     model.deinit();

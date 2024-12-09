@@ -555,7 +555,7 @@ fn multidim_convolution_with_bias(
     }
 }
 
-/// Convoluzione tensor with bias
+/// Convolution tensor with bias
 pub fn CPU_convolve_tensors_with_bias(
     comptime inputType: anytype,
     comptime outputType: anytype,

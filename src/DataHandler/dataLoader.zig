@@ -5,11 +5,13 @@
 
 const std = @import("std");
 const tensor = @import("tensor");
-
+fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
+    return if (dim_count == 1) []DataType else []MagicalReturnType(DataType, dim_count - 1);
+}
 ///It takes 3 comptime parameter end type and type of features and type of labels
-pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelType: type, batchSize: i16) type {
+pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelType: type, batchSize: i16, dimInput: usize) type {
     return struct {
-        X: [][]OutType,
+        X: MagicalReturnType(Ftype, dimInput),
         y: []OutType,
         x_index: usize = 0,
         y_index: usize = 0,
@@ -156,68 +158,64 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
         }
 
         pub fn xTrainNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
-	    if (self.X_train == null) return null;
-	    const x_train = self.X_train.?;
+            if (self.X_train == null) return null;
+            const x_train = self.X_train.?;
 
-	    const start = self.x_train_index;
-	    const end = @min(start + batch_size, x_train.len);
+            const start = self.x_train_index;
+            const end = @min(start + batch_size, x_train.len);
 
-	    if (start >= end) return null;
+            if (start >= end) return null;
 
-	    const batch = x_train[start..end];
-	    self.x_train_index = end;
-	    self.XBatch = batch;
-	    return batch;
-	}
+            const batch = x_train[start..end];
+            self.x_train_index = end;
+            self.XBatch = batch;
+            return batch;
+        }
 
+        pub fn yTrainNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
+            if (self.y_train == null) return null;
+            const y_train = self.y_train.?;
 
-       pub fn yTrainNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
-	    if (self.y_train == null) return null;
-	    const y_train = self.y_train.?;
+            const start = self.y_train_index;
+            const end = @min(start + batch_size, y_train.len);
 
-	    const start = self.y_train_index;
-	    const end = @min(start + batch_size, y_train.len);
+            if (start >= end) return null;
 
-	    if (start >= end) return null;
-
-	    const batch = y_train[start..end];
-	    self.y_train_index = end;
-	    self.yBatch = batch;
-	    return batch;
-}
-
+            const batch = y_train[start..end];
+            self.y_train_index = end;
+            self.yBatch = batch;
+            return batch;
+        }
 
         pub fn xTestNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
-	    if (self.X_test == null) return null;
-	    const x_test = self.X_test.?;
+            if (self.X_test == null) return null;
+            const x_test = self.X_test.?;
 
-	    const start = self.x_test_index;
-	    const end = @min(start + batch_size, x_test.len);
+            const start = self.x_test_index;
+            const end = @min(start + batch_size, x_test.len);
 
-	    if (start >= end) return null;
+            if (start >= end) return null;
 
-	    const batch = x_test[start..end];
-	    self.x_test_index = end;
-	    self.XBatch = batch;
-	    return batch;
-}
+            const batch = x_test[start..end];
+            self.x_test_index = end;
+            self.XBatch = batch;
+            return batch;
+        }
 
+        pub fn yTestNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
+            if (self.y_test == null) return null;
+            const y_test = self.y_test.?;
 
-      pub fn yTestNextBatch(self: *@This(), batch_size: usize) ?[]OutType {
-	    if (self.y_test == null) return null;
-	    const y_test = self.y_test.?;
+            const start = self.y_test_index;
+            const end = @min(start + batch_size, y_test.len);
 
-	    const start = self.y_test_index;
-	    const end = @min(start + batch_size, y_test.len);
+            if (start >= end) return null;
 
-	    if (start >= end) return null;
-
-	    const batch = y_test[start..end];
-	    self.y_test_index = end;
-	    self.yBatch = batch;
-	    return batch;
-	}
-
+            const batch = y_test[start..end];
+            self.y_test_index = end;
+            self.yBatch = batch;
+            return batch;
+        }
 
         pub fn deinit(self: *@This(), allocator: *std.mem.Allocator) void {
             var features_freed = false;
@@ -368,6 +366,108 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
                 i += 1;
             }
         }
+
+        pub fn loadMNISTImages2D(
+            self: *@This(),
+            allocator: *const std.mem.Allocator,
+            filePath: []const u8,
+        ) !void {
+            const file = try std.fs.cwd().openFile(filePath, .{});
+            defer file.close();
+            var reader = file.reader();
+
+            // Magic number (4 byte, big-endian)
+            const magicNumber = try reader.readInt(u32, .big);
+            if (magicNumber != 2051) {
+                return error.InvalidFileFormat;
+            }
+            std.debug.print("Magic number: {d}\n", .{magicNumber});
+
+            // Number of images (4 byte, big-endian)
+            const numImages = try reader.readInt(u32, .big);
+
+            // Rows (4 byte, big-endian)
+            const numRows = try reader.readInt(u32, .big);
+
+            // Columns (4 byte, big-endian)
+            const numCols = try reader.readInt(u32, .big);
+
+            // Validate image dimensions
+            if (numRows != 28 or numCols != 28) {
+                return error.InvalidImageDimensions;
+            }
+
+            // Allocate space for all images
+            self.X = try allocator.alloc([][]OutType, numImages);
+
+            const imageSize = numRows * numCols;
+            const imageBuffer = try allocator.alloc(u8, imageSize);
+            defer allocator.free(imageBuffer);
+
+            for (0..numImages) |i| {
+                // Read the entire image (28x28) into the buffer
+                try reader.readNoEof(imageBuffer);
+
+                // Allocate space for the image (28 rows of 28 columns)
+                self.X[i] = try allocator.alloc([]OutType, numRows);
+
+                var rowStart: usize = 0;
+                for (0..numRows) |row| {
+                    self.X[i][row] = try allocator.alloc(OutType, numCols);
+
+                    for (0..numCols) |col| {
+                        self.X[i][row][col] = @as(OutType, @floatFromInt(imageBuffer[rowStart + col]));
+                    }
+                    rowStart += numCols;
+                }
+            }
+        }
+
+        pub fn loadMNISTImages2DStatic(
+            self: *@This(),
+            allocator: *const std.mem.Allocator,
+            filePath: []const u8,
+            numImages: usize,
+            numRows: usize,
+            numCols: usize,
+        ) !void {
+            const file = try std.fs.cwd().openFile(filePath, .{});
+            defer file.close();
+            var reader = file.reader();
+
+            // Magic number (4 byte, big-endian)
+            const magicNumber = try reader.readInt(u32, .big);
+            if (magicNumber != 2051) {
+                return error.InvalidFileFormat;
+            }
+            std.debug.print("Magic number: {d}\n", .{magicNumber});
+
+            // Allocate a contiguous static buffer for the entire dataset
+            const datasetSize = numImages * numRows * numCols;
+            const buffer = try allocator.alloc(OutType, datasetSize);
+            defer allocator.free(buffer);
+
+            // Read the entire dataset into the buffer
+            const pixelBuffer = try allocator.alloc(u8, datasetSize);
+            defer allocator.free(pixelBuffer);
+            try reader.readNoEof(pixelBuffer);
+
+            // Convert pixelBuffer to buffer
+            for (0..datasetSize) |i| {
+                buffer[i] = @as(OutType, @floatFromInt(pixelBuffer[i]));
+            }
+
+            // Create pointers to the 2D slices for each image
+            self.X = try allocator.alloc([][]OutType, numImages);
+            for (0..numImages) |imageIdx| {
+                self.X[imageIdx] = try allocator.alloc([]OutType, numRows);
+                const imageOffset = imageIdx * numRows * numCols;
+                for (0..numRows) |row| {
+                    self.X[imageIdx][row] = buffer[imageOffset + row * numCols .. imageOffset + (row + 1) * numCols];
+                }
+            }
+        }
+
         ///Load the labels from the MNIST dataset
         pub fn loadMNISTLabels(self: *@This(), allocator: *const std.mem.Allocator, filePath: []const u8) !void {
             const file = try std.fs.cwd().openFile(filePath, .{});
