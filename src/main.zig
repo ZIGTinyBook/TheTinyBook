@@ -103,7 +103,7 @@ pub fn main() !void {
     try layer3_act.init(10, 10);
     try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 10){
+    var load = loader.DataLoader(f64, u8, u8, 10, 2){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
