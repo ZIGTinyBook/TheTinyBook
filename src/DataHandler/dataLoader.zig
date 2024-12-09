@@ -11,7 +11,7 @@ fn MagicalReturnType(comptime DataType: type, comptime dim_count: usize) type {
 ///It takes 3 comptime parameter end type and type of features and type of labels
 pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelType: type, batchSize: i16, dimInput: usize) type {
     return struct {
-        X: MagicalReturnType(Ftype, dimInput),
+        X: MagicalReturnType(OutType, dimInput),
         y: []OutType,
         x_index: usize = 0,
         y_index: usize = 0,

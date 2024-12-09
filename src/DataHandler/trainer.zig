@@ -66,7 +66,7 @@ pub fn TrainDataLoader(
     comptime batchSize: i16,
     features: usize,
     model: *Model(T, allocator),
-    load: *DataLoader(T, XType, YType, batchSize),
+    load: *DataLoader(T, XType, YType, batchSize, 2),
     epochs: u32,
     comptime lossType: LossType,
     comptime lr: f64,
