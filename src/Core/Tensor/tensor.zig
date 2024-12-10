@@ -541,22 +541,20 @@ fn flattenArray(comptime T: type, arr: anytype, flatArr: []T, startIndex: usize)
 
     const arrTypeInfo = @typeInfo(@TypeOf(arr));
 
-    // Check if arr is an Array or a Slice
     if (arrTypeInfo == .Array or arrTypeInfo == .Pointer) {
+        // if arr is a lice or 1d  DIRECTLY COPY
         if (@TypeOf(arr[0]) == T) {
-            // If arr is a 1D array or slice
             for (arr) |val| {
                 flatArr[idx] = val;
                 idx += 1;
             }
         } else {
-            // If arr is multidimensional, recursively flatten
+            // iff arr is mulltidimensional array recursive call
             for (arr) |subArray| {
                 idx = flattenArray(T, subArray, flatArr, idx);
             }
         }
     } else {
-        std.debug.print("The type of `arr` is not compatible with the required type. Type found: {}\n", .{@TypeOf(arr)});
         @panic("The type of `arr` is not compatible with the required type.");
     }
 

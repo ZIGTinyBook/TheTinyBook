@@ -2,6 +2,7 @@ const std = @import("std");
 const tensor = @import("tensor");
 const layer = @import("layer");
 const denselayer = @import("denselayer").DenseLayer;
+const convlayer = @import("convLayer").ConvolutionalLayer;
 const activationlayer = @import("activationlayer").ActivationLayer;
 const Model = @import("model").Model;
 const loader = @import("dataloader");
@@ -19,21 +20,21 @@ pub fn main() !void {
     };
     try model.init();
 
-    var layer1 = denselayer(f64, &allocator){
+    var conv_layer = convlayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
+        .input_channels = 0,
+        .output_channels = 0,
+        .kernel_size = undefined,
         .w_gradients = undefined,
         .b_gradients = undefined,
-        .allocator = undefined,
+        .allocator = &allocator,
     };
-    //layer 1: 784 inputs, 64 neurons
-    var layer1_ = denselayer(f64, &allocator).create(&layer1);
-    try layer1_.init(784, 64);
-    try model.addLayer(layer1_);
+    var layer_ = conv_layer.create();
+    try layer_.convInit(1, 10, .{ 2, 2 });
+    try model.addLayer(layer_);
 
     var layer1Activ = activationlayer(f64, &allocator){
         .input = undefined,
@@ -103,7 +104,7 @@ pub fn main() !void {
     try layer3_act.init(10, 10);
     try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 10, 2){
+    var load = loader.DataLoader(f64, u8, u8, 10, 3){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -115,7 +116,7 @@ pub fn main() !void {
     const image_file_name: []const u8 = "t10k-images-idx3-ubyte";
     const label_file_name: []const u8 = "t10k-labels-idx1-ubyte";
 
-    try load.loadMNISTDataParallel(&allocator, image_file_name, label_file_name);
+    try load.loadMNIST2DDataParallel(&allocator, image_file_name, label_file_name);
 
     try Trainer.TrainDataLoader(
         f64, //The data type for the tensor elements in the model
@@ -129,7 +130,7 @@ pub fn main() !void {
         1, //The total number of epochs to train for
         LossType.CCE, //The type of loss function used during training
         0.005,
-        0.2, //Testing size
+        0.8, //Training size
     );
 
     model.deinit();

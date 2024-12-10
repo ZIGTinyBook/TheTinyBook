@@ -18,12 +18,14 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
         xTensor: tensor.Tensor(OutType),
         yTensor: tensor.Tensor(OutType),
         batchSize: usize = batchSize,
-        XBatch: [][]OutType,
+        XBatch: MagicalReturnType(OutType, dimInput),
         yBatch: []OutType,
 
-        X_train: ?[][]OutType = undefined,
+        XBuffer: ?[]OutType = null,
+
+        X_train: ?MagicalReturnType(OutType, dimInput) = undefined,
         y_train: ?[]OutType = undefined,
-        X_test: ?[][]OutType = undefined,
+        X_test: ?MagicalReturnType(OutType, dimInput) = undefined,
         y_test: ?[]OutType = undefined,
         x_train_index: usize = 0,
         y_train_index: usize = 0,
@@ -52,9 +54,14 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
 
         ///Convert the data in the struct to a tensor
         pub fn toTensor(self: *@This(), allocator: *const std.mem.Allocator, shapeX: *[]usize, shapeY: *[]usize) !void {
-            self.xTensor = try tensor.Tensor(OutType).fromArray(allocator, self.XBatch, shapeX.*);
-            self.yTensor = try tensor.Tensor(OutType).fromArray(allocator, self.yBatch, shapeY.*);
+            // Sconfeziona gli opzionali prima di passare i dati a fromArray
+            const x_data = self.XBatch;
+            const y_data = self.yBatch; // yBatch è non opzionale nel tuo esempio, se è opzionale fai lo stesso: self.yBatch.?
+
+            self.xTensor = try tensor.Tensor(OutType).fromArray(allocator, x_data, shapeX.*);
+            self.yTensor = try tensor.Tensor(OutType).fromArray(allocator, y_data, shapeY.*);
         }
+
         ///Reset the index of the iterator
         pub fn reset(self: *@This()) void {
             self.x_index = 0;
@@ -98,25 +105,22 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             const total: f32 = @floatFromInt(total_samples);
             const train_size: usize = @intFromFloat(perc * total);
 
-            // Shuffle prima di dividere
             var rng = std.rand.DefaultPrng.init(1234);
             self.shuffle(&rng);
 
-            // Alloca memoria per i set di training e test
-            self.X_train = try allocator.alloc([]OutType, train_size);
+            // Mantieni lo stesso livello di dimensioni
+            self.X_train = try allocator.alloc(MagicalReturnType(OutType, dimInput - 1), train_size);
             self.y_train = try allocator.alloc(OutType, train_size);
 
             const test_size = total_samples - train_size;
-            self.X_test = try allocator.alloc([]OutType, test_size);
+            self.X_test = try allocator.alloc(MagicalReturnType(OutType, dimInput - 1), test_size);
             self.y_test = try allocator.alloc(OutType, test_size);
 
-            // Estrai le slice opzionali
             const X_train = self.X_train.?;
             const y_train = self.y_train.?;
             const X_test = self.X_test.?;
             const y_test = self.y_test.?;
 
-            // Copia i dati di training
             for (self.X[0..train_size], 0..) |features, i| {
                 X_train[i] = features;
             }
@@ -124,7 +128,6 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
                 y_train[i] = label;
             }
 
-            // Copia i dati di test
             for (self.X[train_size..], 0..) |features, i| {
                 X_test[i] = features;
             }
@@ -157,7 +160,7 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             }
         }
 
-        pub fn xTrainNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
+        pub fn xTrainNextBatch(self: *@This(), batch_size: usize) ?MagicalReturnType(OutType, dimInput) {
             if (self.X_train == null) return null;
             const x_train = self.X_train.?;
 
@@ -187,7 +190,7 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             return batch;
         }
 
-        pub fn xTestNextBatch(self: *@This(), batch_size: usize) ?[][]OutType {
+        pub fn xTestNextBatch(self: *@This(), batch_size: usize) ?MagicalReturnType(OutType, dimInput) {
             if (self.X_test == null) return null;
             const x_test = self.X_test.?;
 
@@ -219,6 +222,11 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
 
         pub fn deinit(self: *@This(), allocator: *std.mem.Allocator) void {
             var features_freed = false;
+
+            if (self.XBuffer) |buffer| {
+                allocator.free(buffer);
+                self.XBuffer = null;
+            }
 
             if (self.X_train) |x_train| {
                 for (x_train) |features| {
@@ -435,35 +443,31 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             defer file.close();
             var reader = file.reader();
 
-            // Magic number (4 byte, big-endian)
             const magicNumber = try reader.readInt(u32, .big);
             if (magicNumber != 2051) {
                 return error.InvalidFileFormat;
             }
-            std.debug.print("Magic number: {d}\n", .{magicNumber});
 
-            // Allocate a contiguous static buffer for the entire dataset
             const datasetSize = numImages * numRows * numCols;
-            const buffer = try allocator.alloc(OutType, datasetSize);
-            defer allocator.free(buffer);
 
-            // Read the entire dataset into the buffer
+            // Alloca il buffer e memorizzalo in XBuffer
+            self.XBuffer = try allocator.alloc(OutType, datasetSize);
+
             const pixelBuffer = try allocator.alloc(u8, datasetSize);
             defer allocator.free(pixelBuffer);
             try reader.readNoEof(pixelBuffer);
 
-            // Convert pixelBuffer to buffer
             for (0..datasetSize) |i| {
-                buffer[i] = @as(OutType, @floatFromInt(pixelBuffer[i]));
+                self.XBuffer.?[i] = @as(OutType, @floatFromInt(pixelBuffer[i]));
             }
 
-            // Create pointers to the 2D slices for each image
-            self.X = try allocator.alloc([][]OutType, numImages);
+            self.X = try allocator.alloc(MagicalReturnType(OutType, dimInput - 1), numImages);
+
             for (0..numImages) |imageIdx| {
                 self.X[imageIdx] = try allocator.alloc([]OutType, numRows);
                 const imageOffset = imageIdx * numRows * numCols;
                 for (0..numRows) |row| {
-                    self.X[imageIdx][row] = buffer[imageOffset + row * numCols .. imageOffset + (row + 1) * numCols];
+                    self.X[imageIdx][row] = self.XBuffer.?[imageOffset + row * numCols .. imageOffset + (row + 1) * numCols];
                 }
             }
         }
@@ -502,8 +506,20 @@ pub fn DataLoader(comptime OutType: type, comptime Ftype: type, comptime LabelTy
             defer label_thread.join();
         }
 
+        pub fn loadMNIST2DDataParallel(self: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8, labelFilePath: []const u8) !void {
+            const image_thread = try std.Thread.spawn(.{}, loadImages2D, .{ self, allocator, imageFilePath });
+            defer image_thread.join();
+
+            const label_thread = try std.Thread.spawn(.{}, loadLabels, .{ self, allocator, labelFilePath });
+            defer label_thread.join();
+        }
+
         fn loadImages(loader: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8) !void {
             try loader.loadMNISTImages(allocator, imageFilePath);
+        }
+
+        fn loadImages2D(loader: *@This(), allocator: *const std.mem.Allocator, imageFilePath: []const u8) !void {
+            try loader.loadMNISTImages2DStatic(allocator, imageFilePath, 10000, 28, 28);
         }
 
         fn loadLabels(loader: *@This(), allocator: *const std.mem.Allocator, labelFilePath: []const u8) !void {

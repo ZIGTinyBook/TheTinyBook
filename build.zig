@@ -183,6 +183,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("trainer", trainer_mod);
     exe.root_module.addImport("denselayer", denseLayer_mod);
     exe.root_module.addImport("activationlayer", activationLayer_mod);
+    exe.root_module.addImport("convLayer", convLayer_mod);
 
     // Install the executable.
     b.installArtifact(exe);
