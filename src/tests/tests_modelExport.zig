@@ -76,7 +76,13 @@ test "Import/Export of dense layer" {
         .allocator = undefined,
     };
     var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer1);
-    try layer1_.init(3, 2);
+    try layer1_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 3,
+        .n_neurons = 2,
+    }));
     defer layer1_.deinit();
 
     try model_import_export.exportLayer(f64, &allocator, layer1_, writer);
@@ -140,7 +146,13 @@ test "Import/Export of activation layer" {
     };
     const layer1_ = actlayer.ActivationLayer(f64, &allocator).create(&activ_layer);
     // n_input = 5, n_neurons= 4
-    try layer1_.init(5, 4);
+    try layer1_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 5,
+        .n_neurons = 4,
+    }));
 
     //defer layer1_.deinit();
 
@@ -221,7 +233,13 @@ test "Export of a complex model" {
         .allocator = undefined,
     };
     var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&layer1);
-    try layer1_.init(3, 2);
+    try layer1_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 3,
+        .n_neurons = 2,
+    }));
     try model.addLayer(layer1_);
 
     //layer 1: 3 inputs, 2 neurons
@@ -234,7 +252,13 @@ test "Export of a complex model" {
         .allocator = &allocator,
     };
     var layer1Activ_ = actlayer.ActivationLayer(f64, &allocator).create(&layer1Activ);
-    try layer1Activ_.init(2, 2);
+    try layer1Activ_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 2,
+        .n_neurons = 2,
+    }));
     try model.addLayer(layer1Activ_);
 
     //layer 2: 2 inputs, 5 neurons
@@ -250,7 +274,13 @@ test "Export of a complex model" {
         .allocator = undefined,
     };
     var layer2_ = denselayer.DenseLayer(f64, &allocator).create(&layer2);
-    try layer2_.init(2, 5);
+    try layer2_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 2,
+        .n_neurons = 5,
+    }));
     try model.addLayer(layer2_);
 
     var layer2Activ = actlayer.ActivationLayer(f64, &allocator){
@@ -262,7 +292,13 @@ test "Export of a complex model" {
         .allocator = &allocator,
     };
     var layer2Activ_ = actlayer.ActivationLayer(f64, &allocator).create(&layer2Activ);
-    try layer2Activ_.init(2, 5);
+    try layer2Activ_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 2,
+        .n_neurons = 5,
+    }));
     try model.addLayer(layer2Activ_);
 
     var inputArray: [2][3]f64 = [_][3]f64{

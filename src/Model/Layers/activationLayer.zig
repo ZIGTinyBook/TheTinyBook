@@ -25,7 +25,6 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
-                    .convInit = convInit,
                     .deinit = deinit,
                     .forward = forward,
                     .backward = backward,
@@ -38,8 +37,11 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             };
         }
 
-        pub fn init(ctx: *anyopaque, n_inputs: usize, n_neurons: usize) !void {
+        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
             const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const argsStruct: *const struct { n_inputs: usize, n_neurons: usize } = @ptrCast(@alignCast(args));
+            const n_inputs = argsStruct.n_inputs;
+            const n_neurons = argsStruct.n_neurons;
             std.debug.print("\nInit ActivationLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters

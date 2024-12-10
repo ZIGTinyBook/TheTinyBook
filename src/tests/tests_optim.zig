@@ -31,7 +31,13 @@ test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
         .allocator = undefined,
     };
     var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer);
-    try layer1_.init(3, 2);
+    try layer1_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 3,
+        .n_neurons = 2,
+    }));
     try model.addLayer(layer1_);
 
     var inputArray: [2][3]f64 = [_][3]f64{

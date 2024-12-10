@@ -28,7 +28,6 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
-                    .convInit = convInit,
                     .deinit = deinit,
                     .forward = forward,
                     .backward = backward,
@@ -41,17 +40,13 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
             };
         }
 
-        pub fn init(ctx: *anyopaque, n_inputs: usize, n_neurons: usize) !void {
-            _ = ctx;
-            _ = n_inputs;
-            _ = n_neurons;
-            return LayerError.InvalidLayerType;
-        }
-
         /// Initialize the convolutional layer with random weights and biases
-        pub fn convInit(ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) !void {
+        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
             const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
-            //std.debug.print("\nInit ConvolutionalLayer: input_channels = {}, output_channels = {}, kernel_size = {:?}, Type = {}\n", .{ input_channels, output_channels, kernel_size, @TypeOf(T) });
+            const argsStruct: *const struct { input_channels: usize, output_channels: usize, kernel_size: [2]usize } = @ptrCast(@alignCast(args));
+            const input_channels = argsStruct.input_channels;
+            const output_channels = argsStruct.output_channels;
+            const kernel_size = argsStruct.kernel_size;
 
             // Check parameters
             if (input_channels <= 0 or output_channels <= 0) return LayerError.InvalidParameters;

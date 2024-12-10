@@ -30,7 +30,13 @@ test "Model with multiple Denselayers forward test" {
         .allocator = undefined,
     };
     var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer1);
-    try layer1_.init(3, 2);
+    try layer1_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 3,
+        .n_neurons = 2,
+    }));
     try model.addLayer(layer1_);
 
     var dense_layer2 = denselayer.DenseLayer(f64, &allocator){
@@ -45,7 +51,13 @@ test "Model with multiple Denselayers forward test" {
         .allocator = undefined,
     };
     var layer2_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer2);
-    try layer2_.init(2, 3);
+    try layer2_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 2,
+        .n_neurons = 3,
+    }));
     try model.addLayer(layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{

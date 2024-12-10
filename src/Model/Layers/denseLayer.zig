@@ -32,7 +32,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,
-                    .convInit = convInit,
                     .deinit = deinit,
                     .forward = forward,
                     .backward = backward,
@@ -47,8 +46,12 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Initilize the layer with random weights and biases
         /// also for the gradients
-        pub fn init(ctx: *anyopaque, n_inputs: usize, n_neurons: usize) !void {
+        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
             const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const argsStruct: *const struct { n_inputs: usize, n_neurons: usize } = @ptrCast(@alignCast(args));
+            const n_inputs = argsStruct.n_inputs;
+            const n_neurons = argsStruct.n_neurons;
+
             std.debug.print("\nInit DenseLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
             //check on parameters
@@ -73,14 +76,6 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             //initializing gradients to all zeros----------------------------------------
             self.w_gradients = try tensor.Tensor(T).fromShape(self.allocator, &weight_shape);
             self.b_gradients = try tensor.Tensor(T).fromShape(self.allocator, &bias_shape);
-        }
-
-        pub fn convInit(ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) !void {
-            _ = ctx;
-            _ = input_channels;
-            _ = output_channels;
-            _ = kernel_size;
-            return LayerError.InvalidLayerType;
         }
 
         ///Deallocate the layer

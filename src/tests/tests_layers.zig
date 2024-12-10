@@ -38,7 +38,7 @@ test "Rand n and zeros" {
 }
 
 test "DenseLayer forward and backward test" {
-    std.debug.print("\n     test: DenseLayer forward test ", .{});
+    std.debug.print("\n     test: DenseLayer forward test and backward testx", .{});
     const allocator = &std.testing.allocator;
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
@@ -56,7 +56,13 @@ test "DenseLayer forward and backward test" {
     const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(4, 2);
+    try layer1.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 4,
+        .n_neurons = 2,
+    }));
     defer layer1.deinit();
 
     // Define an input tensor with 5x4 shape, an input for each neuron
@@ -127,7 +133,13 @@ test "test getters " {
     const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(4, 2);
+    try layer1.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 4,
+        .n_neurons = 2,
+    }));
     defer layer1.deinit();
 
     // Define an input tensor with 5x4 shape, an input for each neuron
@@ -185,6 +197,11 @@ test "ActivationLayer forward and backward test" {
     std.debug.print("\n     test: DenseLayer forward test ", .{});
     const allocator = &std.testing.allocator;
 
+    // const argsStruct = struct {
+    //     n_inputs: usize,
+    //     n_neurons: usize,
+    // };
+
     // Definition of the DenseLayer with 4 inputs and 2 neurons
     var activ_layer = ActivationLayer(f64, allocator){
         .input = undefined,
@@ -196,7 +213,13 @@ test "ActivationLayer forward and backward test" {
     };
     const layer1 = ActivationLayer(f64, allocator).create(&activ_layer);
     // n_input = 5, n_neurons= 4
-    try layer1.init(5, 4);
+    try layer1.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 5,
+        .n_neurons = 4,
+    }));
     defer layer1.deinit();
 
     // Define an input tensor with 5x4 shape, an input for each neuron
@@ -265,7 +288,16 @@ test "Complete test of the new convolutional layer functionalities" {
     var layer = conv_layer.create();
 
     // Initialize the convolutional layer
-    try layer.convInit(2, 5, .{ 2, 2 }); // input_channels=2, output_channels=2, kernel_size=[2,2]
+    // input_channels=2, output_channels=2, kernel_size=[2,2]
+    try layer.init(@constCast(&struct {
+        input_channels: usize,
+        output_channels: usize,
+        kernel_size: [2]usize,
+    }{
+        .input_channels = 2,
+        .output_channels = 5,
+        .kernel_size = .{ 2, 2 },
+    }));
 
     // Perform the forward pass
     var output = try layer.forward(&input);
