@@ -73,7 +73,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
 
             for (0..self.layers.items.len) |i| {
                 std.debug.print("\n--------------------------------------forwarding layer {}", .{i});
-                try DataProc.normalize(T, self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
+                if (self.layers.items[i].layer_type != layer.LayerType.ActivationLayer) try DataProc.normalize(T, self.getPrevOut(i), NormalizType.UnityBasedNormalizartion);
                 _ = try self.layers.items[i].forward(self.getPrevOut(i));
                 //self.layers.items[i].printLayer(0);
             }
