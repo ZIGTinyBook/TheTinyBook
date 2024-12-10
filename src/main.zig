@@ -33,7 +33,15 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer_ = conv_layer.create();
-    try layer_.convInit(1, 10, .{ 2, 2 });
+    try layer_.init(@constCast(&struct {
+        input_channels: usize,
+        output_channels: usize,
+        kernel_size: [2]usize,
+    }{
+        .input_channels = 1,
+        .output_channels = 10,
+        .kernel_size = .{ 2, 2 },
+    }));
     try model.addLayer(layer_);
 
     var layer1Activ = activationlayer(f64, &allocator){
@@ -45,7 +53,13 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer1_act = activationlayer(f64, &allocator).create(&layer1Activ);
-    try layer1_act.init(64, 64);
+    try layer1_act.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 64,
+        .n_neurons = 64,
+    }));
     try model.addLayer(layer1_act);
 
     var layer2 = denselayer(f64, &allocator){
@@ -61,7 +75,13 @@ pub fn main() !void {
     };
     //layer 2: 64 inputs, 64 neurons
     var layer2_ = denselayer(f64, &allocator).create(&layer2);
-    try layer2_.init(64, 64);
+    try layer2_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 64,
+        .n_neurons = 64,
+    }));
     try model.addLayer(layer2_);
 
     var layer2Activ = activationlayer(f64, &allocator){
@@ -73,7 +93,13 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer2_act = activationlayer(f64, &allocator).create(&layer2Activ);
-    try layer2_act.init(64, 64);
+    try layer2_act.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 64,
+        .n_neurons = 64,
+    }));
     try model.addLayer(layer2_act);
 
     var layer3 = denselayer(f64, &allocator){
@@ -89,7 +115,13 @@ pub fn main() !void {
     };
     //layer 3: 64 inputs, 10 neurons
     var layer3_ = denselayer(f64, &allocator).create(&layer3);
-    try layer3_.init(64, 10);
+    try layer3_.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 64,
+        .n_neurons = 10,
+    }));
     try model.addLayer(layer3_);
 
     var layer3Activ = activationlayer(f64, &allocator){
@@ -101,7 +133,13 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer3_act = activationlayer(f64, &allocator).create(&layer3Activ);
-    try layer3_act.init(10, 10);
+    try layer3_act.init(@constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 10,
+        .n_neurons = 10,
+    }));
     try model.addLayer(layer3_act);
 
     var load = loader.DataLoader(f64, u8, u8, 10, 3){
