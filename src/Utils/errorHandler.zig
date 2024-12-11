@@ -12,6 +12,9 @@ pub const LayerError = error{
     NullLayer,
     InvalidParameters,
     InvalidLayerType,
+    Only2DSupported, //TODO: add description
+    ZeroValueKernel, //TODO: add description
+    ZeroValueStride, //TODO: add description
 };
 
 /// Type errors
