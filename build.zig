@@ -29,6 +29,7 @@ pub fn build(b: *std.Build) void {
     const denseLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/denseLayer.zig") });
     const activationLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/activationLayer.zig") });
     const convLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/convLayer.zig") });
+    const flattenLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/flattenLayer.zig") });
 
     // Create modules from the source files in the `src/DataHandler/` directory.
     const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
@@ -77,6 +78,14 @@ pub fn build(b: *std.Build) void {
     convLayer_mod.addImport("Layer", layer_mod);
     convLayer_mod.addImport("architectures", architectures_mod);
     convLayer_mod.addImport("errorHandler", errorHandler_mod);
+
+    //************************************************FLATTENLAYER DEPENDENCIES************************************************
+
+    flattenLayer_mod.addImport("Tensor", tensor_mod);
+    flattenLayer_mod.addImport("tensor_m", tensor_math_mod);
+    flattenLayer_mod.addImport("Layer", layer_mod);
+    flattenLayer_mod.addImport("architectures", architectures_mod);
+    flattenLayer_mod.addImport("errorHandler", errorHandler_mod);
 
     //************************************************ACTIVATIONLAYER DEPENDENCIES************************************************
 
@@ -228,6 +237,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("denselayer", denseLayer_mod);
     unit_tests.root_module.addImport("activationlayer", activationLayer_mod);
     unit_tests.root_module.addImport("convLayer", convLayer_mod);
+    unit_tests.root_module.addImport("flattenLayer", flattenLayer_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{

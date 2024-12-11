@@ -1,6 +1,7 @@
 const std = @import("std");
 const DenseLayer = @import("denselayer").DenseLayer;
 const ConvolutionalLayer = @import("convLayer").ConvolutionalLayer;
+const FlattenLayer = @import("flattenLayer").FlattenLayer;
 const ActivationLayer = @import("activationlayer").ActivationLayer;
 const Layer = @import("layer").Layer;
 const layer_ = @import("layer");
@@ -337,4 +338,81 @@ test "Complete test of the new convolutional layer functionalities" {
     layer.deinit();
     _ = &input_data;
     _ = &conv_layer;
+}
+
+test "Complete test of the Flatten layer functionalities" {
+    std.debug.print("\n     Test: Flatten layer forward and backward test ", .{});
+
+    const allocator = &std.testing.allocator;
+
+    var input_data = [_]f64{
+        // Batch 1, Channel 1
+        1,  2,  3,
+        4,  5,  6,
+        7,  8,  9,
+        // Batch 1, Channel 2
+        10, 11, 12,
+        13, 14, 15,
+        16, 17, 18,
+        // Batch 2, Channel 1
+        19, 20, 21,
+        22, 23, 24,
+        25, 26, 27,
+        // Batch 2, Channel 2
+        28, 29, 30,
+        31, 32, 33,
+        34, 35, 36,
+    };
+    var input_shape = [_]usize{ 2, 2, 3, 3 }; // [batch_size, channels, height, width]
+    var input = try Tensor(f64).fromArray(allocator, &input_data, input_shape[0..]);
+    defer input.deinit();
+
+    // Create the Flatten layer
+    var flatten_layer = FlattenLayer(f64, allocator){
+        .input = undefined,
+        .output = undefined,
+        .allocator = allocator,
+    };
+    var layer = flatten_layer.create();
+
+    // Initialize the Flatten layer with placeholder args
+    var init_args = FlattenLayer(f64, allocator).FlattenInitArgs{
+        .placeholder = true,
+    };
+    try layer.init(&init_args);
+
+    // Perform the forward pass
+    std.debug.print("\nFlatten forward pass test...\n", .{});
+    var output = try layer.forward(&input);
+    std.debug.print("Output shape after flatten: {any}\n", .{output.shape});
+    std.debug.print("Output of forward pass:\n", .{});
+    output.info();
+
+    // Verify the output size (should be 2*2*3*3 = 36 elements)
+    try std.testing.expectEqual(@as(usize, 36), output.size);
+
+    // Create a dummy gradient for the backward pass (same shape as output)
+    var dValues_data = try allocator.alloc(f64, output.size);
+    _ = &dValues_data;
+    defer allocator.free(dValues_data);
+    for (dValues_data) |*val| {
+        val.* = 1; // Set all gradients to 1 for simplicity
+    }
+    var dValues = try Tensor(f64).fromArray(allocator, dValues_data, output.shape);
+    defer dValues.deinit();
+
+    // Perform the backward pass
+    std.debug.print("\nFlatten backward pass test...\n", .{});
+    var dInput = try layer.backward(&dValues);
+    defer dInput.deinit();
+    std.debug.print("dInput shape after backward (should match the original input shape): {any}\n", .{dInput.shape});
+    dInput.info();
+
+    // Verify the shapes
+    try std.testing.expectEqualSlices(usize, dInput.shape, input.shape);
+
+    // Clean up resources
+    layer.deinit();
+    _ = &input_data;
+    _ = &flatten_layer;
 }

@@ -66,7 +66,7 @@ pub fn TrainDataLoader(
     comptime batchSize: i16,
     features: usize,
     model: *Model(T, allocator),
-    load: *DataLoader(T, XType, YType, batchSize, 3),
+    load: *DataLoader(T, XType, YType, batchSize),
     epochs: u32,
     comptime lossType: LossType,
     comptime lr: f64,
@@ -107,10 +107,137 @@ pub fn TrainDataLoader(
         var totalCorrectVal: u16 = 0;
         var totalSamplesVal: u16 = 0;
 
+        var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){};
+
         for (0..steps) |step| {
             _ = load.xTrainNextBatch(batchSize);
             _ = load.yTrainNextBatch(batchSize);
             try load.toTensor(allocator, &shapeX, &shapeY);
+            try convertToOneHot(T, batchSize, &load.yTensor);
+
+            var predictions = try model.forward(&load.xTensor);
+            //defer predictions.deinit();
+
+            var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
+            try predictions.reshape(&shape);
+
+            const loser = Loss.LossFunction(lossType){};
+            try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+            var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+
+            const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
+            totalCorrect += correctPredictions;
+            totalSamples += batchSize;
+
+            LossMeanRecord[i] = TensMath.mean(T, &loss);
+            AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
+
+            var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
+            _ = try model.backward(&grad);
+
+            try optimizer.step(model);
+
+            std.debug.print("Training - Epoch: {}, Step: {}, Loss: {}, Accuracy: {} \n", .{ i + 1, step + 1, LossMeanRecord[i], AccuracyRecord[i] });
+        }
+
+        load.reset();
+
+        const val_len: u16 = @as(u16, @intCast(load.X_test.?.len));
+        var val_steps: u16 = @divFloor(val_len, batchSize);
+        if (val_len % batchSize != 0) {
+            val_steps += 1;
+        }
+
+        std.debug.print("\nNumber of validation steps: {}\n", .{val_steps});
+
+        for (0..val_steps) |step| {
+            _ = load.xTestNextBatch(batchSize);
+            _ = load.yTestNextBatch(batchSize);
+            try load.toTensor(allocator, &shapeX, &shapeY);
+            try convertToOneHot(T, batchSize, &load.yTensor);
+
+            var predictions = try model.forward(&load.xTensor);
+            //defer predictions.deinit();
+
+            var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
+            try predictions.reshape(&shape);
+
+            const loser = Loss.LossFunction(lossType){};
+            try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+            var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+
+            const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
+            totalCorrectVal += correctPredictions;
+            totalSamplesVal += batchSize;
+
+            ValidationLossRecord[i] = TensMath.mean(T, &loss);
+            ValidationAccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrectVal)) / @as(f32, @floatFromInt(totalSamplesVal)) * 100.0;
+
+            std.debug.print("\nValidation - Epoch: {}, Step: {}", .{ i + 1, step + 1 });
+        }
+
+        load.reset();
+
+        std.debug.print("\nEpoch {}: Training Loss = {}, Training Accuracy = {}%", .{ i + 1, LossMeanRecord[i], AccuracyRecord[i] });
+        std.debug.print("\nEpoch {}: Validation Loss = {}, Validation Accuracy = {}%", .{ i + 1, ValidationLossRecord[i], ValidationAccuracyRecord[i] });
+    }
+}
+
+pub fn TrainDataLoader2D(
+    comptime T: type,
+    comptime XType: type, // Input types
+    comptime YType: type, // Output type
+    comptime allocator: *const std.mem.Allocator,
+    comptime batchSize: i16,
+    features: usize,
+    model: *Model(T, allocator),
+    load: *DataLoader(T, XType, YType, batchSize, 3),
+    epochs: u32,
+    comptime lossType: LossType,
+    comptime lr: f64,
+    training_size: f32,
+) !void {
+    var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(LossMeanRecord);
+
+    var AccuracyRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(AccuracyRecord);
+
+    var ValidationLossRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(ValidationLossRecord);
+
+    var ValidationAccuracyRecord: []f32 = try allocator.alloc(f32, epochs);
+    defer allocator.free(ValidationAccuracyRecord);
+    //TODO need to be changed for not 2D images
+    _ = features;
+    var shapeXArr = [_]usize{ batchSize, 1, 28, 28 };
+    var shapeYArr = [_]usize{batchSize};
+    var shapeX: []usize = &shapeXArr;
+    var shapeY: []usize = &shapeYArr;
+
+    var steps: u16 = 0;
+    try load.trainTestSplit(allocator, training_size);
+
+    const train_len: u16 = @as(u16, @intCast(load.X_train.?.len));
+    steps = @divFloor(train_len, batchSize);
+    if (train_len % batchSize != 0) {
+        steps += 1;
+    }
+
+    std.debug.print("Number of training steps: {}\n", .{steps});
+
+    for (0..epochs) |i| {
+        var totalCorrect: u16 = 0;
+        var totalSamples: u16 = 0;
+
+        var totalCorrectVal: u16 = 0;
+        var totalSamplesVal: u16 = 0;
+
+        for (0..steps) |step| {
+            _ = load.xTrainNextBatch(batchSize);
+            _ = load.yTrainNextBatch(batchSize);
+            try load.toTensor(allocator, &shapeX, &shapeY);
+
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);

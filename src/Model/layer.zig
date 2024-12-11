@@ -19,6 +19,7 @@ pub const LayerType = enum {
     DefaultLayer,
     ConvolutionalLayer,
     ActivationLayer,
+    FlattenLayer,
     null,
 };
 

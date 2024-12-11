@@ -422,42 +422,26 @@ fn sum_over_kernel(
     current_dim: usize,
 ) !void {
     if (current_dim == kernel.shape.len) {
-        // Final indices:
-        std.debug.print("sum_over_kernel: Final indices - input_indices: {d}, kernel_indices: {d}\n", .{ input_indices, kernel_indices });
-
         if (anyOutOfBounds(input_indices, input.shape)) {
-            std.debug.print("Error: input_indices out of bounds: {d}, shape: {d}\n", .{ input_indices, input.shape });
             return error.IndexOutOfBounds;
         }
         if (anyOutOfBounds(kernel_indices, kernel.shape)) {
-            std.debug.print("Error: kernel_indices out of bounds: {d}, shape: {d}\n", .{ kernel_indices, kernel.shape });
             return error.IndexOutOfBounds;
         }
 
         const input_value = try input.get_at(input_indices);
         const kernel_value = try kernel.get_at(kernel_indices);
 
-        std.debug.print("Input value: {}, Kernel value: {}\n", .{ input_value, kernel_value });
-
         sum.* += input_value * kernel_value;
-        std.debug.print("Updated sum: {}\n", .{sum.*});
     } else {
-        // Scorri lungo la dimensione corrente del kernel
         for (0..kernel.shape[current_dim]) |k| {
             kernel_indices[current_dim] = k;
 
-            // Calcola l'indice dell'input corrispondente
             const input_idx_dim = if (current_dim >= 2) current_dim else current_dim + 2;
             if (input_idx_dim < input_indices.len) {
                 input_indices[input_idx_dim] = input_location[input_idx_dim] + k;
-
-                std.debug.print(
-                    "sum_over_kernel: Updating indices - kernel_indices: {d}, input_indices: {d}\n",
-                    .{ kernel_indices, input_indices },
-                );
             }
 
-            // Ricorsione per le dimensioni successive
             try sum_over_kernel(
                 inputType,
                 outputType,
@@ -499,7 +483,7 @@ fn multidim_convolution_with_bias(
         // Imposta il batch
         input_indices[0] = location[0]; // Batch
 
-        std.debug.print("multidim_convolution_with_bias: location: {d}, sum: {}\n", .{ location, sum });
+        //std.debug.print("multidim_convolution_with_bias: location: {d}, sum: {}\n", .{ location, sum });
 
         // Itera su tutti i canali
         for (0..kernel.shape[1]) |channel| {
@@ -521,11 +505,11 @@ fn multidim_convolution_with_bias(
 
         // Recupera il bias dal tensore bias
         const bias_index = [_]usize{ location[1], 0 }; // Location[1] corrisponde al filtro
-        bias.info();
+        //bias.info();
         const bias_value = try bias.get_at(&bias_index);
 
         sum += bias_value; // Aggiungi il bias
-        std.debug.print("multidim_convolution_with_bias: Adding bias. New sum: {}\n", .{sum});
+        //std.debug.print("multidim_convolution_with_bias: Adding bias. New sum: {}\n", .{sum});
 
         // Imposta il risultato nell'output
         try output.set_at(location, sum);
@@ -539,7 +523,7 @@ fn multidim_convolution_with_bias(
                 return error.IndexOutOfBounds;
             }
 
-            std.debug.print("multidim_convolution_with_bias: Recursing at dimension {d}, index {d}\n", .{ current_dim, i });
+            //std.debug.print("multidim_convolution_with_bias: Recursing at dimension {d}, index {d}\n", .{ current_dim, i });
 
             try multidim_convolution_with_bias(
                 inputType,
@@ -610,7 +594,7 @@ pub fn CPU_convolve_tensors_with_bias(
         &location,
     );
 
-    std.debug.print("Result tensor data: {d}\n", .{out_tensor.data});
+    //std.debug.print("Result tensor data: {d}\n", .{out_tensor.data});
     return out_tensor;
 }
 

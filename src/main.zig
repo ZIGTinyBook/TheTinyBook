@@ -39,68 +39,70 @@ pub fn main() !void {
         kernel_size: [2]usize,
     }{
         .input_channels = 1,
-        .output_channels = 10,
-        .kernel_size = .{ 2, 2 },
+        .output_channels = 32,
+        .kernel_size = .{ 3, 3 },
     }));
     try model.addLayer(layer_);
 
-    var layer1Activ = activationlayer(f64, &allocator){
-        .input = undefined,
-        .output = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .activationFunction = ActivationType.ReLU,
-        .allocator = &allocator,
-    };
-    var layer1_act = activationlayer(f64, &allocator).create(&layer1Activ);
-    try layer1_act.init(@constCast(&struct {
-        n_inputs: usize,
-        n_neurons: usize,
-    }{
-        .n_inputs = 64,
-        .n_neurons = 64,
-    }));
-    try model.addLayer(layer1_act);
+    // var layer1Activ = activationlayer(f64, &allocator){
+    //     .input = undefined,
+    //     .output = undefined,
+    //     .n_inputs = 0,
+    //     .n_neurons = 0,
+    //     .activationFunction = ActivationType.ReLU,
+    //     .allocator = &allocator,
+    // };
+    // var layer1_act = activationlayer(f64, &allocator).create(&layer1Activ);
+    // try layer1_act.init(@constCast(&struct {
+    //     n_inputs: usize,
+    //     n_neurons: usize,
+    // }{
+    //     .n_inputs = 64,
+    //     .n_neurons = 64,
+    // }));
+    // try model.addLayer(layer1_act);
 
-    var layer2 = denselayer(f64, &allocator){
+    var conv_layer2 = convlayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
+        .input_channels = 0,
+        .output_channels = 0,
+        .kernel_size = undefined,
         .w_gradients = undefined,
         .b_gradients = undefined,
-        .allocator = undefined,
+        .allocator = &allocator,
     };
-    //layer 2: 64 inputs, 64 neurons
-    var layer2_ = denselayer(f64, &allocator).create(&layer2);
+    var layer2_ = conv_layer2.create();
     try layer2_.init(@constCast(&struct {
-        n_inputs: usize,
-        n_neurons: usize,
+        input_channels: usize,
+        output_channels: usize,
+        kernel_size: [2]usize,
     }{
-        .n_inputs = 64,
-        .n_neurons = 64,
+        .input_channels = 32,
+        .output_channels = 32,
+        .kernel_size = .{ 3, 3 },
     }));
     try model.addLayer(layer2_);
 
-    var layer2Activ = activationlayer(f64, &allocator){
-        .input = undefined,
-        .output = undefined,
-        .n_inputs = 0,
-        .n_neurons = 0,
-        .activationFunction = ActivationType.ReLU,
-        .allocator = &allocator,
-    };
-    var layer2_act = activationlayer(f64, &allocator).create(&layer2Activ);
-    try layer2_act.init(@constCast(&struct {
-        n_inputs: usize,
-        n_neurons: usize,
-    }{
-        .n_inputs = 64,
-        .n_neurons = 64,
-    }));
-    try model.addLayer(layer2_act);
+    // var layer2Activ = activationlayer(f64, &allocator){
+    //     .input = undefined,
+    //     .output = undefined,
+    //     .n_inputs = 0,
+    //     .n_neurons = 0,
+    //     .activationFunction = ActivationType.ReLU,
+    //     .allocator = &allocator,
+    // };
+    // var layer2_act = activationlayer(f64, &allocator).create(&layer2Activ);
+    // try layer2_act.init(@constCast(&struct {
+    //     n_inputs: usize,
+    //     n_neurons: usize,
+    // }{
+    //     .n_inputs = 64,
+    //     .n_neurons = 64,
+    // }));
+    // try model.addLayer(layer2_act);
 
     var layer3 = denselayer(f64, &allocator){
         .weights = undefined,
@@ -142,7 +144,7 @@ pub fn main() !void {
     }));
     try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 10, 3){
+    var load = loader.DataLoader(f64, u8, u8, 1, 3){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -156,12 +158,12 @@ pub fn main() !void {
 
     try load.loadMNIST2DDataParallel(&allocator, image_file_name, label_file_name);
 
-    try Trainer.TrainDataLoader(
+    try Trainer.TrainDataLoader2D(
         f64, //The data type for the tensor elements in the model
         u8, //The data type for the input tensor (X)
         u8, //The data type for the output tensor (Y)
         &allocator, //Memory allocator for dynamic allocations during training
-        10, //The number of samples in each batch
+        1, //The number of samples in each batch
         784, //The number of features in each input sample
         &model, //A pointer to the model to be trained
         &load, //A pointer to the `DataLoader` that provides data batches

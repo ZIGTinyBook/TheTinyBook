@@ -117,6 +117,7 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
 
             // Perform convolution operation
             self.output = try TensMath.CPU_convolve_tensors_with_bias(T, T, &self.input, &self.weights, &self.bias);
+            //self.output.info();
 
             return self.output;
         }
