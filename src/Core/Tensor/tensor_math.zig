@@ -547,7 +547,7 @@ pub fn CPU_convolve_tensors_with_bias(
     kernel: *Tensor(inputType),
     bias: *Tensor(outputType),
 ) !Tensor(outputType) {
-    std.debug.print("CPU_convolve_tensors_with_bias: input shape: {d}, kernel shape: {d}\n", .{ input.shape, kernel.shape });
+    //std.debug.print("CPU_convolve_tensors_with_bias: input shape: {d}, kernel shape: {d}\n", .{ input.shape, kernel.shape });
 
     const nDimInput = input.shape.len;
     const nDimKernel = kernel.shape.len;
@@ -576,7 +576,7 @@ pub fn CPU_convolve_tensors_with_bias(
         input.shape[3] - kernel.shape[3] + 1, // Width
     };
 
-    std.debug.print("Output tensor shape: {d}\n", .{out_shape});
+    //std.debug.print("Output tensor shape: {d}\n", .{out_shape});
 
     var out_tensor = try Tensor(outputType).fromShape(&std.heap.page_allocator, &out_shape);
     try out_tensor.set(0, 0);
@@ -747,7 +747,7 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
             try input_channel_gradient.set(0, 0);
 
             for (0..out_channels) |oc| {
-                std.debug.print("Processing batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+                //std.debug.print("Processing batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
 
                 // Flip weights along spatial dimensions (rotate 180 degrees)
                 var flipped_weights = try flip_kernel(T, weights, oc, ic);
@@ -756,11 +756,11 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
                 var start_indices = [_]usize{ b, oc, 0, 0 };
                 var slice_shape = [_]usize{ 1, 1, output_height, output_width };
 
-                std.debug.print("Slicing dValues with start indices: {d}, slice shape: {d}\n", .{ start_indices, slice_shape });
+                //std.debug.print("Slicing dValues with start indices: {d}, slice shape: {d}\n", .{ start_indices, slice_shape });
 
                 var dValue_slice = try dValues.slice(&start_indices, &slice_shape);
 
-                std.debug.print("Starting convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+                //std.debug.print("Starting convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
 
                 //Create 0 array with bias, can be optimized
                 const zeros = try Layer.zeros(T, out_channels, 1);
@@ -780,7 +780,7 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
                     }
                 }
 
-                std.debug.print("Completed convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
+                //std.debug.print("Completed convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
 
                 // Clean up temporary tensors
                 input_grad.deinit();
@@ -803,7 +803,7 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
         }
     }
 
-    std.debug.print("Completed backward input gradients computation. Shape: {d}\n", .{input_gradients.shape});
+    //std.debug.print("Completed backward input gradients computation. Shape: {d}\n", .{input_gradients.shape});
 
     return input_gradients;
 }
@@ -828,7 +828,7 @@ fn flip_kernel(comptime T: type, weights: *Tensor(T), out_channel: usize, in_cha
         }
     }
 
-    std.debug.print("Flipped kernel for out_channel {d}, in_channel {d} generated.\n", .{ out_channel, in_channel });
+    //std.debug.print("Flipped kernel for out_channel {d}, in_channel {d} generated.\n", .{ out_channel, in_channel });
 
     return flipped_kernel;
 }

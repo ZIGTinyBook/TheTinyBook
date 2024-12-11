@@ -160,7 +160,7 @@ pub fn main() !void {
     }));
     try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 1, 3){
+    var load = loader.DataLoader(f64, u8, u8, 32, 3){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -179,11 +179,11 @@ pub fn main() !void {
         u8, //The data type for the input tensor (X)
         u8, //The data type for the output tensor (Y)
         &allocator, //Memory allocator for dynamic allocations during training
-        1, //The number of samples in each batch
+        32, //The number of samples in each batch
         784, //The number of features in each input sample
         &model, //A pointer to the model to be trained
         &load, //A pointer to the `DataLoader` that provides data batches
-        1, //The total number of epochs to train for
+        3, //The total number of epochs to train for
         LossType.CCE, //The type of loss function used during training
         0.005,
         0.8, //Training size
