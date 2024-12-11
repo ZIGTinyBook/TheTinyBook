@@ -3,6 +3,7 @@ const tensor = @import("tensor");
 const layer = @import("layer");
 const denselayer = @import("denselayer").DenseLayer;
 const convlayer = @import("convLayer").ConvolutionalLayer;
+const flattenlayer = @import("flattenLayer").FlattenLayer;
 const activationlayer = @import("activationlayer").ActivationLayer;
 const Model = @import("model").Model;
 const loader = @import("dataloader");
@@ -104,6 +105,21 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer2_act);
 
+    var flatten_layer = flattenlayer(f64, &allocator){
+        .input = undefined,
+        .output = undefined,
+        .allocator = &allocator,
+    };
+    var Flattenlayer = flatten_layer.create();
+
+    // Initialize the Flatten layer with placeholder args
+    var init_args = flattenlayer(f64, &allocator).FlattenInitArgs{
+        .placeholder = true,
+    };
+    try Flattenlayer.init(&init_args);
+
+    try model.addLayer(Flattenlayer);
+
     var layer3 = denselayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -121,7 +137,7 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 64,
+        .n_inputs = 18432,
         .n_neurons = 10,
     }));
     try model.addLayer(layer3_);
@@ -139,7 +155,7 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 10,
+        .n_inputs = 18432,
         .n_neurons = 10,
     }));
     try model.addLayer(layer3_act);

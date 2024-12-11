@@ -39,7 +39,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
             const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
             const argsStruct: *const FlattenInitArgs = @ptrCast(@alignCast(args));
-            _ = argsStruct; // We don't really need the placeholder here
+            _ = argsStruct; // We don't really need the placeholder
 
             self.allocator = alloc;
 
@@ -59,9 +59,15 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
         }
 
-        /// Forward pass: Flatten the input tensor
+        /// Forward pass: Flatten all dimensions except the first (batch) dimension
+        /// Input: [N, D1, D2, ..., Dk]
+        /// Output: [N, D1*D2*...*Dk]
         pub fn forward(ctx: *anyopaque, input: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
             const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+
+            if (input.shape.len < 2) {
+                return LayerError.InvalidParameters;
+            }
 
             // Save the input for backward pass
             if (self.input.data.len > 0) {
@@ -69,13 +75,16 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             }
             self.input = try input.copy();
 
-            // Compute total size of the input
+            const batch_size = input.shape[0];
+
+            // Compute total size of the rest dimensions
             var total_size: usize = 1;
-            for (input.shape) |dim| {
+            for (input.shape[1..]) |dim| {
                 total_size *= dim;
             }
 
-            var output_shape: [1]usize = .{total_size};
+            // New shape: [N, total_size]
+            var output_shape: [2]usize = .{ batch_size, total_size };
 
             if (self.output.data.len > 0) {
                 self.output.deinit();
@@ -86,18 +95,24 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         /// Backward pass: Reshape the gradients to the original input shape
+        /// If forward input shape = [N, D1, D2, ..., Dk]
+        /// backward receives dValues of shape [N, D1*D2*...*Dk]
+        /// We must reshape back to [N, D1, D2, ..., Dk].
         pub fn backward(ctx: *anyopaque, dValues: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
             const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
-            // `self.input.shape` might be []const usize, need a mutable slice
             const input_shape_const = self.input.shape;
+
+            // Just reshape the dValues to original input shape
             var input_shape = try self.allocator.alloc(usize, input_shape_const.len);
             _ = &input_shape;
             defer self.allocator.free(input_shape);
+
+            // Copy shape
             @memcpy(input_shape, input_shape_const);
 
             var dInput = try Tensor.Tensor(T).fromArray(self.allocator, dValues.data, input_shape);
-            _ = &dInput;
+            _ = &dInput; // Unused
             return dInput;
         }
 
@@ -114,18 +129,20 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //---------------------------------------------------------------
         //---------------------------- Getters --------------------------
         //---------------------------------------------------------------
-        /// Get the number of inputs = product of input dimensions
+        /// Get the number of inputs = product of all dimensions except the first is combined into one
         pub fn get_n_inputs(ctx: *anyopaque) usize {
             const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
 
+            if (self.input.shape.len < 2) return 0;
+
             var total: usize = 1;
-            for (self.input.shape) |dim| {
+            for (self.input.shape[1..]) |dim| {
                 total *= dim;
             }
             return total;
         }
 
-        /// For Flatten layer, number of neurons = number of inputs
+        /// For Flatten layer, number of neurons = number of inputs after the first dimension
         pub fn get_n_neurons(ctx: *anyopaque) usize {
             return get_n_inputs(ctx);
         }

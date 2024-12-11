@@ -340,7 +340,7 @@ test "Complete test of the new convolutional layer functionalities" {
     _ = &conv_layer;
 }
 
-test "Complete test of the Flatten layer functionalities" {
+test "Complete test of the Flatten layer functionalities with first dimension unflattened" {
     std.debug.print("\n     Test: Flatten layer forward and backward test ", .{});
 
     const allocator = &std.testing.allocator;
@@ -363,7 +363,7 @@ test "Complete test of the Flatten layer functionalities" {
         31, 32, 33,
         34, 35, 36,
     };
-    var input_shape = [_]usize{ 2, 2, 3, 3 }; // [batch_size, channels, height, width]
+    var input_shape = [_]usize{ 2, 2, 3, 3 }; // [batch_size=2, channels=2, height=3, width=3]
     var input = try Tensor(f64).fromArray(allocator, &input_data, input_shape[0..]);
     defer input.deinit();
 
@@ -388,10 +388,13 @@ test "Complete test of the Flatten layer functionalities" {
     std.debug.print("Output of forward pass:\n", .{});
     output.info();
 
-    // Verify the output size (should be 2*2*3*3 = 36 elements)
-    try std.testing.expectEqual(@as(usize, 36), output.size);
+    // Verify the output size (should be [2, 18])
+    // Because input is [2,2,3,3], the last dimensions product: 2*3*3=18
+    // So output.shape should be [2, 18]
+    try std.testing.expectEqual(@as(usize, 2), output.shape[0]);
+    try std.testing.expectEqual(@as(usize, 18), output.shape[1]);
 
-    // Create a dummy gradient for the backward pass (same shape as output)
+    // Create a dummy gradient for the backward pass (same shape as output: [2, 18])
     var dValues_data = try allocator.alloc(f64, output.size);
     _ = &dValues_data;
     defer allocator.free(dValues_data);
@@ -408,7 +411,7 @@ test "Complete test of the Flatten layer functionalities" {
     std.debug.print("dInput shape after backward (should match the original input shape): {any}\n", .{dInput.shape});
     dInput.info();
 
-    // Verify the shapes
+    // Verify the shapes are the same as original input
     try std.testing.expectEqualSlices(usize, dInput.shape, input.shape);
 
     // Clean up resources
