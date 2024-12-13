@@ -21,6 +21,7 @@ pub fn main() !void {
     };
     try model.init();
 
+    //layer 0 ----------------------------------------------------------------------------
     var conv_layer = convlayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -63,6 +64,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer1_act);
 
+    //layer 1 ----------------------------------------------------------------------------
     var conv_layer2 = convlayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -105,6 +107,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer2_act);
 
+    //layer 2 ----------------------------------------------------------------------------
     var flatten_layer = flattenlayer(f64, &allocator){
         .input = undefined,
         .output = undefined,
@@ -120,6 +123,7 @@ pub fn main() !void {
 
     try model.addLayer(Flattenlayer);
 
+    //layer 3 ----------------------------------------------------------------------------
     var layer3 = denselayer(f64, &allocator){
         .weights = undefined,
         .bias = undefined,
@@ -131,7 +135,7 @@ pub fn main() !void {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    //layer 3: 64 inputs, 10 neurons
+
     var layer3_ = denselayer(f64, &allocator).create(&layer3);
     try layer3_.init(@constCast(&struct {
         n_inputs: usize,
@@ -142,6 +146,7 @@ pub fn main() !void {
     }));
     try model.addLayer(layer3_);
 
+    //layer 4 ----------------------------------------------------------------------------
     var layer3Activ = activationlayer(f64, &allocator){
         .input = undefined,
         .output = undefined,

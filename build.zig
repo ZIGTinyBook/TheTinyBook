@@ -30,6 +30,7 @@ pub fn build(b: *std.Build) void {
     const activationLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/activationLayer.zig") });
     const convLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/convLayer.zig") });
     const flattenLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/flattenLayer.zig") });
+    const poolingLayer_mod = b.createModule(.{ .root_source_file = b.path("src/Model/Layers/poolingLayer.zig") });
 
     // Create modules from the source files in the `src/DataHandler/` directory.
     const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
@@ -133,6 +134,7 @@ pub fn build(b: *std.Build) void {
     tensor_math_mod.addImport("architectures", architectures_mod);
     tensor_math_mod.addImport("errorHandler", errorHandler_mod);
     tensor_math_mod.addImport("Layer", layer_mod);
+    tensor_math_mod.addImport("poolingLayer", poolingLayer_mod);
 
     //************************************************ACTIVATION DEPENDENCIES************************************************
 
@@ -194,6 +196,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("activationlayer", activationLayer_mod);
     exe.root_module.addImport("convLayer", convLayer_mod);
     exe.root_module.addImport("flattenLayer", flattenLayer_mod);
+    exe.root_module.addImport("poolingLayer", poolingLayer_mod);
 
     // Install the executable.
     b.installArtifact(exe);
@@ -239,6 +242,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("activationlayer", activationLayer_mod);
     unit_tests.root_module.addImport("convLayer", convLayer_mod);
     unit_tests.root_module.addImport("flattenLayer", flattenLayer_mod);
+    unit_tests.root_module.addImport("poolingLayer", poolingLayer_mod);
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{
