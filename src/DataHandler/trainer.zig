@@ -187,10 +187,10 @@ pub fn TrainDataLoader2D(
     comptime T: type,
     comptime XType: type, // Input types
     comptime YType: type, // Output type
-    comptime allocator: *const std.mem.Allocator,
+    allocator: *const std.mem.Allocator,
     comptime batchSize: i16,
     features: usize,
-    model: *Model(T, allocator),
+    model: *Model(T),
     load: *DataLoader(T, XType, YType, batchSize, 3),
     epochs: u32,
     comptime lossType: LossType,
@@ -260,7 +260,7 @@ pub fn TrainDataLoader2D(
             var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
             _ = try model.backward(&grad);
 
-            var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr, allocator){};
+            var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr){};
             try optimizer.step(model);
 
             std.debug.print("Training - Epoch: {}, Step: {}\n", .{ i + 1, step + 1 });

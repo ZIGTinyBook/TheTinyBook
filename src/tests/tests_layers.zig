@@ -20,8 +20,8 @@ test "Layer test description" {
 }
 
 test "Rand n and zeros" {
-    const randomArray = try layer_.randn(f32, 5, 5);
-    const zerosArray = try layer_.zeros(f32, 5, 5);
+    const randomArray = try layer_.randn(f32, std.heap.page_allocator, 5, 5);
+    const zerosArray = try layer_.zeros(f32, std.heap.page_allocator, 5, 5);
 
     //test dimension
     try std.testing.expectEqual(randomArray.len, 5);

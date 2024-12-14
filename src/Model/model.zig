@@ -13,9 +13,9 @@ const DataProc = @import("dataprocessor");
 /// This model can be configured with a specific data type (`T`) and allocator. It supports
 /// adding layers, running forward and backward passes, and manages the allocation and
 /// deallocation of resources.
-pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) type {
+pub fn Model(comptime T: type) type {
     return struct {
-        layers: std.ArrayList(layer.Layer(T, allocator)) = undefined, // Array of layers in the model.
+        layers: std.ArrayList(layer.Layer(T)) = undefined, // Array of layers in the model.
         allocator: *const std.mem.Allocator, // Allocator reference for dynamic memory allocation.
         input_tensor: tensor.Tensor(T), // Tensor that holds the model's input data.
 
@@ -25,7 +25,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         /// # Errors
         /// Returns an error if memory allocation for the `layers` array or `input_tensor` fails.
         pub fn init(self: *@This()) !void {
-            self.layers = std.ArrayList(layer.Layer(T, allocator)).init(allocator.*);
+            self.layers = std.ArrayList(layer.Layer(T)).init(self.allocator.*);
             self.input_tensor = try tensor.Tensor(T).init(self.allocator);
         }
 
@@ -53,7 +53,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
         ///
         /// # Errors
         /// Returns an error if reallocating the `layers` array fails.
-        pub fn addLayer(self: *@This(), new_layer: layer.Layer(T, allocator)) !void {
+        pub fn addLayer(self: *@This(), new_layer: layer.Layer(T)) !void {
             try self.layers.append(new_layer);
         }
 
@@ -96,6 +96,7 @@ pub fn Model(comptime T: type, comptime allocator: *const std.mem.Allocator) typ
 
             var grad_ptr: tensor.Tensor(T) = undefined;
             var grad_duplicate: tensor.Tensor(T) = try gradient.copy();
+
             // std.debug.print("\n grad_duplicate ", .{});
             // grad_duplicate.info();
 

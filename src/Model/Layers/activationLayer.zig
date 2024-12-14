@@ -7,7 +7,7 @@ const ActivationType = @import("activation_function").ActivationType;
 const ActivLib = @import("activation_function");
 const LayerError = @import("errorHandler").LayerError;
 
-pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
+pub fn ActivationLayer(comptime T: type) type {
     return struct {
         //layer shape --------------------
         n_inputs: usize,
@@ -19,8 +19,10 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *ActivationLayer(T, alloc)) Layer.Layer(T, alloc) {
-            return Layer.Layer(T, alloc){
+        const Self = @This();
+
+        pub fn create(self: *Self) Layer.Layer(T) {
+            return Layer.Layer(T){
                 .layer_type = Layer.LayerType.ActivationLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -37,8 +39,8 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             };
         }
 
-        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+        pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const struct { n_inputs: usize, n_neurons: usize } = @ptrCast(@alignCast(args));
             const n_inputs = argsStruct.n_inputs;
             const n_neurons = argsStruct.n_neurons;
@@ -63,7 +65,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Deallocate the layer
         pub fn deinit(ctx: *anyopaque) void {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             if (self.output.data.len > 0) {
                 self.output.deinit();
             }
@@ -76,7 +78,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         ///Forward pass of the layer if present it applies the activation function
         /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // 1. copy the input both in self.input and self.output because activation.forward doesn't return a tensor
             self.input = try input.copy();
@@ -104,7 +106,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
         pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             //---- Key Steps: -----
             // 1. Apply the derivative of the activation function to dValues
             if (self.activationFunction == ActivationType.ReLU) {
@@ -126,7 +128,7 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             std.debug.print("\n ************************Activation layer*********************", .{});
             //MENU choice:
             // 0 -> full details layer
@@ -154,25 +156,25 @@ pub fn ActivationLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         pub fn get_n_inputs(ctx: *anyopaque) usize {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return self.n_inputs;
         }
 
         pub fn get_n_neurons(ctx: *anyopaque) usize {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return self.n_neurons;
         }
 
         pub fn get_input(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
-            const self: *ActivationLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.output;
         }

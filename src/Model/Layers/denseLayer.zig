@@ -8,7 +8,7 @@ const LayerError = @import("errorHandler").LayerError;
 /// Function to create a DenseLayer struct in future it will be possible to create other types of layers like convolutional, LSTM etc.
 /// The DenseLayer is a fully connected layer, it has a weight matrix and a bias vector.
 /// It has also an activation function that can be applied to the output, it can even be none.
-pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
+pub fn DenseLayer(comptime T: type) type {
     return struct {
         //          | w11   w12  w13 |
         // weight = | w21   w22  w23 | , where Wij, i= neuron i-th and j=input j-th
@@ -26,8 +26,10 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //utils---------------------------
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *DenseLayer(T, alloc)) Layer.Layer(T, alloc) {
-            return Layer.Layer(T, alloc){
+        const Self = @This();
+
+        pub fn create(self: *Self) Layer.Layer(T) {
+            return Layer.Layer(T){
                 .layer_type = Layer.LayerType.DenseLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -46,8 +48,8 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Initilize the layer with random weights and biases
         /// also for the gradients
-        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+        pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const struct { n_inputs: usize, n_neurons: usize } = @ptrCast(@alignCast(args));
             const n_inputs = argsStruct.n_inputs;
             const n_neurons = argsStruct.n_neurons;
@@ -66,8 +68,10 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
             self.allocator = alloc;
 
             //std.debug.print("Generating random weights...\n", .{});
-            const weight_matrix = try Layer.randn(T, n_inputs, n_neurons);
-            const bias_matrix = try Layer.randn(T, 1, n_neurons);
+            const weight_matrix = try Layer.randn(T, self.allocator, n_inputs, n_neurons);
+            defer self.allocator.free(weight_matrix);
+            const bias_matrix = try Layer.randn(T, self.allocator, 1, n_neurons);
+            defer self.allocator.free(bias_matrix);
 
             //initializing weights and biases--------------------------------------------
             self.weights = try tensor.Tensor(T).fromArray(alloc, weight_matrix, &weight_shape);
@@ -80,7 +84,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Deallocate the layer
         pub fn deinit(ctx: *anyopaque) void {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             //std.debug.print("Deallocating DenseLayer resources...\n", .{});
 
@@ -115,7 +119,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         ///Forward pass of the layer if present it applies the activation function
         /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             //this copy is necessary for the backward
             if (self.input.data.len >= 0) {
@@ -134,11 +138,12 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         /// Backward pass of the layer It takes the dValues from the next layer and computes the gradients
         pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             //---- Key Steps: -----
             // 2. Compute weight gradients (w_gradients)
             var input_transposed = try self.input.transpose2D();
+
             defer input_transposed.deinit();
 
             self.w_gradients.deinit();
@@ -166,7 +171,7 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             std.debug.print("\n ************************Dense layer*********************", .{});
             //MENU choice:
@@ -207,49 +212,49 @@ pub fn DenseLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //----------------------------getters----------------------------
         //---------------------------------------------------------------
         pub fn get_n_inputs(ctx: *anyopaque) usize {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return self.n_inputs;
         }
 
         pub fn get_n_neurons(ctx: *anyopaque) usize {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return self.n_neurons;
         }
 
         pub fn get_weights(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.weights;
         }
 
         pub fn get_bias(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.bias;
         }
 
         pub fn get_input(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.output;
         }
 
         pub fn get_weightGradients(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.w_gradients;
         }
 
         pub fn get_biasGradients(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *DenseLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.b_gradients;
         }

@@ -10,18 +10,19 @@ const loader = @import("dataloader");
 const ActivationType = @import("activation_function").ActivationType;
 const LossType = @import("loss").LossType;
 const Trainer = @import("trainer");
+const InfoAllocator = @import("info_allocator");
 
 pub fn main() !void {
-    const allocator = std.heap.raw_c_allocator;
+    const allocator = @import("pkgAllocator").allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
     };
     try model.init();
 
-    var conv_layer = convlayer(f64, &allocator){
+    var conv_layer = convlayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -34,7 +35,7 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer_ = conv_layer.create();
-    try layer_.init(@constCast(&struct {
+    try layer_.init(&allocator, @constCast(&struct {
         input_channels: usize,
         output_channels: usize,
         kernel_size: [2]usize,
@@ -63,7 +64,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer1_act);
 
-    var conv_layer2 = convlayer(f64, &allocator){
+    var conv_layer2 = convlayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -76,7 +77,7 @@ pub fn main() !void {
         .allocator = &allocator,
     };
     var layer2_ = conv_layer2.create();
-    try layer2_.init(@constCast(&struct {
+    try layer2_.init(&allocator, @constCast(&struct {
         input_channels: usize,
         output_channels: usize,
         kernel_size: [2]usize,
@@ -105,7 +106,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer2_act);
 
-    var flatten_layer = flattenlayer(f64, &allocator){
+    var flatten_layer = flattenlayer(f64){
         .input = undefined,
         .output = undefined,
         .allocator = &allocator,
@@ -113,14 +114,14 @@ pub fn main() !void {
     var Flattenlayer = flatten_layer.create();
 
     // Initialize the Flatten layer with placeholder args
-    var init_args = flattenlayer(f64, &allocator).FlattenInitArgs{
+    var init_args = flattenlayer(f64).FlattenInitArgs{
         .placeholder = true,
     };
-    try Flattenlayer.init(&init_args);
+    try Flattenlayer.init(&allocator, &init_args);
 
     try model.addLayer(Flattenlayer);
 
-    var layer3 = denselayer(f64, &allocator){
+    var layer3 = denselayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -132,8 +133,8 @@ pub fn main() !void {
         .allocator = undefined,
     };
     //layer 3: 64 inputs, 10 neurons
-    var layer3_ = denselayer(f64, &allocator).create(&layer3);
-    try layer3_.init(@constCast(&struct {
+    var layer3_ = denselayer(f64).create(&layer3);
+    try layer3_.init(&allocator, @constCast(&struct {
         n_inputs: usize,
         n_neurons: usize,
     }{
@@ -142,7 +143,7 @@ pub fn main() !void {
     }));
     try model.addLayer(layer3_);
 
-    var layer3Activ = activationlayer(f64, &allocator){
+    var layer3Activ = activationlayer(f64){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -150,8 +151,8 @@ pub fn main() !void {
         .activationFunction = ActivationType.Softmax,
         .allocator = &allocator,
     };
-    var layer3_act = activationlayer(f64, &allocator).create(&layer3Activ);
-    try layer3_act.init(@constCast(&struct {
+    var layer3_act = activationlayer(f64).create(&layer3Activ);
+    try layer3_act.init(&allocator, @constCast(&struct {
         n_inputs: usize,
         n_neurons: usize,
     }{

@@ -5,7 +5,7 @@ const Layer = @import("Layer");
 const Architectures = @import("architectures").Architectures;
 const LayerError = @import("errorHandler").LayerError;
 
-pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
+pub fn ConvolutionalLayer(comptime T: type) type {
     return struct {
         // Convolutional layer parameters
         weights: Tensor.Tensor(T), // Weights (kernels) of shape [out_channels, in_channels, kernel_height, kernel_width]
@@ -22,8 +22,10 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
         // Utils
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *ConvolutionalLayer(T, alloc)) Layer.Layer(T, alloc) {
-            return Layer.Layer(T, alloc){
+        const Self = @This();
+
+        pub fn create(self: *Self) Layer.Layer(T) {
+            return Layer.Layer(T){
                 .layer_type = Layer.LayerType.ConvolutionalLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -41,8 +43,8 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
         }
 
         /// Initialize the convolutional layer with random weights and biases
-        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+        pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const struct { input_channels: usize, output_channels: usize, kernel_size: [2]usize } = @ptrCast(@alignCast(args));
             const input_channels = argsStruct.input_channels;
             const output_channels = argsStruct.output_channels;
@@ -62,8 +64,10 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
             var weight_shape: [4]usize = [_]usize{ output_channels, input_channels, kernel_size[0], kernel_size[1] };
             var bias_shape: [2]usize = [_]usize{ output_channels, 1 };
 
-            const weight_array = try Layer.randn(T, 1, output_channels * input_channels * kernel_size[0] * kernel_size[1]);
-            const bias_array = try Layer.randn(T, 1, output_channels);
+            const weight_array = try Layer.randn(T, self.allocator, 1, output_channels * input_channels * kernel_size[0] * kernel_size[1]);
+            defer self.allocator.free(weight_array);
+            const bias_array = try Layer.randn(T, self.allocator, 1, output_channels);
+            defer self.allocator.free(bias_array);
 
             self.weights = try Tensor.Tensor(T).fromArray(alloc, weight_array, &weight_shape);
             self.bias = try Tensor.Tensor(T).fromArray(alloc, bias_array, &bias_shape);
@@ -75,7 +79,7 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
 
         /// Deallocate the convolutional layer resources
         pub fn deinit(ctx: *anyopaque) void {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // Deallocate tensors if allocated
             if (self.weights.data.len > 0) {
@@ -107,7 +111,7 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
 
         /// Forward pass of the convolutional layer
         pub fn forward(ctx: *anyopaque, input: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // Save input for backward pass
             if (self.input.data.len > 0) {
@@ -124,7 +128,7 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
 
         /// Backward pass of the convolutional layer
         pub fn backward(ctx: *anyopaque, dValues: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // Initialize gradient tensors if not already initialized
             if (self.w_gradients.data.len > 0) {
@@ -136,13 +140,22 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
 
             // Compute gradients with respect to biases
             // Sum over the spatial dimensions
-            self.b_gradients = try TensMath.convolution_backward_biases(T, dValues);
+            self.b_gradients = TensMath.convolution_backward_biases(T, dValues) catch |err| {
+                std.debug.print("Error during conv backward_biases {any}", .{err});
+                return err;
+            };
 
             // Compute gradients with respect to weights
-            self.w_gradients = try TensMath.convolution_backward_weights(T, &self.input, dValues);
+            self.w_gradients = TensMath.convolution_backward_weights(T, &self.input, dValues) catch |err| {
+                std.debug.print("Error during conv backward_weights {any}", .{err});
+                return err;
+            };
 
             // Compute gradients with respect to input
-            var dInput = try TensMath.convolution_backward_input(T, dValues, &self.weights);
+            var dInput = TensMath.convolution_backward_input(T, dValues, &self.weights) catch |err| {
+                std.debug.print("Error during conv backward_input {any}", .{err});
+                return err;
+            };
             _ = &dInput;
             return dInput;
         }
@@ -157,51 +170,51 @@ pub fn ConvolutionalLayer(comptime T: type, alloc: *const std.mem.Allocator) typ
         //---------------------------- Getters --------------------------
         //---------------------------------------------------------------
         pub fn get_n_inputs(ctx: *anyopaque) usize {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // For convolutional layers, n_inputs can be considered as input_channels
             return self.input_channels;
         }
 
         pub fn get_n_neurons(ctx: *anyopaque) usize {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             // For convolutional layers, n_neurons can be considered as output_channels
             return self.output_channels;
         }
 
         pub fn get_weights(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.weights;
         }
 
         pub fn get_bias(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.bias;
         }
 
         pub fn get_input(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.output;
         }
 
         pub fn get_weightGradients(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.w_gradients;
         }
 
         pub fn get_biasGradients(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *ConvolutionalLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.b_gradients;
         }

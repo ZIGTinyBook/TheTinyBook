@@ -13,6 +13,8 @@ const TensorMathError = @import("errorHandler").TensorMathError;
 const ArchitectureError = @import("errorHandler").ArchitectureError;
 const TensorError = @import("errorHandler").TensorError;
 
+const pkg_allocator = @import("pkgAllocator").allocator;
+
 /// Function that add the bias for all the features in the tensor
 pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void {
     // Checks:
@@ -31,10 +33,9 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
     }
 
     // Allocate an array for threads, one for each row of the tensor
-    const allocator = std.heap.page_allocator;
     const num_threads = tensor.size / bias.size;
 
-    var threads = try allocator.alloc(std.Thread, num_threads); //Array to save thread handles
+    var threads = try pkg_allocator.alloc(std.Thread, num_threads); //Array to save thread handles
 
     var index: usize = 0;
     var i: usize = 0;
@@ -51,7 +52,7 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
     }
 
     // Free the thread array
-    allocator.free(threads);
+    pkg_allocator.free(threads);
 }
 
 fn add_bias_thread(comptime T: anytype, array: []T, start: usize, len: usize, bias: *Tensor(T)) void {
@@ -193,8 +194,9 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
 
     //CREATING output_tensor :
 
-    const allocator = std.heap.page_allocator;
-    var out_shape = try allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
+    var out_shape = try pkg_allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
+    defer pkg_allocator.free(out_shape);
+
     //defining the resulting shape
     for (0..(nDimT1 - 2)) |i| {
         out_shape[i] = t1.shape[i];
@@ -202,10 +204,11 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
     out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
 
-    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
+    var out_tensor = try Tensor(outputType).fromShape(&pkg_allocator, out_shape);
     try out_tensor.set(0, 0);
     //initialize the current location to all 0
-    const location = try allocator.alloc(usize, nDimT1);
+    const location = try pkg_allocator.alloc(usize, nDimT1);
+    defer pkg_allocator.free(location);
     for (location) |*loc| {
         loc.* = 0;
     }
@@ -328,16 +331,18 @@ pub fn CPU_convolve_tensors(comptime inputType: anytype, comptime outputType: an
     }
 
     // Creation of the output tensor
-    const allocator = std.heap.page_allocator;
-    var out_shape = try allocator.alloc(usize, nDimInput);
+    var out_shape = try pkg_allocator.alloc(usize, nDimInput);
+    defer pkg_allocator.free(out_shape);
+
     for (0..nDimInput) |i| {
         out_shape[i] = input.shape[i] - kernel.shape[i] + 1;
     }
 
-    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
+    var out_tensor = try Tensor(outputType).fromShape(&pkg_allocator, out_shape);
     try out_tensor.set(0, 0);
 
-    const location = try allocator.alloc(usize, nDimInput);
+    const location = try pkg_allocator.alloc(usize, nDimInput);
+    defer pkg_allocator.free(location);
     for (location) |*loc| {
         loc.* = 0;
     }
@@ -364,8 +369,8 @@ fn multidim_convolution(comptime inputType: anytype, comptime outputType: anytyp
         var sum: outputType = 0;
         const nDims = input.shape.len;
 
-        const kernel_indices = try std.heap.page_allocator.alloc(usize, nDims);
-        const input_indices = try std.heap.page_allocator.alloc(usize, nDims);
+        const kernel_indices = try pkg_allocator.alloc(usize, nDims);
+        const input_indices = try pkg_allocator.alloc(usize, nDims);
 
         // SUm over the kernel
         try sum_over_kernel(
@@ -382,8 +387,8 @@ fn multidim_convolution(comptime inputType: anytype, comptime outputType: anytyp
 
         try output.set_at(location, sum);
 
-        std.heap.page_allocator.free(kernel_indices);
-        std.heap.page_allocator.free(input_indices);
+        pkg_allocator.free(kernel_indices);
+        pkg_allocator.free(input_indices);
     } else {
         for (0..output.shape[current_dim]) |i| {
             location[current_dim] = i;
@@ -471,10 +476,10 @@ fn multidim_convolution_with_bias(
     if (current_dim == output.shape.len) {
         var sum: outputType = 0;
 
-        const kernel_indices = try std.heap.page_allocator.alloc(usize, kernel.shape.len);
-        defer std.heap.page_allocator.free(kernel_indices);
-        const input_indices = try std.heap.page_allocator.alloc(usize, input.shape.len);
-        defer std.heap.page_allocator.free(input_indices);
+        const kernel_indices = try pkg_allocator.alloc(usize, kernel.shape.len);
+        defer pkg_allocator.free(kernel_indices);
+        const input_indices = try pkg_allocator.alloc(usize, input.shape.len);
+        defer pkg_allocator.free(input_indices);
 
         // Inizializza gli indici
         for (0..kernel_indices.len) |i| kernel_indices[i] = 0;
@@ -578,7 +583,7 @@ pub fn CPU_convolve_tensors_with_bias(
 
     //std.debug.print("Output tensor shape: {d}\n", .{out_shape});
 
-    var out_tensor = try Tensor(outputType).fromShape(&std.heap.page_allocator, &out_shape);
+    var out_tensor = try Tensor(outputType).fromShape(&pkg_allocator, &out_shape);
     try out_tensor.set(0, 0);
 
     var location: [4]usize = [_]usize{ 0, 0, 0, 0 };
@@ -602,8 +607,6 @@ pub fn convolution_backward_biases(comptime T: type, dValues: *Tensor(T)) !Tenso
     // Compute gradients with respect to biases by summing over batch, height, and width dimensions
     // Assumes dValues shape: [batch_size, out_channels, output_height, output_width]
 
-    const allocator = std.heap.page_allocator;
-
     // Check that dValues has at least 4 dimensions
     if (dValues.shape.len < 4) return TensorMathError.InputTensorsWrongShape;
 
@@ -611,7 +614,7 @@ pub fn convolution_backward_biases(comptime T: type, dValues: *Tensor(T)) !Tenso
     var bias_gradients_shape = [_]usize{out_channels};
 
     // Allocate the bias_gradients tensor
-    var bias_gradients = try Tensor(T).fromShape(&allocator, &bias_gradients_shape);
+    var bias_gradients = try Tensor(T).fromShape(&pkg_allocator, &bias_gradients_shape);
 
     // Initialize bias_gradients to zero
     try bias_gradients.set(0, 0);
@@ -645,8 +648,6 @@ pub fn convolution_backward_weights(comptime T: type, input: *Tensor(T), dValues
     // dValues shape: [batch_size, out_channels, output_height, output_width]
     // Weights shape: [out_channels, in_channels, kernel_height, kernel_width]
 
-    const allocator = std.heap.page_allocator;
-
     const batch_size = input.shape[0];
     const in_channels = input.shape[1];
     const input_height = input.shape[2];
@@ -667,7 +668,7 @@ pub fn convolution_backward_weights(comptime T: type, input: *Tensor(T), dValues
     const kernel_width = input_width - output_width + 1;
 
     var w_gradients_shape = [_]usize{ out_channels, in_channels, kernel_height, kernel_width };
-    var w_gradients = try Tensor(T).fromShape(&allocator, &w_gradients_shape);
+    var w_gradients = try Tensor(T).fromShape(&pkg_allocator, &w_gradients_shape);
 
     // Initialize w_gradients to zero
     try w_gradients.set(0, 0);
@@ -711,8 +712,6 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
     // Weights shape: [out_channels, in_channels, kernel_height, kernel_width]
     // Output gradients shape: [batch_size, in_channels, input_height, input_width]
 
-    const allocator = std.heap.page_allocator;
-
     const batch_size = dValues.shape[0];
     const out_channels = dValues.shape[1];
     const output_height = dValues.shape[2];
@@ -732,7 +731,7 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
     const input_width = output_width + kernel_width - 1;
 
     var input_gradients_shape = [_]usize{ batch_size, in_channels, input_height, input_width };
-    var input_gradients = try Tensor(T).fromShape(&allocator, &input_gradients_shape);
+    var input_gradients = try Tensor(T).fromShape(&pkg_allocator, &input_gradients_shape);
 
     // Initialize input_gradients to zero
     try input_gradients.set(0, 0);
@@ -743,7 +742,7 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
     for (0..batch_size) |b| {
         for (0..in_channels) |ic| {
             var shape: [4]usize = [_]usize{ 1, 1, input_height, input_width };
-            var input_channel_gradient = try Tensor(T).fromShape(&allocator, &shape);
+            var input_channel_gradient = try Tensor(T).fromShape(&pkg_allocator, &shape);
             try input_channel_gradient.set(0, 0);
 
             for (0..out_channels) |oc| {
@@ -763,9 +762,10 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
                 //std.debug.print("Starting convolution for batch {d}, in_channel {d}, out_channel {d}\n", .{ b, ic, oc });
 
                 //Create 0 array with bias, can be optimized
-                const zeros = try Layer.zeros(T, out_channels, 1);
+                const zeros = try Layer.zeros(T, &pkg_allocator, out_channels, 1);
+                defer pkg_allocator.free(zeros);
                 var shapeBias = [_]usize{ out_channels, 1 };
-                var zeroBias = try Tensor(T).fromArray(&allocator, zeros, &shapeBias);
+                var zeroBias = try Tensor(T).fromArray(&pkg_allocator, zeros, &shapeBias);
 
                 // Convolve dValues[b, oc, :, :] with flipped_weights
                 var input_grad = try CPU_convolve_tensors_with_bias(T, T, &dValue_slice, &flipped_weights, &zeroBias);
@@ -810,13 +810,11 @@ pub fn convolution_backward_input(comptime T: type, dValues: *Tensor(T), weights
 
 // Helper function to flip the kernel (rotate 180 degrees)
 fn flip_kernel(comptime T: type, weights: *Tensor(T), out_channel: usize, in_channel: usize) !Tensor(T) {
-    const allocator = std.heap.page_allocator;
-
     const kernel_height = weights.shape[2];
     const kernel_width = weights.shape[3];
     var flipped_shape = [_]usize{ 1, 1, kernel_height, kernel_width };
 
-    var flipped_kernel = try Tensor(T).fromShape(&allocator, &flipped_shape);
+    var flipped_kernel = try Tensor(T).fromShape(&pkg_allocator, &flipped_shape);
 
     for (0..kernel_height) |h| {
         for (0..kernel_width) |w| {

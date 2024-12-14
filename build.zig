@@ -40,6 +40,7 @@ pub fn build(b: *std.Build) void {
     const typeConv_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/typeConverter.zig") });
     const errorHandler_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/errorHandler.zig") });
     const modelImportExport_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/model_import_export.zig") });
+    const allocator_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/allocator.zig") });
 
     //************************************************MODEL DEPENDENCIES************************************************
 
@@ -62,6 +63,7 @@ pub fn build(b: *std.Build) void {
     layer_mod.addImport("tensor_m", tensor_math_mod);
     layer_mod.addImport("architectures", architectures_mod);
     layer_mod.addImport("errorHandler", errorHandler_mod);
+    layer_mod.addImport("pkgAllocator", allocator_mod);
 
     //************************************************DENSELAYER DEPENDENCIES************************************************
 
@@ -133,12 +135,14 @@ pub fn build(b: *std.Build) void {
     tensor_math_mod.addImport("architectures", architectures_mod);
     tensor_math_mod.addImport("errorHandler", errorHandler_mod);
     tensor_math_mod.addImport("Layer", layer_mod);
+    tensor_math_mod.addImport("pkgAllocator", allocator_mod);
 
     //************************************************ACTIVATION DEPENDENCIES************************************************
 
     // Add necessary imports for the activation module.
     activation_mod.addImport("tensor", tensor_mod);
     activation_mod.addImport("errorHandler", errorHandler_mod);
+    activation_mod.addImport("pkgAllocator", allocator_mod);
 
     //************************************************LOSS DEPENDENCIES************************************************
 
@@ -147,6 +151,7 @@ pub fn build(b: *std.Build) void {
     loss_mod.addImport("tensor_m", tensor_math_mod);
     loss_mod.addImport("typeC", typeConv_mod);
     loss_mod.addImport("errorHandler", errorHandler_mod);
+    loss_mod.addImport("pkgAllocator", allocator_mod);
 
     //************************************************OPTIMIZER DEPENDENCIES************************************************
 
@@ -194,6 +199,7 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("activationlayer", activationLayer_mod);
     exe.root_module.addImport("convLayer", convLayer_mod);
     exe.root_module.addImport("flattenLayer", flattenLayer_mod);
+    exe.root_module.addImport("pkgAllocator", allocator_mod);
 
     // Install the executable.
     b.installArtifact(exe);

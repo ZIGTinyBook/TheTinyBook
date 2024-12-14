@@ -5,20 +5,22 @@ const Layer = @import("Layer");
 const Architectures = @import("architectures").Architectures;
 const LayerError = @import("errorHandler").LayerError;
 
-pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
+pub fn FlattenLayer(comptime T: type) type {
     return struct {
         // Flatten layer parameters
         input: Tensor.Tensor(T), // Stored input for backward pass
         output: Tensor.Tensor(T), // Flattened output
         allocator: *const std.mem.Allocator,
 
+        const Self = @This();
+
         // Placeholder struct for init arguments
         pub const FlattenInitArgs = struct {
             placeholder: bool,
         };
 
-        pub fn create(self: *FlattenLayer(T, alloc)) Layer.Layer(T, alloc) {
-            return Layer.Layer(T, alloc){
+        pub fn create(self: *Self) Layer.Layer(T) {
+            return Layer.Layer(T){
                 .layer_type = Layer.LayerType.FlattenLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -36,8 +38,8 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         /// Initialize the Flatten layer (just store allocator, no weights)
-        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+        pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const FlattenInitArgs = @ptrCast(@alignCast(args));
             _ = argsStruct; // We don't really need the placeholder
 
@@ -48,7 +50,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         /// Deallocate the Flatten layer resources
         pub fn deinit(ctx: *anyopaque) void {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             if (self.input.data.len > 0) {
                 self.input.deinit();
@@ -63,7 +65,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         /// Input: [N, D1, D2, ..., Dk]
         /// Output: [N, D1*D2*...*Dk]
         pub fn forward(ctx: *anyopaque, input: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             if (input.shape.len < 2) {
                 return LayerError.InvalidParameters;
@@ -99,7 +101,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         /// backward receives dValues of shape [N, D1*D2*...*Dk]
         /// We must reshape back to [N, D1, D2, ..., Dk].
         pub fn backward(ctx: *anyopaque, dValues: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             const input_shape_const = self.input.shape;
 
@@ -118,7 +120,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
 
         /// Print the flatten layer information
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             switch (choice) {
                 0 => std.debug.print("Flatten Layer\n", .{}),
                 1 => std.debug.print("Input shape: {any}, Output shape: {any}\n", .{ self.input.shape, self.output.shape }),
@@ -131,7 +133,7 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         //---------------------------------------------------------------
         /// Get the number of inputs = product of all dimensions except the first is combined into one
         pub fn get_n_inputs(ctx: *anyopaque) usize {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             if (self.input.shape.len < 2) return 0;
 
@@ -148,12 +150,12 @@ pub fn FlattenLayer(comptime T: type, alloc: *const std.mem.Allocator) type {
         }
 
         pub fn get_input(ctx: *anyopaque) *const Tensor.Tensor(T) {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *Tensor.Tensor(T) {
-            const self: *FlattenLayer(T, alloc) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             return &self.output;
         }
     };

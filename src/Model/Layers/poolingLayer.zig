@@ -14,7 +14,7 @@ pub const PoolingType = enum {
 
 /// TODO: implement padding
 /// TODO: upgrade to multidim input Tensor
-pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type {
+pub fn PoolingLayer(comptime T: type) type {
     return struct {
         input: tensor.Tensor(T), //is saved for semplicity, it can be sobstituted
         output: tensor.Tensor(T), // output = dot(input, weight.transposed) + bias
@@ -24,8 +24,10 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
         poolingType: PoolingType,
         allocator: *const std.mem.Allocator,
 
-        pub fn create(self: *PoolingLayer(T, allocator)) !Layer.Layer(T, allocator) {
-            return Layer.Layer(T, allocator){
+        const Self = @This();
+
+        pub fn create(self: *Self) !Layer.Layer(T) {
+            return Layer.Layer(T){
                 .layer_type = Layer.LayerType.DenseLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
@@ -44,9 +46,11 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
 
         ///Initilize the layer with random weights and biases
         /// also for the gradients
-        pub fn init(ctx: *anyopaque, args: *anyopaque) !void {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+        pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
+            const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const struct { kernel: [2]usize, stride: [2]usize, poolingType: PoolingType } = @ptrCast(@alignCast(args));
+
+            self.allocator = alloc;
 
             //initializing basic attributes
             @memcpy(self.kernel, argsStruct.kernel);
@@ -76,7 +80,7 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
 
         ///Deallocate the layer
         pub fn deinit(ctx: *anyopaque) void {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             if (self.output.data.len > 0) {
                 self.output.deinit();
@@ -94,7 +98,7 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
         /// Keeps thrack of the used input valued for each kernel windows.
         /// Padding is not implemented jet.
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             //At the moment pooling is available only for 2D tensor
             if (self.kernel.size > 2 or self.stride.size > 2) {
@@ -114,11 +118,11 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
 
             // TODO: free used_input before each forwarding
             // used_input remember wich values of the input went into the output, .fromShape() initialize all to zero
-            self.used_input = try self.used_input.fromShape(allocator, input.shape);
+            self.used_input = try self.used_input.fromShape(self.allocator, input.shape);
 
             // Computing output shape
             // Valid for multidimensional Tensors
-            const outputTensorShape = try allocator.alloc(usize, input.shape.len);
+            const outputTensorShape = try self.allocator.alloc(usize, input.shape.len);
             for (0..input.shape.len - 2) |i| {
                 outputTensorShape[i] = input.shape[i];
             }
@@ -128,7 +132,8 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
             outputTensorShape[width] = (input.shape[width] - self.kernel[1]) / self.stride[1]; //width of the output matrix
 
             //creating output tensor
-            self.output = tensor.Tensor(T).fromShape(allocator, &outputTensorShape);
+            self.output = tensor.Tensor(T).fromShape(self.allocator, &outputTensorShape);
+            defer self.allocator.free(outputTensorShape);
 
             // TODO: continue the forward...
             //
@@ -140,14 +145,14 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
 
         /// Backward pass of the layer. It takes the dValues from the next layer and computes the gradients
         pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
             _ = dValues;
             _ = self;
         }
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             std.debug.print("\n ************************Dense layer*********************", .{});
             //MENU choice:
@@ -197,13 +202,13 @@ pub fn PoolingLayer(comptime T: type, allocator: *const std.mem.Allocator) type 
         }
 
         pub fn get_input(ctx: *anyopaque) *const tensor.Tensor(T) {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
-            const self: *PoolingLayer(T, allocator) = @ptrCast(@alignCast(ctx));
+            const self: *Self = @ptrCast(@alignCast(ctx));
 
             return &self.output;
         }

@@ -250,7 +250,8 @@ pub fn CCELoss() type {
             if (current_depth == (predictions.shape.len - 1)) {
                 //declaring res as the result of the sum of the MSE
                 var res: f64 = 0.0;
-                const allocator = std.heap.page_allocator;
+
+                const allocator = @import("pkgAllocator").allocator;
 
                 const get_location = try allocator.alloc(usize, location.len);
                 defer allocator.free(get_location);

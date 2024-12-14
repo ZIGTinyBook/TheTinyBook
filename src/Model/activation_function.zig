@@ -95,6 +95,8 @@ pub fn Sigmoid(comptime T: anytype) type {
     };
 }
 
+const pkg_allocator = @import("pkgAllocator").allocator;
+
 /// The Softmax activation function is used in multi-class classification tasks to convert
 /// logits (raw output values) into probabilities that sum to 1.
 /// Ideal for output layers in multi-class neural networks.
@@ -104,7 +106,7 @@ pub fn Softmax(comptime T: anytype) type {
         //it directly modify the input tensor
         pub fn forward(self: *Self, input: *Tensor(T)) !void {
             _ = self;
-            const allocator = std.heap.page_allocator;
+            const allocator = pkg_allocator;
 
             const location = try allocator.alloc(usize, input.shape.len);
             defer allocator.free(location);
@@ -146,7 +148,7 @@ pub fn Softmax(comptime T: anytype) type {
         fn compute_mutidim_softmax(input: *Tensor(T), current_depth: usize, location: []usize) !void {
             if (current_depth == (input.shape.len - 1)) {
                 //declaring res as the result of the sum of the MSE
-                const allocator = std.heap.page_allocator;
+                const allocator = pkg_allocator;
 
                 //get location is used just to manage the gets and sets relative to the current depth
                 const get_location = try allocator.alloc(usize, location.len);
