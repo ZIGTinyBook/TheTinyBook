@@ -10,7 +10,7 @@ test "Model with multiple Denselayers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
     const allocator = std.testing.allocator;
 
-    var model = Model(f64, &allocator){
+    var model = Model(f64){
         .layers = undefined,
         .allocator = &allocator,
         .input_tensor = undefined,
@@ -18,7 +18,7 @@ test "Model with multiple Denselayers forward test" {
     try model.init();
     defer model.deinit();
 
-    var dense_layer1 = denselayer.DenseLayer(f64, &allocator){
+    var dense_layer1 = denselayer.DenseLayer(f64){
         .weights = undefined,
         .input = undefined,
         .bias = undefined,
@@ -29,17 +29,20 @@ test "Model with multiple Denselayers forward test" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer1_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer1);
-    try layer1_.init(@constCast(&struct {
-        n_inputs: usize,
-        n_neurons: usize,
-    }{
-        .n_inputs = 3,
-        .n_neurons = 2,
-    }));
+    var layer1_ = denselayer.DenseLayer(f64).create(&dense_layer1);
+    try layer1_.init(
+        &allocator,
+        @constCast(&struct {
+            n_inputs: usize,
+            n_neurons: usize,
+        }{
+            .n_inputs = 3,
+            .n_neurons = 2,
+        }),
+    );
     try model.addLayer(layer1_);
 
-    var dense_layer2 = denselayer.DenseLayer(f64, &allocator){
+    var dense_layer2 = denselayer.DenseLayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -50,14 +53,17 @@ test "Model with multiple Denselayers forward test" {
         .b_gradients = undefined,
         .allocator = undefined,
     };
-    var layer2_ = denselayer.DenseLayer(f64, &allocator).create(&dense_layer2);
-    try layer2_.init(@constCast(&struct {
-        n_inputs: usize,
-        n_neurons: usize,
-    }{
-        .n_inputs = 2,
-        .n_neurons = 3,
-    }));
+    var layer2_ = denselayer.DenseLayer(f64).create(&dense_layer2);
+    try layer2_.init(
+        &allocator,
+        @constCast(&struct {
+            n_inputs: usize,
+            n_neurons: usize,
+        }{
+            .n_inputs = 2,
+            .n_neurons = 3,
+        }),
+    );
     try model.addLayer(layer2_);
 
     var inputArray: [2][3]f64 = [_][3]f64{

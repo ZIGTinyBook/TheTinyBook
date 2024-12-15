@@ -184,6 +184,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
     exe.linkLibC();
 
     //************************************************EXE DEPENDENCIES************************************************
@@ -201,8 +202,8 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("activationlayer", activationLayer_mod);
     exe.root_module.addImport("convLayer", convLayer_mod);
     exe.root_module.addImport("flattenLayer", flattenLayer_mod);
-    exe.root_module.addImport("pkgAllocator", allocator_mod);
     exe.root_module.addImport("poolingLayer", poolingLayer_mod);
+    exe.root_module.addImport("pkgAllocator", allocator_mod);
 
     // Install the executable.
     b.installArtifact(exe);
@@ -249,6 +250,9 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("convLayer", convLayer_mod);
     unit_tests.root_module.addImport("flattenLayer", flattenLayer_mod);
     unit_tests.root_module.addImport("poolingLayer", poolingLayer_mod);
+    unit_tests.root_module.addImport("pkgAllocator", allocator_mod);
+
+    unit_tests.linkLibC();
 
     // Add tests for the optimizer module.
     const optim_tests = b.addTest(.{

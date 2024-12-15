@@ -12,8 +12,7 @@ const ActivationType = @import("activation_function").ActivationType;
 // ----------------- Export -----------------
 pub fn exportModel(
     comptime T: type,
-    comptime allocator: *const std.mem.Allocator,
-    model: Model(T, allocator),
+    model: Model(T),
     file_path: []const u8,
 ) !void {
     std.debug.print("\n ..... EXPORTING THE MODEL ......", .{});
@@ -26,15 +25,14 @@ pub fn exportModel(
 
     try writer.writeInt(usize, model.layers.items.len, std.builtin.Endian.big);
     for (model.layers.items) |*l| {
-        try exportLayer(T, allocator, l.*, writer);
+        try exportLayer(T, l.*, writer);
     }
     return;
 }
 
 pub fn exportLayer(
     comptime T: type,
-    comptime allocator: *const std.mem.Allocator,
-    layer: Layer.Layer(T, allocator),
+    layer: Layer.Layer(T),
     writer: std.fs.File.Writer,
 ) !void {
     std.debug.print("\n ... export layer... ", .{});
@@ -42,19 +40,18 @@ pub fn exportLayer(
     //TODO: handle Default layer and null layer
     if (layer.layer_type == LayerType.DenseLayer) {
         _ = try writer.write("Dense.....");
-        const denseLayer: *DenseLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
-        try exportLayerDense(T, allocator, denseLayer.*, writer);
+        const denseLayer: *DenseLayer(T) = @alignCast(@ptrCast(layer.layer_ptr));
+        try exportLayerDense(T, denseLayer.*, writer);
     } else if (layer.layer_type == LayerType.ActivationLayer) {
         _ = try writer.write("Activation");
-        const activationLayer: *ActivationLayer(T, allocator) = @alignCast(@ptrCast(layer.layer_ptr));
-        try exportLayerActivation(T, allocator, activationLayer.*, writer);
+        const activationLayer: *ActivationLayer(T) = @alignCast(@ptrCast(layer.layer_ptr));
+        try exportLayerActivation(T, activationLayer.*, writer);
     }
 }
 
 pub fn exportLayerDense(
     comptime T: type,
-    comptime allocator: *const std.mem.Allocator,
-    layer: DenseLayer(T, allocator),
+    layer: DenseLayer(T),
     writer: std.fs.File.Writer,
 ) !void {
     std.debug.print(" dense ", .{});
@@ -69,8 +66,7 @@ pub fn exportLayerDense(
 
 pub fn exportLayerActivation(
     comptime T: type,
-    comptime allocator: *const std.mem.Allocator,
-    layer: ActivationLayer(T, allocator),
+    layer: ActivationLayer(T),
     writer: std.fs.File.Writer,
 ) !void {
     std.debug.print(" activation ", .{});
@@ -124,7 +120,7 @@ pub fn importModel(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     file_path: []const u8,
-) !Model(T, allocator) {
+) !Model(T) {
     std.debug.print("\n ..... IMPORTING THE MODEL ......", .{});
 
     var file = try std.fs.cwd().openFile(file_path, .{});
@@ -134,7 +130,7 @@ pub fn importModel(
     const reader = file.reader();
     std.debug.print("\n ..... reader created ......", .{});
 
-    var model: Model(T, allocator) = Model(T, allocator){
+    var model: Model(T) = Model(T){
         .layers = undefined,
         .allocator = allocator,
         .input_tensor = undefined,
@@ -143,7 +139,7 @@ pub fn importModel(
 
     const n_layers = try reader.readInt(usize, std.builtin.Endian.big);
     for (0..n_layers) |_| {
-        const newLayer: Layer.Layer(T, allocator) = try importLayer(T, allocator, reader);
+        const newLayer: Layer.Layer(T) = try importLayer(T, allocator, reader);
 
         try model.addLayer(newLayer);
     }
@@ -154,7 +150,7 @@ pub fn importLayer(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     reader: std.fs.File.Reader,
-) !Layer.Layer(T, allocator) {
+) !Layer.Layer(T) {
     std.debug.print("\n ... import layer... ", .{});
 
     var layer_type_string: [10]u8 = undefined;
@@ -163,16 +159,16 @@ pub fn importLayer(
 
     //TODO: handle Default layer and null layer
     if (std.mem.eql(u8, &layer_type_string, "Dense.....")) {
-        const denseLayerPtr = try allocator.create(DenseLayer(T, allocator));
+        const denseLayerPtr = try allocator.create(DenseLayer(T));
 
         denseLayerPtr.* = try importLayerDense(T, allocator, reader);
         // Transfer ownership to the Layer
-        const newLayer = DenseLayer(T, allocator).create(denseLayerPtr);
+        const newLayer = DenseLayer(T).create(denseLayerPtr);
         defer {} // Cancel previous defer since ownership is transferred
 
         return newLayer;
     } else if (std.mem.eql(u8, &layer_type_string, "Activation")) {
-        return ActivationLayer(T, allocator).create(
+        return ActivationLayer(T).create(
             @constCast(
                 &try importLayerActivation(T, allocator, reader),
             ),
@@ -186,7 +182,7 @@ pub fn importLayerDense(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     reader: std.fs.File.Reader,
-) !DenseLayer(T, allocator) {
+) !DenseLayer(T) {
     const weights_tens: Tensor(T) = try importTensor(T, allocator, reader);
     const bias_tens: Tensor(T) = try importTensor(T, allocator, reader);
     const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
@@ -194,7 +190,7 @@ pub fn importLayerDense(
     const w_grad_tens = try importTensor(T, allocator, reader);
     const b_grad_tens = try importTensor(T, allocator, reader);
 
-    return DenseLayer(f64, allocator){
+    return DenseLayer(f64){
         .weights = weights_tens,
         .bias = bias_tens,
         .input = undefined,
@@ -211,14 +207,14 @@ pub fn importLayerActivation(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
     reader: std.fs.File.Reader,
-) !ActivationLayer(T, allocator) {
+) !ActivationLayer(T) {
     const n_inputs = try reader.readInt(usize, std.builtin.Endian.big);
     const n_neurons = try reader.readInt(usize, std.builtin.Endian.big);
 
     var activation_type_string: [10]u8 = undefined;
     _ = try reader.read(&activation_type_string);
 
-    var layerActiv = ActivationLayer(T, allocator){
+    var layerActiv = ActivationLayer(T){
         .input = undefined, //input_tens,
         .output = undefined, //output_tens,
         .n_inputs = n_inputs,

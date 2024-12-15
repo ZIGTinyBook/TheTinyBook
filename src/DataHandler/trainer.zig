@@ -446,7 +446,7 @@ fn convertToOneHot(comptime T: type, batchSize: i16, yBatch: *Tensor.Tensor(T)) 
 pub fn trainTensors(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
-    model: *Model(T, allocator),
+    model: *Model(T),
     input: *Tensor.Tensor(T),
     targets: *Tensor.Tensor(T),
     epochs: u32,
@@ -486,7 +486,7 @@ pub fn trainTensors(
 
         // Optimization
         std.debug.print("\n-------------------------------Optimizer Step", .{});
-        var optimizer = Optim.Optimizer(T, T, T, Optim.optimizer_SGD, lr, allocator){};
+        var optimizer = Optim.Optimizer(T, T, T, Optim.optimizer_SGD, lr){};
         try optimizer.step(model);
     }
 

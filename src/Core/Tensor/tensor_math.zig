@@ -1,8 +1,4 @@
-//! Tensor math contains all the functions to perform operations on tensors,
-//! when we will pass to
-//! GPU or STM32 we will have to implement the same functions for
-//! those architectures usally these are called kernels
-//!
+//! Tensor math contains all the functions to perform operations on tensors
 const std = @import("std");
 const Tensor = @import("tensor").Tensor; // Import Tensor type
 const Architectures = @import("architectures").Architectures; //Import Architectures type
@@ -843,22 +839,22 @@ pub fn pool_tensor(
 ) !Tensor(T) {
 
     //allocator initialization
-    const allocator = std.heap.raw_c_allocator;
+    const allocator = pkg_allocator;
 
     // Computing output shape
     // Valid for multidimensional Tensors
-    const outputTensorShape = try allocator.alloc(usize, input.shape.len);
+    var outputTensorShape = try allocator.alloc(usize, input.shape.len);
     for (0..input.shape.len - 2) |i| {
         outputTensorShape[i] = input.shape[i];
     }
     const width = input.shape.len - 1;
     const height = input.shape.len - 2;
 
-    outputTensorShape[height] = (input.shape[height] - kernel[0]) / stride[0]; //height of the output matrix (aka: number of rows)
-    outputTensorShape[width] = (input.shape[width] - kernel[1]) / stride[1]; //width of the output matrix (aka: number of elements per row)
+    outputTensorShape[height] = (input.shape[height] - kernel[0] + 1) / stride[0]; //height of the output matrix (aka: number of rows)
+    outputTensorShape[width] = (input.shape[width] - kernel[1] + 1) / stride[1]; //width of the output matrix (aka: number of elements per row)
 
     //creating output multidimensional tensor
-    var output = Tensor(T).fromShape(allocator, &outputTensorShape);
+    var output = try Tensor(T).fromShape(&allocator, outputTensorShape);
 
     //create and initialize the current location to all 0
     //You can see location array as dimensional coordinates
@@ -874,8 +870,8 @@ pub fn pool_tensor(
         &output,
         0, //depth
         location,
-        &kernel,
-        &stride,
+        kernel,
+        stride,
         poolingType,
     );
 
@@ -899,7 +895,7 @@ pub fn multidim_pooling(
         //initialize a tempporal location variable
         var temp_location = try allocator.alloc(usize, input.shape.len); //used to loop
         var window_location = try allocator.alloc(usize, input.shape.len); //used to access values in the kernel window
-        var window_values = try allocator.alloc(usize, kernel[0] * kernel[1]);
+        var window_values = try allocator.alloc(T, kernel[0] * kernel[1]);
         var output_row_counter: usize = 0;
         var output_col_counter: usize = 0;
 
@@ -970,9 +966,13 @@ pub fn multidim_pooling(
             try multidim_pooling(
                 T,
                 input,
+                used_input,
                 output,
                 current_depth + 1,
                 location,
+                kernel,
+                stride,
+                poolingType,
             );
         }
     }

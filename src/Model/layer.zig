@@ -26,29 +26,27 @@ pub const LayerType = enum {
 
 //------------------------------------------------------------------------------------------------------
 /// UTILS
-/// Initialize a matrix of random values with a normal distribution
-pub fn randn(comptime T: type, allocator: *const std.mem.Allocator, n_inputs: usize, n_neurons: usize) ![][]T {
+/// Initialize a vector of random values with a normal distribution
+pub fn randn(comptime T: type, allocator: *const std.mem.Allocator, n_inputs: usize, n_neurons: usize) ![]T {
     var rng = std.Random.Xoshiro256.init(12345);
 
-    const matrix = try allocator.alloc([]T, n_inputs);
-    for (matrix) |*row| {
-        row.* = try allocator.alloc(T, n_neurons);
-        for (row.*) |*value| {
-            value.* = rng.random().floatNorm(T) + 1; // fix me!! why +1 ??
+    const vector = try allocator.alloc(T, n_inputs * n_neurons);
+    for (0..n_inputs) |i| {
+        for (0..n_neurons) |j| {
+            vector[i * n_neurons + j] = rng.random().floatNorm(T) + 1; // TODO: fix me!! why +1 ??
         }
     }
-    return matrix;
+    return vector;
 }
-///Function used to initialize a matrix of zeros used for bias
-pub fn zeros(comptime T: type, allocator: *const std.mem.Allocator, n_inputs: usize, n_neurons: usize) ![][]T {
-    const matrix = try allocator.alloc([]T, n_inputs);
-    for (matrix) |*row| {
-        row.* = try allocator.alloc(T, n_neurons);
-        for (row.*) |*value| {
-            value.* = 0;
+///Function used to initialize a vector of zeros used for bias
+pub fn zeros(comptime T: type, allocator: *const std.mem.Allocator, n_inputs: usize, n_neurons: usize) ![]T {
+    const vector = try allocator.alloc(T, n_inputs * n_neurons);
+    for (0..n_inputs) |i| {
+        for (0..n_neurons) |j| {
+            vector[i * n_neurons + j] = 0; // TODO: fix me!! why +1 ??
         }
     }
-    return matrix;
+    return vector;
 }
 
 //------------------------------------------------------------------------------------------------------

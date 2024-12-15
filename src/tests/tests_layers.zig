@@ -14,26 +14,28 @@ const TensorError = @import("errorHandler").TensorError;
 const TensorMathError = @import("errorHandler").TensorMathError;
 const tensor = @import("tensor");
 const ActivationType = @import("activation_function").ActivationType;
+const pkg_allocator = @import("pkgAllocator").allocator;
 
 test "Layer test description" {
     std.debug.print("\n--- Running Layer tests\n", .{});
 }
 
 test "Rand n and zeros" {
-    const randomArray = try layer_.randn(f32, std.heap.page_allocator, 5, 5);
-    const zerosArray = try layer_.zeros(f32, std.heap.page_allocator, 5, 5);
+    const allocator = &std.testing.allocator;
+    const randomArray = try layer_.randn(f32, allocator, 2, 2);
+    defer allocator.free(randomArray);
+    const zerosArray = try layer_.zeros(f32, allocator, 2, 2);
+    defer allocator.free(zerosArray);
 
     //test dimension
-    try std.testing.expectEqual(randomArray.len, 5);
-    try std.testing.expectEqual(randomArray[0].len, 5);
-    try std.testing.expectEqual(zerosArray.len, 5);
-    try std.testing.expectEqual(zerosArray[0].len, 5);
+    try std.testing.expectEqual(randomArray.len, 4);
+    try std.testing.expectEqual(zerosArray.len, 4);
 
     //test values
-    for (0..5) |i| {
-        for (0..5) |j| {
-            try std.testing.expect(randomArray[i][j] != 0.0);
-            try std.testing.expect(zerosArray[i][j] == 0.0);
+    for (0..2) |i| {
+        for (0..2) |j| {
+            try std.testing.expect(randomArray[i * 2 + j] != 0.0);
+            try std.testing.expect(zerosArray[i * 2 + j] == 0.0);
         }
     }
 }
@@ -43,7 +45,7 @@ test "DenseLayer forward and backward test" {
     const allocator = &std.testing.allocator;
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
-    var dense_layer = DenseLayer(f64, allocator){
+    var dense_layer = DenseLayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -54,10 +56,10 @@ test "DenseLayer forward and backward test" {
         .b_gradients = undefined,
         .allocator = allocator,
     };
-    const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
+    const layer1 = DenseLayer(f64).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(@constCast(&struct {
+    try layer1.init(allocator, @constCast(&struct {
         n_inputs: usize,
         n_neurons: usize,
     }{
@@ -106,7 +108,7 @@ test "DenseLayer forward and backward test" {
     _ = try layer1.backward(&grad);
 
     // Check that bias and gradients are valid (non-zero)
-    var myDense: *DenseLayer(f64, allocator) = @ptrCast(@alignCast(layer1.layer_ptr));
+    var myDense: *DenseLayer(f64) = @ptrCast(@alignCast(layer1.layer_ptr));
     for (0..2) |i| {
         try std.testing.expect(try myDense.bias.get(i) != 0.0);
         for (0..4) |j| {
@@ -120,7 +122,7 @@ test "test getters " {
     const allocator = &std.testing.allocator;
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
-    var dense_layer = DenseLayer(f64, allocator){
+    var dense_layer = DenseLayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -131,10 +133,10 @@ test "test getters " {
         .b_gradients = undefined,
         .allocator = allocator,
     };
-    const layer1 = DenseLayer(f64, allocator).create(&dense_layer);
+    const layer1 = DenseLayer(f64).create(&dense_layer);
 
     // n_input = 4, n_neurons= 2
-    try layer1.init(@constCast(&struct {
+    try layer1.init(allocator, @constCast(&struct {
         n_inputs: usize,
         n_neurons: usize,
     }{
@@ -204,7 +206,7 @@ test "ActivationLayer forward and backward test" {
     // };
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
-    var activ_layer = ActivationLayer(f64, allocator){
+    var activ_layer = ActivationLayer(f64){
         .input = undefined,
         .output = undefined,
         .n_inputs = 0,
@@ -212,9 +214,9 @@ test "ActivationLayer forward and backward test" {
         .activationFunction = ActivationType.ReLU,
         .allocator = allocator,
     };
-    const layer1 = ActivationLayer(f64, allocator).create(&activ_layer);
+    const layer1 = ActivationLayer(f64).create(&activ_layer);
     // n_input = 5, n_neurons= 4
-    try layer1.init(@constCast(&struct {
+    try layer1.init(allocator, @constCast(&struct {
         n_inputs: usize,
         n_neurons: usize,
     }{
@@ -274,7 +276,7 @@ test "Complete test of the new convolutional layer functionalities" {
     defer input.deinit();
 
     // Create the convolutional layer
-    var conv_layer = ConvLayer.ConvolutionalLayer(f64, allocator){
+    var conv_layer = ConvLayer.ConvolutionalLayer(f64){
         .weights = undefined,
         .bias = undefined,
         .input = undefined,
@@ -290,15 +292,19 @@ test "Complete test of the new convolutional layer functionalities" {
 
     // Initialize the convolutional layer
     // input_channels=2, output_channels=2, kernel_size=[2,2]
-    try layer.init(@constCast(&struct {
-        input_channels: usize,
-        output_channels: usize,
-        kernel_size: [2]usize,
-    }{
-        .input_channels = 2,
-        .output_channels = 5,
-        .kernel_size = .{ 2, 2 },
-    }));
+    try layer.init(
+        &pkg_allocator,
+        @constCast(&struct {
+            input_channels: usize,
+            output_channels: usize,
+            kernel_size: [2]usize,
+        }{
+            .input_channels = 2,
+            .output_channels = 5,
+            .kernel_size = .{ 2, 2 },
+        }),
+    );
+    defer layer.deinit();
 
     // Perform the forward pass
     var output = try layer.forward(&input);
@@ -334,8 +340,7 @@ test "Complete test of the new convolutional layer functionalities" {
     // try std.testing.expectEqual(conv_layer.w_gradients.shape, conv_layer.weights.shape);
     // try std.testing.expectEqual(dInput.shape, input.shape);
 
-    // Clean up resources
-    layer.deinit();
+    // Clean up resourcess
     _ = &input_data;
     _ = &conv_layer;
 }
@@ -368,7 +373,7 @@ test "Complete test of the Flatten layer functionalities with first dimension un
     defer input.deinit();
 
     // Create the Flatten layer
-    var flatten_layer = FlattenLayer(f64, allocator){
+    var flatten_layer = FlattenLayer(f64){
         .input = undefined,
         .output = undefined,
         .allocator = allocator,
@@ -376,10 +381,10 @@ test "Complete test of the Flatten layer functionalities with first dimension un
     var layer = flatten_layer.create();
 
     // Initialize the Flatten layer with placeholder args
-    var init_args = FlattenLayer(f64, allocator).FlattenInitArgs{
+    var init_args = FlattenLayer(f64).FlattenInitArgs{
         .placeholder = true,
     };
-    try layer.init(&init_args);
+    try layer.init(allocator, &init_args);
 
     // Perform the forward pass
     std.debug.print("\nFlatten forward pass test...\n", .{});
