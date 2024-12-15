@@ -18,6 +18,7 @@ pub const LayerType = enum {
     DenseLayer,
     DefaultLayer,
     ConvolutionalLayer,
+    PoolingLayer,
     ActivationLayer,
     FlattenLayer,
     null,

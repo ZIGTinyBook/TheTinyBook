@@ -19,8 +19,8 @@ pub fn PoolingLayer(comptime T: type) type {
         input: tensor.Tensor(T), //is saved for semplicity, it can be sobstituted
         output: tensor.Tensor(T), // output = dot(input, weight.transposed) + bias
         used_input: tensor.Tensor(u1), //
-        kernel: [2]usize, // kernerl.size=2 -> [height, width]
-        stride: [2]usize, // stride.size=2 -> [height, width]
+        kernel: [2]usize, // kernerl.size=2 -> [rows, cols]
+        stride: [2]usize, // stride.size=2 -> [rows, cols]
         poolingType: PoolingType,
         allocator: *const std.mem.Allocator,
 
@@ -100,45 +100,15 @@ pub fn PoolingLayer(comptime T: type) type {
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
-            //At the moment pooling is available only for 2D tensor
-            if (self.kernel.size > 2 or self.stride.size > 2) {
-                return LayerError.Only2DSupported;
-            }
-
-            //impossible size kernel / stride
-            if (self.kernel.size <= 0 or self.stride.size <= 0) {
-                return TensorError.ZeroSizeTensor;
-            }
-
             //this copy is necessary for the backward
             if (self.input.data.len >= 0) {
                 self.input.deinit();
             }
             self.input = try input.copy();
 
-            // TODO: free used_input before each forwarding
             // used_input remember wich values of the input went into the output, .fromShape() initialize all to zero
             self.used_input = try self.used_input.fromShape(self.allocator, input.shape);
-
-            // Computing output shape
-            // Valid for multidimensional Tensors
-            const outputTensorShape = try self.allocator.alloc(usize, input.shape.len);
-            for (0..input.shape.len - 2) |i| {
-                outputTensorShape[i] = input.shape[i];
-            }
-            const width = input.shape.len - 1;
-            const height = input.shape.len - 2;
-            outputTensorShape[height] = (input.shape[height] - self.kernel[0]) / self.stride[0]; //height of the output matrix
-            outputTensorShape[width] = (input.shape[width] - self.kernel[1]) / self.stride[1]; //width of the output matrix
-
-            //creating output tensor
-            self.output = tensor.Tensor(T).fromShape(self.allocator, &outputTensorShape);
-            defer self.allocator.free(outputTensorShape);
-
-            // TODO: continue the forward...
-            //
-            // Use used_input Tensor to keep track of the input values that passed the kernel filter.
-            // Structure the
+            self.output = TensMath.pool_tensor(T, &self.input, &self.used_input, &self.kernel, &self.stride);
 
             return self.output;
         }

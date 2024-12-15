@@ -64,6 +64,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer1_act);
 
+    //layer 1 ----------------------------------------------------------------------------
     var conv_layer2 = convlayer(f64){
         .weights = undefined,
         .bias = undefined,
@@ -106,6 +107,7 @@ pub fn main() !void {
     // }));
     // try model.addLayer(layer2_act);
 
+    //layer 2 ----------------------------------------------------------------------------
     var flatten_layer = flattenlayer(f64){
         .input = undefined,
         .output = undefined,
@@ -121,6 +123,7 @@ pub fn main() !void {
 
     try model.addLayer(Flattenlayer);
 
+    //layer 3 ----------------------------------------------------------------------------
     var layer3 = denselayer(f64){
         .weights = undefined,
         .bias = undefined,
@@ -143,6 +146,7 @@ pub fn main() !void {
     }));
     try model.addLayer(layer3_);
 
+    //layer 4 ----------------------------------------------------------------------------
     var layer3Activ = activationlayer(f64){
         .input = undefined,
         .output = undefined,

@@ -8,6 +8,9 @@ const Tensor = @import("tensor").Tensor; // Import Tensor type
 const Architectures = @import("architectures").Architectures; //Import Architectures type
 const Converter = @import("typeC");
 const Layer = @import("Layer");
+
+const PoolingType = @import("poolingLayer").PoolingType;
+
 //import error libraries
 const TensorMathError = @import("errorHandler").TensorMathError;
 const ArchitectureError = @import("errorHandler").ArchitectureError;
@@ -128,6 +131,8 @@ fn CPU_sum_tensors(comptime inputType: anytype, comptime outputType: anytype, t1
     return out_tensor;
 }
 
+// DOT PRODUCT -----------------------------------------------------------------------------------------------------------------------
+
 /// Returns the dot product of two tensors. The dot product is the sum of the products of the corresponding entries of the two sequences of numbers.
 /// Deprecated: use dot_product_tensor instead
 pub fn compute_dot_product(comptime T: type, input: *Tensor(T), weights: *Tensor(T)) !Tensor(T) {
@@ -193,10 +198,9 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
     }
 
     //CREATING output_tensor :
-
-    var out_shape = try pkg_allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
+    const allocator = pkg_allocator;
+    var out_shape = try allocator.alloc(usize, nDimT1); //I had to use alloc() bacause nDimT1 is not known at comptime
     defer pkg_allocator.free(out_shape);
-
     //defining the resulting shape
     for (0..(nDimT1 - 2)) |i| {
         out_shape[i] = t1.shape[i];
@@ -224,7 +228,6 @@ pub fn CPU_dot_product_tensors(comptime inputType: anytype, comptime outputType:
         location,
     );
     //print output tensor shape
-    //std.debug.print("\n output tensor shape: {}", .{out_tensor.shape[0]});
 
     return out_tensor;
 }
@@ -265,11 +268,6 @@ fn multidim_multiplication(comptime inputType: anytype, comptime outputType: any
                 location[t1.shape.len - 1] = col; //col on the out tensor matrix
                 location[t1.shape.len - 2] = row; //row on the out tensor matrix
 
-                // std.debug.print("\n set at location: [", .{});
-                // for (location) |l| {
-                //     std.debug.print(" {}", .{l});
-                // }
-                //std.debug.print("] val: {} ", .{sum});
                 try t3.set_at(location, sum);
             }
         }
@@ -291,6 +289,8 @@ fn multidim_multiplication(comptime inputType: anytype, comptime outputType: any
         }
     }
 }
+
+// CONVOLVE -----------------------------------------------------------------------------------------------------------------------
 
 pub fn convolve_tensor(comptime arch: Architectures, comptime Tin: anytype, comptime Tout: anytype, input: *Tensor(Tin), kernel: *Tensor(Tin)) !Tensor(Tout) {
     return switch (arch) {
@@ -829,4 +829,151 @@ fn flip_kernel(comptime T: type, weights: *Tensor(T), out_channel: usize, in_cha
     //std.debug.print("Flipped kernel for out_channel {d}, in_channel {d} generated.\n", .{ out_channel, in_channel });
 
     return flipped_kernel;
+}
+
+// POOLING -----------------------------------------------------------------------------------------------------------------------
+//TODO: add padding
+pub fn pool_tensor(
+    comptime T: type,
+    input: *Tensor(T),
+    used_input: *Tensor(u1),
+    kernel: []usize,
+    stride: []usize,
+    poolingType: PoolingType,
+) !Tensor(T) {
+
+    //allocator initialization
+    const allocator = std.heap.raw_c_allocator;
+
+    // Computing output shape
+    // Valid for multidimensional Tensors
+    const outputTensorShape = try allocator.alloc(usize, input.shape.len);
+    for (0..input.shape.len - 2) |i| {
+        outputTensorShape[i] = input.shape[i];
+    }
+    const width = input.shape.len - 1;
+    const height = input.shape.len - 2;
+
+    outputTensorShape[height] = (input.shape[height] - kernel[0]) / stride[0]; //height of the output matrix (aka: number of rows)
+    outputTensorShape[width] = (input.shape[width] - kernel[1]) / stride[1]; //width of the output matrix (aka: number of elements per row)
+
+    //creating output multidimensional tensor
+    var output = Tensor(T).fromShape(allocator, &outputTensorShape);
+
+    //create and initialize the current location to all 0
+    //You can see location array as dimensional coordinates
+    const location = try allocator.alloc(usize, input.shape.len);
+    for (location) |*loc| {
+        loc.* = 0;
+    }
+
+    try multidim_pooling(
+        T,
+        input,
+        used_input,
+        &output,
+        0, //depth
+        location,
+        &kernel,
+        &stride,
+        poolingType,
+    );
+
+    return output;
+}
+
+pub fn multidim_pooling(
+    comptime T: anytype,
+    input: *Tensor(T),
+    used_input: *Tensor(u1),
+    output: *Tensor(T),
+    current_depth: usize,
+    location: []usize,
+    kernel: []usize,
+    stride: []usize,
+    poolingType: PoolingType,
+) !void {
+    if (current_depth == output.shape.len - 2) {
+        const allocator = std.heap.raw_c_allocator;
+
+        //initialize a tempporal location variable
+        var temp_location = try allocator.alloc(usize, input.shape.len); //used to loop
+        var window_location = try allocator.alloc(usize, input.shape.len); //used to access values in the kernel window
+        var window_values = try allocator.alloc(usize, kernel[0] * kernel[1]);
+        var output_row_counter: usize = 0;
+        var output_col_counter: usize = 0;
+
+        @memcpy(temp_location, location);
+        @memcpy(window_location, location);
+
+        temp_location[current_depth] = 0;
+        temp_location[current_depth + 1] = 0;
+
+        //iterate on the input tensor movoing horizontaly by stride[1] and vertically by stride[0]loclocationation
+
+        while (temp_location[current_depth] + kernel[0] < input.shape[current_depth]) : (temp_location[current_depth] += stride[0]) { //mooves the windows vertially
+            while (temp_location[current_depth + 1] + kernel[1] < input.shape[current_depth + 1]) : (temp_location[current_depth + 1] += stride[1]) { //mooves the windows horizontally
+
+                // OSS! temp_location is used ad a point of reference, an origin where to put [0,0] of our kernel window
+                // that's the rieason why temp_location is not used inside the cycle, only read, never assign.
+                window_location[current_depth] = temp_location[current_depth];
+                window_location[current_depth + 1] = temp_location[current_depth + 1];
+
+                const kernel_rows = kernel[0];
+                const kernel_cols = kernel[1];
+
+                //collect the values of the input of the current kernel windows
+                //OSS!! I'm not doing the pooling yet, just collecting the values
+                for (0..kernel_rows) |i| {
+                    window_location[current_depth] += i;
+                    for (0..kernel_cols) |j| {
+                        window_location[current_depth + 1] += j;
+                        window_values[i * kernel_cols + j] = try input.get_at(window_location);
+                    }
+                    window_location[current_depth + 1] = temp_location[current_depth + 1];
+                }
+
+                //depending on the type of pooling we apply a different method
+                //TODO: create a switch and create a method for each poolinType
+                if (poolingType == PoolingType.Max) {
+                    var max = window_values[0];
+                    var max_idx: usize = 0;
+                    for (0..window_values.len) |i| {
+                        if (window_values[i] > max) {
+                            max = window_values[i];
+                            max_idx = i;
+                        }
+                    }
+
+                    //starting from max_idx in window_values go back to location[] equivalent in input
+                    window_location[current_depth] = temp_location[current_depth] + max_idx / kernel[0];
+                    window_location[current_depth + 1] = temp_location[current_depth + 1] + max_idx % kernel[0];
+                    //setting the boolean tensor to 1, to remember where is it the max
+                    try used_input.set_at(window_location, 1);
+
+                    //still using window_location to set the max value in output
+                    window_location[current_depth] = output_row_counter;
+                    window_location[current_depth + 1] = output_col_counter;
+                    //setting the output to max
+                    try output.set_at(window_location, max);
+                } else if (poolingType == PoolingType.Min) {} else if (poolingType == PoolingType.Avg) {}
+
+                output_col_counter += 1;
+            }
+            output_row_counter += 1;
+        }
+    } else {
+        //for each dimension at this level go one step deeper
+        for (0..output.shape[current_depth]) |element_at_current_depth| {
+            //print location:
+            location[current_depth] = element_at_current_depth;
+            try multidim_pooling(
+                T,
+                input,
+                output,
+                current_depth + 1,
+                location,
+            );
+        }
+    }
 }
