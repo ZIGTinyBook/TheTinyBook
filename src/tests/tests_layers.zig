@@ -14,14 +14,14 @@ const TensorError = @import("errorHandler").TensorError;
 const TensorMathError = @import("errorHandler").TensorMathError;
 const tensor = @import("tensor");
 const ActivationType = @import("activation_function").ActivationType;
-const pkg_allocator = @import("pkgAllocator").allocator;
+const pkg_allocator = @import("pkgAllocator");
 
 test "Layer test description" {
     std.debug.print("\n--- Running Layer tests\n", .{});
 }
 
 test "Rand n and zeros" {
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
     const randomArray = try layer_.randn(f32, allocator, 2, 2);
     defer allocator.free(randomArray);
     const zerosArray = try layer_.zeros(f32, allocator, 2, 2);
@@ -42,7 +42,7 @@ test "Rand n and zeros" {
 
 test "DenseLayer forward and backward test" {
     std.debug.print("\n     test: DenseLayer forward test and backward testx", .{});
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
     var dense_layer = DenseLayer(f64){
@@ -105,7 +105,8 @@ test "DenseLayer forward and backward test" {
     var grad = try tensor.Tensor(f64).fromArray(allocator, &gradArray, &gradShape);
     defer grad.deinit();
 
-    _ = try layer1.backward(&grad);
+    var backward = try layer1.backward(&grad);
+    defer backward.deinit();
 
     // Check that bias and gradients are valid (non-zero)
     var myDense: *DenseLayer(f64) = @ptrCast(@alignCast(layer1.layer_ptr));
@@ -119,7 +120,7 @@ test "DenseLayer forward and backward test" {
 
 test "test getters " {
     std.debug.print("\n     test: getters ", .{});
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
 
     // Definition of the DenseLayer with 4 inputs and 2 neurons
     var dense_layer = DenseLayer(f64){
@@ -174,7 +175,8 @@ test "test getters " {
     var grad = try tensor.Tensor(f64).fromArray(allocator, &gradArray, &gradShape);
     defer grad.deinit();
 
-    _ = try layer1.backward(&grad);
+    var backward = try layer1.backward(&grad);
+    defer backward.deinit();
 
     //check n_inputs
     try std.testing.expect(dense_layer.n_inputs == layer1.get_n_inputs());
@@ -198,7 +200,7 @@ test "test getters " {
 
 test "ActivationLayer forward and backward test" {
     std.debug.print("\n     test: DenseLayer forward test ", .{});
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
 
     // const argsStruct = struct {
     //     n_inputs: usize,
@@ -250,7 +252,7 @@ test "ActivationLayer forward and backward test" {
 test "Complete test of the new convolutional layer functionalities" {
     std.debug.print("\n     Test: Conv forward test ", .{});
 
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
 
     // Define input data
     var input_data = [_]f64{
@@ -293,7 +295,7 @@ test "Complete test of the new convolutional layer functionalities" {
     // Initialize the convolutional layer
     // input_channels=2, output_channels=2, kernel_size=[2,2]
     try layer.init(
-        &pkg_allocator,
+        &pkg_allocator.allocator,
         @constCast(&struct {
             input_channels: usize,
             output_channels: usize,
@@ -348,7 +350,7 @@ test "Complete test of the new convolutional layer functionalities" {
 test "Complete test of the Flatten layer functionalities with first dimension unflattened" {
     std.debug.print("\n     Test: Flatten layer forward and backward test ", .{});
 
-    const allocator = &std.testing.allocator;
+    const allocator = &pkg_allocator.allocator;
 
     var input_data = [_]f64{
         // Batch 1, Channel 1

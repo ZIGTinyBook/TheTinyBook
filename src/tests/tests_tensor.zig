@@ -2,6 +2,7 @@ const std = @import("std");
 const Tensor = @import("tensor").Tensor;
 //import error library
 const TensorError = @import("errorHandler").TensorError;
+const pkgAllocator = @import("pkgAllocator");
 
 const expect = std.testing.expect;
 
@@ -11,7 +12,7 @@ test "Tensor test description" {
 
 test "init() test" {
     std.debug.print("\n     test: init() ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
     var tensor = try Tensor(f64).init(&allocator);
     defer tensor.deinit();
     const size = tensor.getSize();
@@ -21,7 +22,7 @@ test "init() test" {
 
 test "initialization fromShape" {
     std.debug.print("\n     test:initialization fromShape", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
     var shape: [2]usize = [_]usize{ 2, 3 };
     var tensor = try Tensor(f64).fromShape(&allocator, &shape);
     defer tensor.deinit();
@@ -35,7 +36,7 @@ test "initialization fromShape" {
 
 test "Get_Set_Test" {
     std.debug.print("\n     test:Get_Set_Test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -53,7 +54,7 @@ test "Get_Set_Test" {
 
 test "Flatten Index Test" {
     std.debug.print("\n     test:Flatten Index Test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -76,7 +77,7 @@ test "Flatten Index Test" {
 
 test "Get_at Set_at Test" {
     std.debug.print("\n     test:Get_at Set_at Test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -106,7 +107,7 @@ test "Get_at Set_at Test" {
 
 test "init than fill " {
     std.debug.print("\n     test:init than fill ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var tensor = try Tensor(u8).init(&allocator);
     defer tensor.deinit();
@@ -129,7 +130,7 @@ test "init than fill " {
 
 test "fromArray than fill " {
     std.debug.print("\n     test:fromArray than fill ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 10, 20, 30 },
@@ -161,7 +162,7 @@ test "fromArray than fill " {
 
 test " copy() method" {
     std.debug.print("\n     test:copy() method ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 10, 20, 30 },
@@ -186,7 +187,7 @@ test " copy() method" {
 test "to array " {
     std.debug.print("\n     test:to array ", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3]u8 = [_][3]u8{
         [_]u8{ 1, 2, 3 },
@@ -205,7 +206,7 @@ test "to array " {
 
 test "Reshape" {
     std.debug.print("\n     test: Reshape ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -230,7 +231,7 @@ test "Reshape" {
 
 test "transpose" {
     std.debug.print("\n     test: transpose ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -256,7 +257,7 @@ test "transpose" {
 test "tests isSafe() method" {
     std.debug.print("\n     test: isSafe() method ", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]u8 = [_][3]u8{
@@ -274,7 +275,7 @@ test "tests isSafe() method" {
 test "tests isSafe() -> TensorError.NotFiniteValue " {
     std.debug.print("\n     test: isSafe()-> TensorError.NotFiniteValue", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]f64 = [_][3]f64{
@@ -295,7 +296,7 @@ test "tests isSafe() -> TensorError.NotFiniteValue " {
 test "tests isSafe() -> TensorError.NanValue " {
     std.debug.print("\n     test: isSafe()-> TensorError.NanValue", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Inizializzazione degli array di input
     var inputArray: [2][3]f64 = [_][3]f64{

@@ -6,6 +6,7 @@ const TensorMathError = @import("errorHandler").TensorMathError;
 const ArchitectureError = @import("errorHandler").ArchitectureError;
 const ErrorHandler = @import("errorHandler");
 const PoolingType = @import("poolingLayer").PoolingType;
+const pkgAllocator = @import("pkgAllocator");
 
 test "tests description" {
     std.debug.print("\n--- Running tensor_math tests\n", .{});
@@ -13,7 +14,7 @@ test "tests description" {
 
 // test "Sum two tensors on CPU architecture" {
 //     std.debug.print("\n     test: Sum two tensors on CPU architecture", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var inputArray: [2][2]f32 = [_][2]f32{
 //         [_]f32{ 1.0, 2.0 },
@@ -37,7 +38,7 @@ test "tests description" {
 
 // test "Error when input tensors have different sizes" {
 //     std.debug.print("\n     test: Error when input tensors have different sizes", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var inputArray: [2][2]f32 = [_][2]f32{
 //         [_]f32{ 1.0, 2.0 },
@@ -63,7 +64,7 @@ test "tests description" {
 // test "Dot product 2x2" {
 //     std.debug.print("\n     test:Dot product 2x2", .{});
 
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 
@@ -86,7 +87,7 @@ test "tests description" {
 // }
 
 // test "Error when input tensors have incompatible sizes for dot product" {
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 //     var shape2: [2]usize = [_]usize{ 3, 2 }; // 3x2 matrix
@@ -104,7 +105,7 @@ test "tests description" {
 
 // test "Error when input tensors have incompatible shapes for dot product" {
 //     std.debug.print("\n     test: Error when input tensors have incompatible shapes for dot product", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape1: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 //     var shape2: [2]usize = [_]usize{ 4, 1 }; // 4x1 matrix
@@ -119,7 +120,7 @@ test "tests description" {
 
 // test "GPU architecture under development error" {
 //     std.debug.print("\n     test: GPU architecture under development error\n", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
 //     var t1 = try Tensor(f32).fromShape(&allocator, &shape);
@@ -135,7 +136,7 @@ test "tests description" {
 
 // test "add bias" {
 //     std.debug.print("\n     test:add bias", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape_tensor: [2]usize = [_]usize{ 2, 3 }; // 2x3 matrix
 //     var inputArray: [2][3]f32 = [_][3]f32{
@@ -162,7 +163,7 @@ test "tests description" {
 
 // test "mean" {
 //     std.debug.print("\n     test:mean", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var shape_tensor: [1]usize = [_]usize{3}; // 2x3 matrix
 //     var inputArray: [3]f32 = [_]f32{ 1.0, 2.0, 3.0 };
@@ -177,7 +178,7 @@ test "tests description" {
 // test "Convolution 4D Input with 2x2 Kernel" {
 //     std.debug.print("\n     test: Convolution 4D Input with 2x2 Kernel\n", .{});
 
-//     const allocator = std.testing.allocator;
+//     const allocator = pkgAllocator.allocator;
 
 //     var input_shape: [4]usize = [_]usize{ 2, 2, 3, 3 };
 //     var kernel_shape: [4]usize = [_]usize{ 1, 2, 2, 2 };
@@ -276,7 +277,7 @@ test "tests description" {
 test "Pooling 2D " {
     std.debug.print("\n     test: Pooling multidim\n", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // ------------
     var shape_tensor: [2]usize = [_]usize{ 3, 3 }; // 3x3 matrix

@@ -8,6 +8,7 @@ const MSELoss = @import("loss").MSELoss;
 const CCELoss = @import("loss").CCELoss;
 const LossError = @import("errorHandler").LossError;
 const TensorError = @import("errorHandler").TensorError;
+const pkgAllocator = @import("pkgAllocator");
 
 test "tests description" {
     std.debug.print("\n--- Running loss_function tests\n", .{});
@@ -17,7 +18,7 @@ test "tests description" {
 
 test " Loss Function MSE using Interface, target==predictor" {
     std.debug.print("\n     test: Loss Function MSE using Interface, target==predictor ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -43,7 +44,7 @@ test " Loss Function MSE using Interface, target==predictor" {
 
 test " Loss Function CCE using Interface, target==predictor" {
     std.debug.print("\n     test: Loss Function CCE using Interface, target==predictor", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -70,7 +71,7 @@ test " Loss Function CCE using Interface, target==predictor" {
 
 test " MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: MSE target==predictor, 2 x 2 ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -96,7 +97,7 @@ test " MSE target==predictor, 2 x 2" {
 
 test " MSE target==predictor, 2 x 3 X 2" {
     std.debug.print("\n     test: MSE target==predictor, 2 x 3 X 2 ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3][2]u32 = [_][3][2]u32{
         [_][2]u32{
@@ -132,7 +133,7 @@ test " MSE target==predictor, 2 x 3 X 2" {
 
 test " MSE target!=predictor, 2 x 3 X 2" {
     std.debug.print("\n     test: MSE target!=predictor, 2 x 3 X 2", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][3][2]i32 = [_][3][2]i32{
         [_][2]i32{
@@ -181,7 +182,7 @@ test " MSE target!=predictor, 2 x 3 X 2" {
 
 test " CCE target==predictor, 2 x 2 all 1" {
     std.debug.print("\n     test:CCE target==predictor, 2 x 2", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 1.0 },
@@ -206,7 +207,7 @@ test " CCE target==predictor, 2 x 2 all 1" {
 
 test " GRADIENT MSE target==predictor, 2 x 2" {
     std.debug.print("\n     test: GRADIENT MSE target==predictor, 2 x 2 ", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -228,7 +229,7 @@ test " GRADIENT MSE target==predictor, 2 x 2" {
 
 test " GRADIENT MSE error on shape (dimensions)" {
     std.debug.print("\n     test: GRADIENT MSE error on shape (dimensions)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -251,7 +252,7 @@ test " GRADIENT MSE error on shape (dimensions)" {
 
 test " GRADIENT MSE error on shape (len)" {
     std.debug.print("\n     test: GRADIENT MSE error on shape (len)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var shape1: [2]usize = [_]usize{ 2, 4 }; // 2x2 matrix
     var shape2: [3]usize = [_]usize{ 2, 2, 2 }; // 2x2 matrix
@@ -268,7 +269,7 @@ test " GRADIENT MSE error on shape (len)" {
 
 test " GRADIENT CCE error on shape (dimensions)" {
     std.debug.print("\n     test: GRADIENT CCE error on shape (dimensions)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -291,7 +292,7 @@ test " GRADIENT CCE error on shape (dimensions)" {
 
 test " GRADIENT CCE error on shape (len)" {
     std.debug.print("\n     test: GRADIENT CCE error on shape (len)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var shape1: [2]usize = [_]usize{ 2, 4 }; // 2x2 matrix
     var shape2: [3]usize = [_]usize{ 2, 2, 2 }; // 2x2 matrix
@@ -313,7 +314,7 @@ test " GRADIENT CCE error on shape (len)" {
 
 test "empty vector" {
     std.debug.print("\n     test: GRADIENT CCE error on shape (len)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var t1_TARGET = try Tensor(f32).init(&allocator);
     defer t1_TARGET.deinit();

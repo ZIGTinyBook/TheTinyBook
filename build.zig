@@ -4,6 +4,9 @@ const std = @import("std");
 /// This function defines how to build the project by specifying various modules and their dependencies.
 /// @param b - The build context, which provides utilities for configuring the build process.
 pub fn build(b: *std.Build) void {
+    const build_options = b.addOptions();
+    build_options.addOption(bool, "trace_allocator", b.option(bool, "trace_allocator", "Use a tracing allocator") orelse true);
+    build_options.addOption([]const u8, "allocator", (b.option([]const u8, "allocator", "Allocator to use") orelse "raw_c_allocator"));
 
     // Set target options, such as architecture and OS.
     const target = b.standardTargetOptions(.{});
@@ -42,6 +45,7 @@ pub fn build(b: *std.Build) void {
     const errorHandler_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/errorHandler.zig") });
     const modelImportExport_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/model_import_export.zig") });
     const allocator_mod = b.createModule(.{ .root_source_file = b.path("src/Utils/allocator.zig") });
+    allocator_mod.addOptions("build_options", build_options);
 
     //************************************************MODEL DEPENDENCIES************************************************
 

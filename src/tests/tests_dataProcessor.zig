@@ -2,11 +2,12 @@ const std = @import("std");
 const DataProc = @import("dataprocessor");
 const NormalizType = @import("dataprocessor").NormalizationType;
 const Tensor = @import("tensor").Tensor;
+const pkgAllocator = @import("pkgAllocator");
 
 test "normalize float" {
     std.debug.print("\n     test: normalize float", .{});
 
-    const allocator = std.heap.page_allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, -2.0 },
@@ -29,7 +30,7 @@ test "normalize float" {
 test "normalize float all different" {
     std.debug.print("\n     test: normalize float", .{});
 
-    const allocator = std.heap.page_allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][4]f32 = [_][4]f32{
         [_]f32{ 1.0, 2.0, 3.0, 10.0 },
@@ -58,7 +59,7 @@ test "normalize float all different" {
 test "normalize delta 0 " {
     std.debug.print("\n     test: normalize delta 0", .{});
 
-    const allocator = std.heap.page_allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 1.0 },

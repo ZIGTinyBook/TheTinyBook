@@ -1,8 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const builtin = @import("builtin");
+const build_options = @import("build_options");
 
-var info_allocator = infoAllocator(.activation, std.heap.raw_c_allocator);
-pub const allocator = std.heap.raw_c_allocator; //info_allocator.allocator();
+//var info_allocator = infoAllocator(.activation, std.heap.raw_c_allocator);
+const base_allocator = if (builtin.is_test) std.testing.allocator else @field(std.heap, build_options.allocator);
+pub const allocator = base_allocator;
 
 /// This allocator is used in front of another allocator and logs to `std.log`
 /// on every call to the allocator.

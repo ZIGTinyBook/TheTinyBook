@@ -855,10 +855,12 @@ pub fn pool_tensor(
 
     //creating output multidimensional tensor
     var output = try Tensor(T).fromShape(&allocator, outputTensorShape);
+    defer (allocator.free(outputTensorShape));
 
     //create and initialize the current location to all 0
     //You can see location array as dimensional coordinates
     const location = try allocator.alloc(usize, input.shape.len);
+    defer (allocator.free(location));
     for (location) |*loc| {
         loc.* = 0;
     }

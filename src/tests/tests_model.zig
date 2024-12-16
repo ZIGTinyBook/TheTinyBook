@@ -5,10 +5,11 @@ const denselayer = @import("denselayer");
 const Model = @import("model").Model;
 const ActivationType = @import("activation_function").ActivationType;
 const Trainer = @import("trainer");
+const pkgAllocator = @import("pkgAllocator");
 
 test "Model with multiple Denselayers forward test" {
     std.debug.print("\n     test: Model with multiple layers forward test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var model = Model(f64){
         .layers = undefined,

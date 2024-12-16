@@ -6,10 +6,11 @@ const activationlayer = @import("activationlayer");
 const Model = @import("model").Model;
 const ActivationType = @import("activation_function").ActivationType;
 const Trainer = @import("trainer");
+const pkgAllocator = @import("pkgAllocator");
 
 test "Multiple layers training test" {
     std.debug.print("\n     test: Multiple layers training test", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var model = Model(f64){
         .layers = undefined,

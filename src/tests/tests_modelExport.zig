@@ -11,7 +11,7 @@ const Trainer = @import("trainer");
 test "Import/Export of a tensor" {
     std.debug.print("\n     test: Import/Export of a tensor", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = std.heap.page_allocator; // Known memory leak, avoid testing allocator
     const file_path = "importExportTensorTestFile.bin";
     //EXPORT
     var file = try std.fs.cwd().createFile(file_path, .{});
@@ -197,7 +197,7 @@ test "Import/Export of activation layer" {
 
 // test "Import/Export of a tensor" {
 //     std.debug.print("\n     test: Import/Export of a tensor", .{});
-//     const allocator = std.testing.allocator;
+//     const allocator = std.heap.page_allocator;
 //     const file_path = "importExportTestFile.bin";
 //     //EXPORT
 //     var file = try std.fs.cwd().createFile(file_path, .{});

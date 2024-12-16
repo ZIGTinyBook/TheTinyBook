@@ -2,6 +2,7 @@ const std = @import("std");
 const Tensor = @import("tensor").Tensor;
 const ActivFun = @import("activation_function");
 const ActivType = @import("activation_function").ActivationType;
+const pkgAllocator = @import("pkgAllocator");
 
 test "tests description" {
     std.debug.print("\n--- Running activation_function tests\n", .{});
@@ -11,7 +12,7 @@ test "tests description" {
 test "ReLU from ActivationFunction()" {
     std.debug.print("\n     test: ReLU from ActivationFunction()", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ -1.0, -2.0 },
@@ -36,7 +37,7 @@ test "ReLU from ActivationFunction()" {
 test "ReLU all negative" {
     std.debug.print("\n     test: ReLU all negative", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ -1.0, -2.0 },
@@ -61,7 +62,7 @@ test "ReLU all negative" {
 test "ReLU all positive" {
     std.debug.print("\n     test: ReLU all positive", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -85,7 +86,7 @@ test "ReLU all positive" {
 
 test "Softmax from ActivationFunction()" {
     std.debug.print("\n     test: Softmax from ActivationFunction()", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 0, 0 },
@@ -104,7 +105,7 @@ test "Softmax from ActivationFunction()" {
 test "Softmax all positive" {
     std.debug.print("\n     test: Softmax all positive", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -134,7 +135,7 @@ test "Softmax all positive" {
 test "Softmax all 0" {
     std.debug.print("\n     test: Softmax all 0", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 0, 0 },
@@ -158,7 +159,7 @@ test "Softmax all 0" {
 test "Softmax derivate" {
     std.debug.print("\n     test: Softmax derivate", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     var inputArray: [2][2]f32 = [_][2]f32{
         [_]f32{ 1.0, 2.0 },
@@ -191,7 +192,7 @@ test "Softmax derivate" {
 test "Sigmoid forward" {
     std.debug.print("\n     test: Sigmoid forward ", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     const input_data = [_]f64{ 0.0, 2.0, -2.0 }; // input data for the tensor
     var shape: [1]usize = [_]usize{3};
@@ -210,7 +211,7 @@ test "Sigmoid forward" {
 test "Sigmoid derivate" {
     std.debug.print("\n     test: Sigmoid derivate ", .{});
 
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     // Setup the gradient and act_forward_out tensors
     var gradient_data = [_]f64{ 0.2, 0.4, 0.6, 0.8 };

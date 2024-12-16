@@ -5,11 +5,12 @@ const denselayer = @import("denselayer");
 const Model = @import("model");
 const Optim = @import("optim");
 const ActivationType = @import("activation_function").ActivationType;
+const pkgAllocator = @import("pkgAllocator");
 
 //Test that it runs and prints the initial and updated weights must test with back prop
 test "SGD Optimizer No Update with Zero Gradients (Print Only)" {
     std.debug.print("\n     test: SGD Optimizer No Update with Zero Gradients (Print Only)", .{});
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
     const lr: f64 = 0.05;
 
     var model = Model.Model(f64){

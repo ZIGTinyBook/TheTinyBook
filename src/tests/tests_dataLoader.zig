@@ -1,6 +1,7 @@
 const std = @import("std");
 const DataLoader = @import("dataloader").DataLoader;
 const fs = std.fs;
+const pkgAllocator = @import("pkgAllocator");
 
 test "tests description" {
     std.debug.print("\n--- Running dataLoader tests\n", .{});
@@ -61,7 +62,7 @@ test "DataLoader xNext Test" {
 }
 
 test "splitCSVLine tests" {
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
 
     const originalLine: []const u8 = "1,2,3,4,5\n";
     const csvLine = try allocator.alloc(u8, originalLine.len);
@@ -128,7 +129,7 @@ test "splitCSVLine tests" {
 }
 
 test "readCSVLine test with correct file flags" {
-    const allocator = std.testing.allocator;
+    const allocator = pkgAllocator.allocator;
     const loader = DataLoader(f64, f64, u8, 1, 2);
 
     const cwd = std.fs.cwd();
@@ -162,7 +163,7 @@ test "readCSVLine test with correct file flags" {
 }
 
 test "fromCSV test with feature and label extraction" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, u8, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -200,7 +201,7 @@ test "fromCSV test with feature and label extraction" {
 }
 
 test "loadMNISTImages test" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -225,7 +226,7 @@ test "loadMNISTImages test" {
 }
 
 test "loadMNISTImages2D test Static" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 3){
         .X = undefined,
         .y = undefined,
@@ -258,7 +259,7 @@ test "loadMNISTImages2D test Static" {
 //Commented because it is slow
 
 // test "loadMNISTImages2D test Dynamic" {
-//     var allocator = std.testing.allocator;
+//     var allocator = pkgAllocator.allocator;
 //     var loader = DataLoader(f64, f64, f64, 1, 3){
 //         .X = undefined,
 //         .y = undefined,
@@ -289,7 +290,7 @@ test "loadMNISTImages2D test Static" {
 // }
 
 test "loadMNISTLabels test" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -313,7 +314,7 @@ test "loadMNISTLabels test" {
 }
 
 test "loadMNISTDataParallel test" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -398,7 +399,7 @@ test "To Tensor Batch Test" {
         [_]f64{ 1.0, 2.0, 3.0 },
         [_]f64{ 4.0, 5.0, 6.0 },
     };
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
 
     const labels = [_]u8{ 1, 0 };
 
@@ -436,7 +437,7 @@ test "To Tensor Batch Test" {
 }
 
 test "MNIST batch and to Tensor test" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -469,7 +470,7 @@ test "MNIST batch and to Tensor test" {
     loader.yTensor.deinit();
 }
 test "Shuffling and data split" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 1, 2){
         .X = undefined,
         .y = undefined,
@@ -511,7 +512,7 @@ test "Shuffling and data split" {
 }
 
 test "Shuffling and data split 2D" {
-    var allocator = std.testing.allocator;
+    var allocator = pkgAllocator.allocator;
     var loader = DataLoader(f64, f64, f64, 32, 3){
         .X = undefined,
         .y = undefined,
