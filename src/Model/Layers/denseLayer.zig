@@ -121,16 +121,18 @@ pub fn DenseLayer(comptime T: type) type {
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
-            //this copy is necessary for the backward
-            if (self.input.data.len >= 0) {
+            // Dealloca self.input se già allocato
+            if (self.input.data.len > 0) {
                 self.input.deinit();
             }
             self.input = try input.copy();
 
-            // 2. Perform multiplication between inputs and weights (dot product)
-            self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
+            // Dealloca self.output se già allocato prima di riassegnarlo
+            if (self.output.data.len > 0) {
+                self.output.deinit();
+            }
 
-            // 3. Add bias to the dot product
+            self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
             try TensMath.add_bias(T, &self.output, &self.bias);
 
             return self.output;

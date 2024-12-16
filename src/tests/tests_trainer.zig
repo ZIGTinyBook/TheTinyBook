@@ -18,6 +18,7 @@ test "Multiple layers training test" {
         .input_tensor = undefined,
     };
     try model.init();
+    defer model.deinit(); // dealloca il modello alla fine del test, anche in caso di errori
 
     //layer 1: 3 inputs, 2 neurons
     var layer1 = denselayer.DenseLayer(f64){
@@ -44,7 +45,7 @@ test "Multiple layers training test" {
     );
     try model.addLayer(layer1_);
 
-    //layer 1: 3 inputs, 2 neurons
+    //layer 1 activation
     var layer1Activ = activationlayer.ActivationLayer(f64){
         .input = undefined,
         .output = undefined,
@@ -146,5 +147,6 @@ test "Multiple layers training test" {
         0.5, //learning rate
     );
 
-    model.deinit();
+    // Non serve più chiamare model.deinit() qui, poiché abbiamo già un defer sopra
+    // model.deinit();
 }

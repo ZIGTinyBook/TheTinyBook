@@ -25,39 +25,6 @@ pub const TrainerType = enum {
     TensorTrainer,
 };
 
-/// Trains a model using data from a `DataLoader` over multiple epochs with specified
-/// batch size and learning rate.
-///
-/// # Type Parameters
-/// - `T`: The data type for the tensor elements in the model.
-/// - `XType`: The data type for the input tensor (X).
-/// - `YType`: The data type for the output tensor (Y).
-///
-/// # Parameters
-/// - `allocator`: Memory allocator for dynamic allocations during training.
-/// - `batchSize`: The number of samples in each batch.
-/// - `features`: The number of features in each input sample.
-/// - `model`: A pointer to the model to be trained.
-/// - `load`: A pointer to the `DataLoader` that provides data batches.
-/// - `ephocs`: The total number of epochs to train for.
-/// - `lossType`: The type of loss function used during training.
-/// - `lr`: The learning rate for model optimization.
-/// - `training_size` : the percentage to use as training
-///
-/// # Returns
-/// - `!void`: Returns an error if any allocation or training step fails.
-///
-/// # Description
-/// This function allocates memory to track loss and accuracy across epochs and initializes
-/// tensors for the input (X) and output (Y) shapes based on `batchSize` and `features`.
-/// `steps` is used to count training steps within each epoch. Resources are freed automatically
-/// after each epoch, ensuring efficient memory use.
-///
-/// # Notes
-/// - `LossMeanRecord` and `AccuracyRecord` are arrays that store mean loss and accuracy
-///   values over `ephocs`, providing performance metrics across the training process.
-/// - `shapeX` and `shapeY` define the shape of input and output tensors for each batch, look at
-///   load.xNextBatch() and load.yNextBatch()
 pub fn TrainDataLoader(
     comptime T: type,
     comptime XType: type, // Input types
@@ -116,14 +83,16 @@ pub fn TrainDataLoader(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            //defer predictions.deinit();
+            defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+
             var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+            defer loss.deinit();
 
             const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
             totalCorrect += correctPredictions;
@@ -133,6 +102,7 @@ pub fn TrainDataLoader(
             AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
 
             var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
+            defer grad.deinit();
             _ = try model.backward(&grad);
 
             try optimizer.step(model);
@@ -157,14 +127,16 @@ pub fn TrainDataLoader(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            //defer predictions.deinit();
+            defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+
             var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+            defer loss.deinit();
 
             const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
             totalCorrectVal += correctPredictions;
@@ -208,7 +180,7 @@ pub fn TrainDataLoader2D(
 
     var ValidationAccuracyRecord: []f32 = try allocator.alloc(f32, epochs);
     defer allocator.free(ValidationAccuracyRecord);
-    //TODO need to be changed for not 2D images
+
     _ = features;
     var shapeXArr = [_]usize{ batchSize, 1, 28, 28 };
     var shapeYArr = [_]usize{batchSize};
@@ -241,14 +213,16 @@ pub fn TrainDataLoader2D(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            //defer predictions.deinit();
+            defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+
             var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+            defer loss.deinit();
 
             const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
             totalCorrect += correctPredictions;
@@ -258,6 +232,7 @@ pub fn TrainDataLoader2D(
             AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
 
             var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
+            defer grad.deinit();
             _ = try model.backward(&grad);
 
             var optimizer = Optim.Optimizer(T, XType, YType, Optim.optimizer_SGD, lr){};
@@ -283,14 +258,16 @@ pub fn TrainDataLoader2D(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
-            //defer predictions.deinit();
+            defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
 
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
+
             var loss = try loser.computeLoss(T, &predictions, &load.yTensor);
+            defer loss.deinit();
 
             const correctPredictions: u16 = try computeAccuracy(T, &predictions, &load.yTensor);
             totalCorrectVal += correctPredictions;
@@ -310,35 +287,6 @@ pub fn TrainDataLoader2D(
 }
 
 /// Computes the accuracy of model predictions by comparing predicted and actual labels.
-///
-/// This function iterates through a batch of predictions and targets, identifying the
-/// label with the highest value for each row (representing a sample) and counting the
-/// number of correct predictions.
-///
-/// # Type Parameters
-/// - `T`: The data type of tensor elements (e.g., `f32` or `f64`).
-///
-/// # Parameters
-/// - `predictions`: A pointer to a tensor containing predicted values. Each row represents
-///   a sample, and each column represents the probability or score for a class.
-/// - `targets`: A pointer to a tensor containing the true labels, in a one-hot encoded format.
-///   Each row represents a sample, and each column indicates the presence (1) or absence (0)
-///   of a specific class.
-///
-/// # Returns
-/// - `!u16`: The number of correctly predicted samples. Returns an error if accessing
-///   tensor data fails.
-///
-/// # Errors
-/// Returns an error if issues occur when accessing tensor data (e.g., if the tensors
-/// are of incompatible shapes).
-///
-/// # Algorithm
-/// - For each sample (row in `predictions` and `targets`):
-///   1. Find the class with the maximum value in `predictions` as the predicted label.
-///   2. Find the class with the maximum value in `targets` as the actual label.
-///   3. If the predicted label matches the actual label, increment the correct count.
-/// - Finally, the function returns the count of correctly predicted samples.
 fn computeAccuracy(comptime T: type, predictions: *Tensor.Tensor(T), targets: *Tensor.Tensor(T)) !u16 {
     var correct: u16 = 0;
     const rows = predictions.shape[0];
@@ -378,22 +326,15 @@ fn computeAccuracy(comptime T: type, predictions: *Tensor.Tensor(T), targets: *T
 }
 
 fn convertToOneHot(comptime T: type, batchSize: i16, yBatch: *Tensor.Tensor(T)) !void {
-    // Numero di classi
     const numClasses = 10;
 
-    // Crea una forma per il tensore one-hot: batchSize x numClasses
     var shapeYArr = [_]usize{ @intCast(batchSize), numClasses };
     const oneHotShape = &shapeYArr;
 
-    // Crea un nuovo tensore per yBatch in formato one-hot
     var oneHotYBatch = try Tensor.Tensor(T).fromShape(yBatch.allocator, oneHotShape);
 
-    // Per ogni esempio nel batch
     for (0..@intCast(batchSize)) |i| {
-        // Ottieni l'etichetta corrente come f64 e convertila a usize
         const label: usize = (@intFromFloat(yBatch.data[i]));
-
-        // Crea un vettore one-hot con 10 posizioni
         for (0..numClasses) |j| {
             if (j == label) {
                 oneHotYBatch.data[i * numClasses + j] = 1;
@@ -403,46 +344,10 @@ fn convertToOneHot(comptime T: type, batchSize: i16, yBatch: *Tensor.Tensor(T)) 
         }
     }
 
-    // Dealloca il vecchio yBatch e sostituiscilo con il nuovo tensore one-hot
     yBatch.deinit();
     yBatch.* = oneHotYBatch;
 }
 
-/// Trains a model using tensors for input and target data over a specified number of epochs.
-///
-/// This function performs a training loop that includes forward propagation, loss computation,
-/// accuracy calculation, gradient computation, backpropagation, and model optimization for each epoch.
-///
-/// # Type Parameters
-/// - `T`: The data type of tensor elements (e.g., `f32` or `f64`).
-///
-/// # Parameters
-/// - `allocator`: Memory allocator used for dynamic memory allocations during training.
-/// - `model`: A pointer to the model to be trained.
-/// - `input`: A tensor containing input data for the model.
-/// - `targets`: A tensor containing the target data the model will be trained to predict.
-/// - `epochs`: The number of training epochs.
-/// - `lr`: The learning rate for the optimizer.
-///
-/// # Returns
-/// - `!void`: Returns an error if any allocation, forward pass, backward pass, or optimization step fails.
-///
-/// # Algorithm
-/// - `LossMeanRecord`: Records the mean loss for each epoch, which is dynamically allocated at the start
-///   of the function and freed after training completes.
-/// - For each epoch:
-///   1. **Forward Propagation**: Computes model predictions based on the current `input`.
-///   2. **Loss Computation**: Calculates loss using the specified loss function (`LossType.MSE`) and records the mean loss.
-///   3. **Gradient Calculation**: Computes the gradient of the loss with respect to model predictions.
-///   4. **Backpropagation**: Adjusts model parameters based on the computed gradient.
-///   5. **Optimization**: Updates model weights using Stochastic Gradient Descent (SGD) with the specified `lr`.
-///
-/// # Notes
-/// - Loss and gradient values are printed at each epoch for monitoring training progress.
-/// - `LossMeanRecord` is printed at the end to provide a summary of the training loss trend over epochs.
-///
-/// # Errors
-/// This function returns an error if memory allocation, tensor operations, or optimizer steps fail at any point.
 pub fn trainTensors(
     comptime T: type,
     comptime allocator: *const std.mem.Allocator,
@@ -461,8 +366,7 @@ pub fn trainTensors(
         // Forward pass
         std.debug.print("\n-------------------------------forwarding", .{});
         var predictions = try model.forward(input);
-        //predictions.info();
-        //defer predictions.deinit();
+        defer predictions.deinit();
 
         // Loss computation
         std.debug.print("\n-------------------------------computing loss", .{});
@@ -470,15 +374,14 @@ pub fn trainTensors(
         var loss = try loser.computeLoss(T, &predictions, targets);
         defer loss.deinit();
 
-        // Accuracy calculation
         LossMeanRecord[i] = TensMath.mean(T, &loss);
         std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
 
         // Gradient computation
         std.debug.print("\n-------------------------------computing loss gradient", .{});
         var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
+        defer grad.deinit();
         std.debug.print("\n     gradient:", .{});
-        // grad.info();
 
         // Backpropagation
         std.debug.print("\n-------------------------------backwarding", .{});
