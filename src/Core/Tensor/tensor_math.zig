@@ -878,6 +878,8 @@ pub fn pool_tensor(
     return output;
 }
 
+/// Recursive function to compute the pooling of the input!
+/// Return is void, output is passed as a ponter to Tensor and than modified
 pub fn multidim_pooling(
     comptime T: anytype,
     input: *Tensor(T),
@@ -890,12 +892,16 @@ pub fn multidim_pooling(
     poolingType: PoolingType,
 ) !void {
     if (current_depth == output.shape.len - 2) {
-        const allocator = std.heap.raw_c_allocator;
+        const allocator = pkg_allocator;
 
         //initialize a tempporal location variable
         var temp_location = try allocator.alloc(usize, input.shape.len); //used to loop
+        defer allocator.free(temp_location);
         var window_location = try allocator.alloc(usize, input.shape.len); //used to access values in the kernel window
+        defer allocator.free(window_location);
         var window_values = try allocator.alloc(T, kernel[0] * kernel[1]);
+        defer allocator.free(window_values);
+
         var output_row_counter: usize = 0;
         var output_col_counter: usize = 0;
 
@@ -906,10 +912,11 @@ pub fn multidim_pooling(
         temp_location[current_depth + 1] = 0;
 
         //iterate on the input tensor movoing horizontaly by stride[1] and vertically by stride[0]loclocationation
+        std.debug.print("\n while:", .{});
+        while (temp_location[current_depth] + kernel[0] <= input.shape[current_depth]) : (temp_location[current_depth] += stride[0]) { //mooves the windows vertically
+            while (temp_location[current_depth + 1] + kernel[1] <= input.shape[current_depth + 1]) : (temp_location[current_depth + 1] += stride[1]) { //mooves the windows horizontally
 
-        while (temp_location[current_depth] + kernel[0] < input.shape[current_depth]) : (temp_location[current_depth] += stride[0]) { //mooves the windows vertially
-            while (temp_location[current_depth + 1] + kernel[1] < input.shape[current_depth + 1]) : (temp_location[current_depth + 1] += stride[1]) { //mooves the windows horizontally
-
+                std.debug.print("\n     temp_location: {any}", .{temp_location});
                 // OSS! temp_location is used ad a point of reference, an origin where to put [0,0] of our kernel window
                 // that's the rieason why temp_location is not used inside the cycle, only read, never assign.
                 window_location[current_depth] = temp_location[current_depth];
@@ -945,19 +952,34 @@ pub fn multidim_pooling(
                     window_location[current_depth] = temp_location[current_depth] + max_idx / kernel[0];
                     window_location[current_depth + 1] = temp_location[current_depth + 1] + max_idx % kernel[0];
                     //setting the boolean tensor to 1, to remember where is it the max
+                    std.debug.print("\n     set_at used_input window_location: {any}", .{window_location});
                     try used_input.set_at(window_location, 1);
 
                     //still using window_location to set the max value in output
                     window_location[current_depth] = output_row_counter;
                     window_location[current_depth + 1] = output_col_counter;
                     //setting the output to max
+                    std.debug.print("\n     set_at output window_location: {any}", .{window_location});
+
                     try output.set_at(window_location, max);
-                } else if (poolingType == PoolingType.Min) {} else if (poolingType == PoolingType.Avg) {}
+                } else if (poolingType == PoolingType.Min) {
+                    //code for min pooling
+                } else if (poolingType == PoolingType.Avg) {
+                    //code for average pooling
+                }
 
                 output_col_counter += 1;
             }
+            temp_location[current_depth + 1] = 0;
             output_row_counter += 1;
+            output_col_counter = 0;
         }
+
+        std.debug.print("\nlocation: {any}", .{location});
+        std.debug.print("\ntemp_location: {any}", .{temp_location});
+        std.debug.print("\nwindow_location: {any}", .{window_location});
+        std.debug.print("\nwindow_values: {any}", .{window_values});
+        std.debug.print("\n\n\n", .{});
     } else {
         //for each dimension at this level go one step deeper
         for (0..output.shape[current_depth]) |element_at_current_depth| {

@@ -13,7 +13,6 @@ pub const PoolingType = enum {
 };
 
 /// TODO: implement padding
-/// TODO: upgrade to multidim input Tensor
 pub fn PoolingLayer(comptime T: type) type {
     return struct {
         input: tensor.Tensor(T), //is saved for semplicity, it can be sobstituted
