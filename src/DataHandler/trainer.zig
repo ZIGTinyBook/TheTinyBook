@@ -363,8 +363,8 @@ pub fn trainTensors(
     // allocate only once
     var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
     defer allocator.free(LossMeanRecord);
-    var predictions: ?Tensor.Tensor(T) = null;
-    defer predictions.?.deinit();
+    var predictions: ?Tensor.Tensor(T) = null; //it gets already free by model.deinit() and gets free at each iteration except the first
+
     var loss: ?Tensor.Tensor(T) = null;
     defer loss.?.deinit();
     var grad: ?Tensor.Tensor(T) = null;
