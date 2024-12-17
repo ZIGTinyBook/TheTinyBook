@@ -357,39 +357,47 @@ pub fn trainTensors(
     epochs: u32,
     comptime lr: f64,
 ) !void {
+    const loser = Loss.LossFunction(LossType.MSE){};
+    var optimizer = Optim.Optimizer(T, T, T, Optim.optimizer_SGD, lr){};
+
+    // allocate only once
     var LossMeanRecord: []f32 = try allocator.alloc(f32, epochs);
     defer allocator.free(LossMeanRecord);
+    var predictions: ?Tensor.Tensor(T) = null;
+    defer predictions.?.deinit();
+    var loss: ?Tensor.Tensor(T) = null;
+    defer loss.?.deinit();
+    var grad: ?Tensor.Tensor(T) = null;
+    defer grad.?.deinit();
 
     for (0..epochs) |i| {
         std.debug.print("\n\n----------------------epoch:{}", .{i});
 
         // Forward pass
         std.debug.print("\n-------------------------------forwarding", .{});
-        var predictions = try model.forward(input);
-        defer predictions.deinit();
+        if (predictions != null) predictions.?.deinit();
+        predictions = try model.forward(input);
 
         // Loss computation
         std.debug.print("\n-------------------------------computing loss", .{});
-        const loser = Loss.LossFunction(LossType.MSE){};
-        var loss = try loser.computeLoss(T, &predictions, targets);
-        defer loss.deinit();
+        if (loss != null) loss.?.deinit();
+        loss = try loser.computeLoss(T, &predictions.?, targets);
 
-        LossMeanRecord[i] = TensMath.mean(T, &loss);
+        LossMeanRecord[i] = TensMath.mean(T, &loss.?);
         std.debug.print("\n     loss:{}", .{LossMeanRecord[i]});
 
         // Gradient computation
         std.debug.print("\n-------------------------------computing loss gradient", .{});
-        var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, targets);
-        defer grad.deinit();
+        if (grad != null) grad.?.deinit();
+        grad = try loser.computeGradient(T, &predictions.?, targets);
         std.debug.print("\n     gradient:", .{});
 
         // Backpropagation
         std.debug.print("\n-------------------------------backwarding", .{});
-        _ = try model.backward(&grad);
+        try model.backward(&grad.?);
 
         // Optimization
         std.debug.print("\n-------------------------------Optimizer Step", .{});
-        var optimizer = Optim.Optimizer(T, T, T, Optim.optimizer_SGD, lr){};
         try optimizer.step(model);
     }
 

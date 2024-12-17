@@ -90,13 +90,16 @@ pub fn Model(comptime T: type) type {
         ///
         /// # Errors
         /// Returns an error if any layer's backward pass or tensor copying fails.
-        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !tensor.Tensor(T) {
+        pub fn backward(self: *@This(), gradient: *tensor.Tensor(T)) !void {
             var grad_ptr: tensor.Tensor(T) = undefined;
+            defer grad_ptr.deinit();
             var grad_duplicate: tensor.Tensor(T) = try gradient.copy();
+            defer grad_duplicate.deinit();
 
             var counter = self.layers.items.len - 1;
             while (counter >= 0) : (counter -= 1) {
                 std.debug.print("\n--------------------------------------backwarding layer {}", .{counter});
+                if (counter != self.layers.items.len - 1) grad_ptr.deinit();
                 grad_ptr = try self.layers.items[counter].backward(&grad_duplicate);
 
                 // Conserviamo la vecchia copia per poi deallocarla
@@ -113,8 +116,6 @@ pub fn Model(comptime T: type) type {
 
             // Alla fine del ciclo, grad_duplicate contiene l'ultima copia. Non serve più.
             grad_duplicate.deinit();
-
-            return grad_ptr;
         }
 
         /// Retrieves the output of the specified layer or the input tensor for the first layer.

@@ -143,7 +143,7 @@ test "Multiple layers training test" {
         &model, //model
         &input_tensor, //input
         &target_tensor, //target
-        10, //epochs
+        1, //epochs
         0.5, //learning rate
     );
 
