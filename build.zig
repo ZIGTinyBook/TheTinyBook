@@ -94,6 +94,13 @@ pub fn build(b: *std.Build) void {
     flattenLayer_mod.addImport("architectures", architectures_mod);
     flattenLayer_mod.addImport("errorHandler", errorHandler_mod);
 
+    //************************************************POOLINGLAYER DEPENDENCIES************************************************
+    poolingLayer_mod.addImport("Tensor", tensor_mod);
+    poolingLayer_mod.addImport("tensor_m", tensor_math_mod);
+    poolingLayer_mod.addImport("Layer", layer_mod);
+    poolingLayer_mod.addImport("architectures", architectures_mod);
+    poolingLayer_mod.addImport("errorHandler", errorHandler_mod);
+
     //************************************************ACTIVATIONLAYER DEPENDENCIES************************************************
 
     // Add necessary imports for the activationlayers module.

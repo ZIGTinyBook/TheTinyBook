@@ -1,5 +1,5 @@
 const std = @import("std");
-const tensor = @import("tensor");
+const tensor = @import("Tensor");
 const TensMath = @import("tensor_m");
 const Layer = @import("Layer");
 const Architectures = @import("architectures").Architectures;
@@ -15,11 +15,11 @@ pub const PoolingType = enum {
 /// TODO: implement padding
 pub fn PoolingLayer(comptime T: type) type {
     return struct {
-        input: tensor.Tensor(T), //is saved for semplicity, it can be sobstituted
-        output: tensor.Tensor(T), // output = dot(input, weight.transposed) + bias
-        used_input: tensor.Tensor(u1), //
-        kernel: [2]usize, // kernerl.size=2 -> [rows, cols]
-        stride: [2]usize, // stride.size=2 -> [rows, cols]
+        input: tensor.Tensor(T),
+        output: tensor.Tensor(T),
+        used_input: tensor.Tensor(u8),
+        kernel: [2]usize, // [rows, cols]
+        stride: [2]usize, // [rows, cols]
         poolingType: PoolingType,
         allocator: *const std.mem.Allocator,
 
@@ -43,41 +43,37 @@ pub fn PoolingLayer(comptime T: type) type {
             };
         }
 
-        ///Initilize the layer with random weights and biases
-        /// also for the gradients
+        /// Initialize the layer
         pub fn init(ctx: *anyopaque, alloc: *const std.mem.Allocator, args: *anyopaque) !void {
             const self: *Self = @ptrCast(@alignCast(ctx));
             const argsStruct: *const struct { kernel: [2]usize, stride: [2]usize, poolingType: PoolingType } = @ptrCast(@alignCast(args));
 
             self.allocator = alloc;
 
-            //initializing basic attributes
-            @memcpy(self.kernel, argsStruct.kernel);
-            @memcpy(self.stride, argsStruct.stride);
+            // Assign kernel and stride arrays directly
+            self.kernel = argsStruct.kernel;
+            self.stride = argsStruct.stride;
             self.poolingType = argsStruct.poolingType;
 
             std.debug.print("\nInit Pooling Layer", .{});
 
-            //At the moment pooling is available only for 2D tensor
-            if (self.kernel.size != 2 or self.stride.size != 2) {
+            // Only 2D supported
+            if (self.kernel.len != 2 or self.stride.len != 2) {
                 return LayerError.Only2DSupported;
             }
-            //Check Kernel!=0
+
+            // Check Kernel != 0
             for (self.kernel) |val| {
                 if (val <= 0) return LayerError.ZeroValueKernel;
             }
 
-            //impossible size kernel / stride
-            if (self.kernel.size <= 0 or self.stride.size <= 0) {
-                return TensorError.ZeroSizeTensor;
-            }
-            //Check stride!=0
+            // Check stride != 0
             for (self.stride) |val| {
                 if (val <= 0) return LayerError.ZeroValueStride;
             }
         }
 
-        ///Deallocate the layer
+        /// Deallocate the layer
         pub fn deinit(ctx: *anyopaque) void {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
@@ -89,44 +85,110 @@ pub fn PoolingLayer(comptime T: type) type {
                 self.input.deinit();
             }
 
-            std.debug.print("\n Pooling layer resources deallocated.", .{});
+            if (self.used_input.data.len > 0) {
+                self.used_input.deinit();
+            }
+
+            std.debug.print("\nPooling layer resources deallocated.", .{});
         }
 
         /// Forward pass of the pooling layer
-        /// We can improve it removing as much as possibile all the copy operations
-        /// Keeps thrack of the used input valued for each kernel windows.
-        /// Padding is not implemented jet.
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
-            //this copy is necessary for the backward
-            if (self.input.data.len >= 0) {
+            if (self.input.data.len > 0) {
                 self.input.deinit();
             }
             self.input = try input.copy();
 
-            // used_input remember wich values of the input went into the output, .fromShape() initialize all to zero
-            self.used_input = try self.used_input.fromShape(self.allocator, input.shape);
-            self.output = TensMath.pool_tensor(T, &self.input, &self.used_input, &self.kernel, &self.stride);
+            const input_rows = self.input.shape[0];
+            const input_cols = self.input.shape[1];
+
+            const out_rows = (input_rows - self.kernel[0] + 1) / self.stride[0];
+            const out_cols = (input_cols - self.kernel[1] + 1) / self.stride[1];
+            const W = out_rows * out_cols;
+
+            var used_windows_shape = [_]usize{ W, input_rows, input_cols };
+            if (self.used_input.data.len > 0) {
+                self.used_input.deinit();
+            }
+            self.used_input = try tensor.Tensor(u8).fromShape(self.allocator, used_windows_shape[0..]);
+
+            for (self.used_input.data) |*v| v.* = 0;
+
+            self.output = try TensMath.pool_tensor(T, &self.input, &self.used_input, &self.kernel, &self.stride, self.poolingType);
 
             return self.output;
         }
 
-        /// Backward pass of the layer. It takes the dValues from the next layer and computes the gradients
+        /// Backward pass of the pooling layer
         pub fn backward(ctx: *anyopaque, dValues: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
-            _ = dValues;
-            _ = self;
+
+            var dInput = try tensor.Tensor(T).fromShape(self.allocator, self.input.shape);
+
+            for (dInput.data) |*val| val.* = 0;
+
+            const input_rows = self.input.shape[0];
+            const input_cols = self.input.shape[1];
+
+            const output_rows = self.output.shape[0];
+            const output_cols = self.output.shape[1];
+
+            //const W = output_rows * output_cols; // window num
+
+            // used window shape: [W, input_rows, input_cols]
+            // used_windows.data[w * input_rows * input_cols + r * input_cols + c]
+
+            for (0..output_rows) |out_r| {
+                for (0..output_cols) |out_c| {
+                    const grad = dValues.data[out_r * output_cols + out_c];
+                    const r_start = out_r * self.stride[0];
+                    const c_start = out_c * self.stride[1];
+
+                    const w = out_r * output_cols + out_c; // current window
+
+                    switch (self.poolingType) {
+                        .Max, .Min => {
+                            for (0..self.kernel[0]) |kr| {
+                                for (0..self.kernel[1]) |kc| {
+                                    const in_r = r_start + kr;
+                                    const in_c = c_start + kc;
+                                    if (in_r < input_rows and in_c < input_cols) {
+                                        const mask_val = self.used_input.data[w * (input_rows * input_cols) + in_r * input_cols + in_c];
+                                        if (mask_val == 1) {
+                                            dInput.data[in_r * input_cols + in_c] += grad;
+                                        }
+                                    }
+                                }
+                            }
+                        },
+
+                        .Avg => {
+                            const kernel_area = self.kernel[0] * self.kernel[1];
+                            const distributed_grad = grad / @as(T, @floatFromInt(kernel_area));
+                            for (0..self.kernel[0]) |kr| {
+                                for (0..self.kernel[1]) |kc| {
+                                    const in_r = r_start + kr;
+                                    const in_c = c_start + kc;
+                                    if (in_r < input_rows and in_c < input_cols) {
+                                        dInput.data[in_r * input_cols + in_c] += distributed_grad;
+                                    }
+                                }
+                            }
+                        },
+                    }
+                }
+            }
+
+            return dInput;
         }
 
-        ///Print the layer used for debug purposes it has 2 different verbosity levels
+        /// Print the layer (debug)
         pub fn printLayer(ctx: *anyopaque, choice: u8) void {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
-            std.debug.print("\n ************************Dense layer*********************", .{});
-            //MENU choice:
-            // 0 -> full details layer
-            // 1 -> shape schema
+            std.debug.print("\n ************************Pooling layer*********************", .{});
             std.debug.print("\n kernel: {any}  stride:{any}", .{ self.kernel, self.stride });
             if (choice == 0) {
                 std.debug.print("\n \n************input", .{});
@@ -161,24 +223,24 @@ pub fn PoolingLayer(comptime T: type) type {
         //----------------------------getters----------------------------
         //---------------------------------------------------------------
         pub fn get_n_inputs(ctx: *anyopaque) usize {
+            // Return a dummy value since not supported
             _ = ctx;
-            return LayerError.FeatureNotSupported;
+            return 0;
         }
 
         pub fn get_n_neurons(ctx: *anyopaque) usize {
+            // Return a dummy value since not supported
             _ = ctx;
-            return LayerError.FeatureNotSupported;
+            return 0;
         }
 
         pub fn get_input(ctx: *anyopaque) *const tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
-
             return &self.input;
         }
 
         pub fn get_output(ctx: *anyopaque) *tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
-
             return &self.output;
         }
     };

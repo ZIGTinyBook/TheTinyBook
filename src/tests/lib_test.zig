@@ -12,5 +12,5 @@ test {
     _ = @import("tests_optim.zig");
     _ = @import("tests_dataLoader.zig");
     _ = @import("tests_trainer.zig"); // TODO: double free problem
-    //_ = @import("tests_modelExport.zig"); // TODO: leaking and double free problem
+    _ = @import("tests_modelExport.zig"); // TODO: leaking and double free problem
 }

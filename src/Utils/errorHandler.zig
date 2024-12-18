@@ -15,6 +15,7 @@ pub const LayerError = error{
     Only2DSupported, //TODO: add description
     ZeroValueKernel, //TODO: add description
     ZeroValueStride, //TODO: add description
+    FeatureNotSupported,
 };
 
 /// Type errors
