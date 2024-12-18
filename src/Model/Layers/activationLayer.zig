@@ -123,7 +123,7 @@ pub fn ActivationLayer(comptime T: type) type {
                 try activation.derivate(dValues, &self.output);
             }
 
-            return dValues.*;
+            return dValues.copy();
         }
 
         ///Print the layer used for debug purposes it has 2 different verbosity levels
