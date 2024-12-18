@@ -225,6 +225,7 @@ test "Export of a complex model" {
         .input_tensor = undefined,
     };
     try model.init();
+    defer model.deinit();
 
     //layer 1: 3 inputs, 2 neurons
     var layer1 = denselayer.DenseLayer(f64){
@@ -349,7 +350,7 @@ test "Export of a complex model" {
         &model, //model
         &input_tensor, //input
         &target_tensor, //target
-        2, //epochs
+        5, //epochs
         0.5, //learning rate
     );
 

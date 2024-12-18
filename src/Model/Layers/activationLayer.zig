@@ -46,24 +46,22 @@ pub fn ActivationLayer(comptime T: type) type {
             const n_neurons = argsStruct.n_neurons;
             std.debug.print("\nInit ActivationLayer: n_inputs = {}, n_neurons = {}, Type = {}", .{ n_inputs, n_neurons, @TypeOf(T) });
 
+            self.allocator = alloc;
+
+            //initializing input and output to size=1 tensor of all-zero
+            var sizeOne: [1]usize = [_]usize{1};
+            self.input = try tensor.Tensor(T).fromShape(alloc, &sizeOne);
+            self.output = try tensor.Tensor(T).fromShape(alloc, &sizeOne);
+
             //check on parameters
             if (n_inputs <= 0 or n_neurons <= 0) return LayerError.InvalidParameters;
 
             //initializing number of neurons and inputs----------------------------------
             self.n_inputs = n_inputs;
             self.n_neurons = n_neurons;
-            self.allocator = alloc;
         }
 
-        pub fn convInit(ctx: *anyopaque, input_channels: usize, output_channels: usize, kernel_size: [2]usize) !void {
-            _ = ctx;
-            _ = input_channels;
-            _ = output_channels;
-            _ = kernel_size;
-            return LayerError.InvalidLayerType;
-        }
-
-        ///Deallocate the layer
+        /// Deallocate the layer
         pub fn deinit(ctx: *anyopaque) void {
             const self: *Self = @ptrCast(@alignCast(ctx));
             if (self.output.data.len > 0) {
@@ -75,13 +73,17 @@ pub fn ActivationLayer(comptime T: type) type {
             std.debug.print("\nActivationLayer resources deallocated.", .{});
         }
 
-        ///Forward pass of the layer if present it applies the activation function
+        /// Forward pass of the layer if present it applies the activation function
         /// We can improve it removing as much as possibile all the copy operations
         pub fn forward(ctx: *anyopaque, input: *tensor.Tensor(T)) !tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
             // 1. copy the input both in self.input and self.output because activation.forward doesn't return a tensor
+
+            self.input.deinit();
             self.input = try input.copy();
+
+            self.output.deinit();
             self.output = try input.copy();
 
             // 2. Apply activation function
