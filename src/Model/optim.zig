@@ -53,6 +53,7 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64) type {
                         const bias = &myDense.bias;
 
                         std.debug.print("\n------ step {} (DenseLayer)", .{counter});
+                        //weight_gradients.info();
                         try self.update_tensor(weight, weight_gradients);
                         try self.update_tensor(bias, bias_gradients);
                     },
@@ -68,7 +69,8 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64) type {
                         try self.update_tensor(bias, bias_gradients);
                     },
                     else => {
-                        // If other layer types are present, handle them here or do nothing
+                        //print layer name
+                        std.debug.print("\n------ step {} (LayerType not supported)", .{counter});
                     },
                 }
                 counter += 1;
