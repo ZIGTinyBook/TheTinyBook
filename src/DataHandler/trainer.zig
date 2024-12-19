@@ -213,10 +213,13 @@ pub fn TrainDataLoader2D(
             try convertToOneHot(T, batchSize, &load.yTensor);
 
             var predictions = try model.forward(&load.xTensor);
+            //predictions.print();
             defer predictions.deinit();
 
             var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
             try predictions.reshape(&shape);
+            //predictions.print();
+            try predictions.isSafe();
 
             const loser = Loss.LossFunction(lossType){};
             try DataProc.normalize(T, &load.yTensor, NormalizType.UnityBasedNormalizartion);
@@ -230,7 +233,8 @@ pub fn TrainDataLoader2D(
 
             LossMeanRecord[i] = TensMath.mean(T, &loss);
             AccuracyRecord[i] = @as(f32, @floatFromInt(totalCorrect)) / @as(f32, @floatFromInt(totalSamples)) * 100.0;
-
+            std.debug.print("\nLOSS: {d}\n", .{LossMeanRecord[i]});
+            std.debug.print("\nACCURACY: {d}\n", .{AccuracyRecord[i]});
             var grad: Tensor.Tensor(T) = try loser.computeGradient(T, &predictions, &load.yTensor);
             defer grad.deinit();
             _ = try model.backward(&grad);

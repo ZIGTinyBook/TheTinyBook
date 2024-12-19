@@ -100,7 +100,7 @@ pub fn ActivationLayer(comptime T: type) type {
                 var activation = act_type{};
                 try activation.forward(&self.output);
             }
-
+            try self.output.isSafe();
             return self.output;
         }
 

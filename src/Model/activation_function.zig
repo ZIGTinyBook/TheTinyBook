@@ -124,22 +124,33 @@ pub fn Softmax(comptime T: anytype) type {
             const rows = input.shape[0];
             const cols = input.shape[1];
 
+            var max_val: T = undefined;
             var sum_of_exp: T = 0.0;
             var val: T = undefined;
 
-            //calculating the value of the exponential for each element
+            // For each row
             for (0..rows) |i| {
-                sum_of_exp = 0.0;
+                // Find the maximum value in the row to stabilize the computation
+                max_val = input.data[i * cols];
                 for (0..cols) |j| {
                     val = input.data[i * cols + j];
-                    //std.debug.print("\nval: {}", .{val});
+                    if (val > max_val) {
+                        max_val = val;
+                    }
+                }
+
+                // Compute stabilized exponentials and their sum
+                sum_of_exp = 0.0;
+                for (0..cols) |j| {
+                    val = input.data[i * cols + j] - max_val; // Stabilization
                     val = @exp(val);
                     input.data[i * cols + j] = val;
-                    //std.debug.print(" exp: {}", .{val});
                     sum_of_exp += val;
                 }
+
+                // Normalize to calculate the softmax
                 for (0..cols) |j| {
-                    input.data[i * cols + j] = input.data[i * cols + j] / sum_of_exp;
+                    input.data[i * cols + j] /= sum_of_exp;
                 }
             }
         }

@@ -174,6 +174,7 @@ pub fn build(b: *std.Build) void {
     optim_mod.addImport("layer", layer_mod);
     optim_mod.addImport("errorHandler", errorHandler_mod);
     optim_mod.addImport("denselayer", denseLayer_mod);
+    optim_mod.addImport("convolutionallayer", convLayer_mod);
 
     //************************************************IMPORT/EXPORT DEPENDENCIES************************************************
 

@@ -4,6 +4,8 @@ const layer = @import("layer");
 const denselayer = @import("denselayer").DenseLayer;
 const convlayer = @import("convLayer").ConvolutionalLayer;
 const flattenlayer = @import("flattenLayer").FlattenLayer;
+const PoolingLayer = @import("poolingLayer").PoolingLayer;
+const PoolingType = @import("poolingLayer").PoolingType;
 const activationlayer = @import("activationlayer").ActivationLayer;
 const Model = @import("model").Model;
 const loader = @import("dataloader");
@@ -45,6 +47,34 @@ pub fn main() !void {
         .kernel_size = .{ 3, 3 },
     }));
     try model.addLayer(layer_);
+
+    var pooling_layer = PoolingLayer(f64){
+        .input = undefined,
+        .output = undefined,
+        .used_input = undefined,
+        .kernel = .{ 2, 2 },
+        .stride = .{ 1, 1 },
+        .poolingType = .Max,
+        .allocator = &allocator,
+    };
+    var layer_p1 = try pooling_layer.create();
+
+    const InitArgsP = struct {
+        kernel: [2]usize,
+        stride: [2]usize,
+        poolingType: PoolingType,
+    };
+
+    var init_args = InitArgsP{
+        .kernel = .{ 2, 2 },
+        .stride = .{ 1, 1 },
+        .poolingType = .Max,
+    };
+
+    // Initialize the layer
+    try layer_p1.init(&allocator, &init_args);
+
+    try model.addLayer(layer_p1);
 
     // var layer1Activ = activationlayer(f64, &allocator){
     //     .input = undefined,
@@ -89,6 +119,22 @@ pub fn main() !void {
     }));
     try model.addLayer(layer2_);
 
+    var pooling_layer2 = PoolingLayer(f64){
+        .input = undefined,
+        .output = undefined,
+        .used_input = undefined,
+        .kernel = .{ 2, 2 },
+        .stride = .{ 1, 1 },
+        .poolingType = .Max,
+        .allocator = &allocator,
+    };
+    var layer_p2 = try pooling_layer2.create();
+
+    // Initialize the layer
+    try layer_p2.init(&allocator, &init_args);
+
+    try model.addLayer(layer_p2);
+
     // var layer2Activ = activationlayer(f64, &allocator){
     //     .input = undefined,
     //     .output = undefined,
@@ -116,10 +162,10 @@ pub fn main() !void {
     var Flattenlayer = flatten_layer.create();
 
     // Initialize the Flatten layer with placeholder args
-    var init_args = flattenlayer(f64).FlattenInitArgs{
+    var init_argsF = flattenlayer(f64).FlattenInitArgs{
         .placeholder = true,
     };
-    try Flattenlayer.init(&allocator, &init_args);
+    try Flattenlayer.init(&allocator, &init_argsF);
 
     try model.addLayer(Flattenlayer);
 
@@ -141,7 +187,7 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 18432,
+        .n_inputs = 15488,
         .n_neurons = 10,
     }));
     try model.addLayer(layer3_);
@@ -160,7 +206,7 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 18432,
+        .n_inputs = 15488,
         .n_neurons = 10,
     }));
     try model.addLayer(layer3_act);

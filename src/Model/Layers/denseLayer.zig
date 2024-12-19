@@ -134,7 +134,7 @@ pub fn DenseLayer(comptime T: type) type {
 
             self.output = try TensMath.compute_dot_product(T, &self.input, &self.weights);
             try TensMath.add_bias(T, &self.output, &self.bias);
-
+            try self.output.isSafe();
             return self.output;
         }
 

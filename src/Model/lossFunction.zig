@@ -298,12 +298,12 @@ pub fn CCELoss() type {
             try basicChecks(T, predictions);
             try basicChecks(T, targets);
 
-            //check on the size of predictions, targets and gradient
+            // Check size
             if (predictions.size != targets.size) {
                 return LossError.SizeMismatch;
             }
 
-            //checks on the shape of predictions, targets and gradient
+            // Check shape
             if (predictions.shape.len != targets.shape.len) {
                 return LossError.ShapeMismatch;
             }
@@ -314,11 +314,12 @@ pub fn CCELoss() type {
             const n = predictions.size;
             var gradient = try Tensor(T).fromShape(predictions.allocator, predictions.shape);
 
+            // Define a small epsilon to avoid division by zero
+            const epsilon = @as(T, 1e-12);
+
             for (0..n) |i| {
-                if (predictions.data[i] == 0.0) {
-                    return LossError.InvalidPrediction; // Avoid division by zero
-                }
-                gradient.data[i] = -targets.data[i] / predictions.data[i];
+                // Add epsilon to avoid division by zero
+                gradient.data[i] = -targets.data[i] / (predictions.data[i] + epsilon);
             }
 
             return gradient;
