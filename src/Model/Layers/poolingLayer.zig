@@ -27,7 +27,7 @@ pub fn PoolingLayer(comptime T: type) type {
 
         pub fn create(self: *Self) !Layer.Layer(T) {
             return Layer.Layer(T){
-                .layer_type = Layer.LayerType.DenseLayer,
+                .layer_type = Layer.LayerType.PoolingLayer,
                 .layer_ptr = self,
                 .layer_impl = &.{
                     .init = init,

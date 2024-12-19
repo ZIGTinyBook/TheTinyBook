@@ -162,7 +162,6 @@ pub fn DenseLayer(comptime T: type) type {
                 }
                 self.b_gradients.data[neuron] = sum;
             }
-            self.w_gradients.info();
             var weights_transposed = try self.weights.transpose2D();
             defer weights_transposed.deinit();
 

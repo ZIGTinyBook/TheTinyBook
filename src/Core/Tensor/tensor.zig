@@ -429,7 +429,7 @@ pub fn Tensor(comptime T: type) type {
                 std.debug.print("{} ", .{self.shape[i]});
             }
             std.debug.print("] ", .{});
-            self.print();
+            //self.print();
         }
 
         /// Prints all the array self.data in an array.

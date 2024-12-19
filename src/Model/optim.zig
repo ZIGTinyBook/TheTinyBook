@@ -65,6 +65,8 @@ pub fn optimizer_SGD(T: type, XType: type, YType: type, lr: f64) type {
                         const bias = &myConv.bias;
 
                         std.debug.print("\n------ step {} (ConvLayer)", .{counter});
+                        kernel_gradients.info();
+                        kernel.info();
                         try self.update_tensor(kernel, kernel_gradients);
                         try self.update_tensor(bias, bias_gradients);
                     },

@@ -44,37 +44,37 @@ pub fn main() !void {
     }{
         .input_channels = 1,
         .output_channels = 32,
-        .kernel_size = .{ 3, 3 },
+        .kernel_size = .{ 5, 5 },
     }));
     try model.addLayer(layer_);
 
-    var pooling_layer = PoolingLayer(f64){
-        .input = undefined,
-        .output = undefined,
-        .used_input = undefined,
-        .kernel = .{ 2, 2 },
-        .stride = .{ 1, 1 },
-        .poolingType = .Max,
-        .allocator = &allocator,
-    };
-    var layer_p1 = try pooling_layer.create();
+    // var pooling_layer = PoolingLayer(f64){
+    //     .input = undefined,
+    //     .output = undefined,
+    //     .used_input = undefined,
+    //     .kernel = .{ 3, 3 },
+    //     .stride = .{ 1, 1 },
+    //     .poolingType = .Max,
+    //     .allocator = &allocator,
+    // };
+    // var layer_p1 = try pooling_layer.create();
 
-    const InitArgsP = struct {
-        kernel: [2]usize,
-        stride: [2]usize,
-        poolingType: PoolingType,
-    };
+    // const InitArgsP = struct {
+    //     kernel: [2]usize,
+    //     stride: [2]usize,
+    //     poolingType: PoolingType,
+    // };
 
-    var init_args = InitArgsP{
-        .kernel = .{ 2, 2 },
-        .stride = .{ 1, 1 },
-        .poolingType = .Max,
-    };
+    // var init_args = InitArgsP{
+    //     .kernel = .{ 3, 3 },
+    //     .stride = .{ 1, 1 },
+    //     .poolingType = .Max,
+    // };
 
-    // Initialize the layer
-    try layer_p1.init(&allocator, &init_args);
+    // // Initialize the layer
+    // try layer_p1.init(&allocator, &init_args);
 
-    try model.addLayer(layer_p1);
+    // try model.addLayer(layer_p1);
 
     // var layer1Activ = activationlayer(f64, &allocator){
     //     .input = undefined,
@@ -115,25 +115,61 @@ pub fn main() !void {
     }{
         .input_channels = 32,
         .output_channels = 32,
-        .kernel_size = .{ 3, 3 },
+        .kernel_size = .{ 5, 5 },
     }));
     try model.addLayer(layer2_);
 
-    var pooling_layer2 = PoolingLayer(f64){
+    var conv_layer3C = convlayer(f64){
+        .weights = undefined,
+        .bias = undefined,
         .input = undefined,
         .output = undefined,
-        .used_input = undefined,
-        .kernel = .{ 2, 2 },
-        .stride = .{ 1, 1 },
-        .poolingType = .Max,
+        .input_channels = 0,
+        .output_channels = 0,
+        .kernel_size = undefined,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
         .allocator = &allocator,
     };
-    var layer_p2 = try pooling_layer2.create();
+    var layer3C_ = conv_layer3C.create();
+    try layer3C_.init(&allocator, @constCast(&struct {
+        input_channels: usize,
+        output_channels: usize,
+        kernel_size: [2]usize,
+    }{
+        .input_channels = 32,
+        .output_channels = 64,
+        .kernel_size = .{ 5, 5 },
+    }));
+    try model.addLayer(layer3C_);
 
-    // Initialize the layer
-    try layer_p2.init(&allocator, &init_args);
+    // var pooling_layer2 = PoolingLayer(f64){
+    //     .input = undefined,
+    //     .output = undefined,
+    //     .used_input = undefined,
+    //     .kernel = .{ 3, 3 },
+    //     .stride = .{ 1, 1 },
+    //     .poolingType = .Max,
+    //     .allocator = &allocator,
+    // };
+    // var layer_p2 = try pooling_layer2.create();
 
-    try model.addLayer(layer_p2);
+    // const InitArgsP2 = struct {
+    //     kernel: [2]usize,
+    //     stride: [2]usize,
+    //     poolingType: PoolingType,
+    // };
+
+    // var init_args2 = InitArgsP2{
+    //     .kernel = .{ 3, 3 },
+    //     .stride = .{ 1, 1 },
+    //     .poolingType = .Max,
+    // };
+
+    // // Initialize the layer
+    // try layer_p2.init(&allocator, &init_args2);
+
+    // try model.addLayer(layer_p2);
 
     // var layer2Activ = activationlayer(f64, &allocator){
     //     .input = undefined,
@@ -187,8 +223,8 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 15488,
-        .n_neurons = 10,
+        .n_inputs = 16384,
+        .n_neurons = 256,
     }));
     try model.addLayer(layer3_);
 
@@ -198,7 +234,7 @@ pub fn main() !void {
         .output = undefined,
         .n_inputs = 0,
         .n_neurons = 0,
-        .activationFunction = ActivationType.Softmax,
+        .activationFunction = ActivationType.ReLU,
         .allocator = &allocator,
     };
     var layer3_act = activationlayer(f64).create(&layer3Activ);
@@ -206,12 +242,56 @@ pub fn main() !void {
         n_inputs: usize,
         n_neurons: usize,
     }{
-        .n_inputs = 15488,
-        .n_neurons = 10,
+        .n_inputs = 16384,
+        .n_neurons = 256,
     }));
     try model.addLayer(layer3_act);
 
-    var load = loader.DataLoader(f64, u8, u8, 1, 3){
+    //new dense layer
+
+    var layer4 = denselayer(f64){
+        .weights = undefined,
+        .bias = undefined,
+        .input = undefined,
+        .output = undefined,
+        .n_inputs = 0,
+        .n_neurons = 0,
+        .w_gradients = undefined,
+        .b_gradients = undefined,
+        .allocator = undefined,
+    };
+
+    var layer4_ = denselayer(f64).create(&layer4);
+    try layer4_.init(&allocator, @constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 256,
+        .n_neurons = 10,
+    }));
+
+    try model.addLayer(layer4_);
+
+    //Softmax
+    var layer4Activ = activationlayer(f64){
+        .input = undefined,
+        .output = undefined,
+        .n_inputs = 0,
+        .n_neurons = 0,
+        .activationFunction = ActivationType.Softmax,
+        .allocator = &allocator,
+    };
+    var layer4_act = activationlayer(f64).create(&layer4Activ);
+    try layer4_act.init(&allocator, @constCast(&struct {
+        n_inputs: usize,
+        n_neurons: usize,
+    }{
+        .n_inputs = 256,
+        .n_neurons = 10,
+    }));
+    try model.addLayer(layer4_act);
+
+    var load = loader.DataLoader(f64, u8, u8, 16, 3){
         .X = undefined,
         .y = undefined,
         .xTensor = undefined,
@@ -230,7 +310,7 @@ pub fn main() !void {
         u8, //The data type for the input tensor (X)
         u8, //The data type for the output tensor (Y)
         &allocator, //Memory allocator for dynamic allocations during training
-        1, //The number of samples in each batch
+        16, //The number of samples in each batch
         784, //The number of features in each input sample
         &model, //A pointer to the model to be trained
         &load, //A pointer to the `DataLoader` that provides data batches
